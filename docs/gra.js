@@ -8,7 +8,7 @@
   const css = document.createElement('style');
   css.textContent = `
   #snow{position:fixed;inset:0;pointer-events:none;z-index:40;overflow:hidden}
-  .flake{position:absolute;top:0;left:0;border-radius:50%;background:var(--card) center/cover no-repeat;border:2px solid;display:grid;place-items:center;font-weight:700;color:var(--ink);pointer-events:auto;cursor:pointer;user-select:none;opacity:.85;will-change:transform;contain:layout paint}
+  .flake{position:absolute;top:0;left:0;border-radius:50%;background:var(--card) center/cover no-repeat;border:2px solid;display:grid;place-items:center;font-weight:700;color:var(--ink);pointer-events:auto;cursor:pointer;user-select:none;opacity:.85;will-change:transform;contain:layout}
   .flake:hover{opacity:1}
   .flake .badge{position:absolute;right:-6px;top:-6px;background:#e0a526;color:#141413;font-weight:800;border-radius:999px;padding:1px 6px;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,.4);border:2px solid #141413;line-height:1.3;pointer-events:none}
   .flake .b2{background:#ff8a3d}.flake .b3{background:#ff5a3d;color:#fff}.flake .b4{background:#d9264a;color:#fff}
