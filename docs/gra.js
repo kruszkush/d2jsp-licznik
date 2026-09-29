@@ -139,7 +139,7 @@
     f.vy = -JUMP * game.k;
     f.vx = Math.max(-420, Math.min(420, -off * 320 + (Math.random() - .5) * 120)) * game.k;
     f.vr = -off * 360;
-    hud.hidden = false; hud.innerHTML = `${Math.round(game.score)}<small>pkt · x${totalMult().toFixed(1)} · ${game.hits} podbić</small>`;
+    hud.hidden = false; hud.innerHTML = `${Math.round(game.score)}<small>pkt · ${game.base > 1 ? `x${game.base} more · ` : ''}+${game.lvl * 10}% increased = x${totalMult().toFixed(1)} · ${game.hits} podbić</small>`;
   }
   function endGame() {
     const score = Math.round(game.score), f = game.f, gHits = game.hits, gBase = game.base, gLvl = game.lvl, gMult = totalMult(); game = null; document.body.classList.remove('playing'); hideMult();
@@ -151,7 +151,7 @@
       <div class="who">${esc(who)}</div>
       <div class="txt">Podrzuciłeś ${esc(who)} <b>${hits}</b> ${hits === 1 ? 'raz' : 'razy'}</div>
       <div class="sc">${score}<small> pkt</small></div>
-      <div class="txt" style="margin:-8px 0 12px">${gBase > 1 ? `piłeczka x${gBase} · ` : ""}poziom ${gLvl + 1} · x${gMult.toFixed(1)} na koniec</div>
+      <div class="txt" style="margin:-8px 0 12px">${gBase > 1 ? `piłeczka x${gBase} more · ` : ""}+${gLvl * 10}% increased · razem x${gMult.toFixed(1)} na koniec</div>
       <input id="pilNick" maxlength="20" placeholder="Twój nick" value="${esc(ls.get('pilNick') || '')}">
       <div class="row"><button class="pri" id="pilSave">Zapisz wynik</button><button id="pilClose">Zamknij</button></div><div class="msg" id="pilMsg"></div></div>`;
     document.body.appendChild(ov);
