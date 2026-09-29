@@ -55,7 +55,7 @@ async function get(path, kind) {
           title: (d.title || '').replace(/ - Topic - d2jsp$/, ''),
           posts: [...d.querySelectorAll('.ppc')].map((p) => {
             const u = p.querySelector('.pU a[href^="user.php"]');
-            return { id: p.querySelector('.bts')?.id.slice(2), user: u?.textContent.trim(), uid: u?.getAttribute('href').split('=')[1], date: p.querySelector('[id^="td"]')?.textContent };
+            return { id: p.querySelector('.bts')?.id.slice(2), user: u?.textContent.trim(), uid: u?.getAttribute('href').split('=')[1], date: p.querySelector('[id^="td"]')?.textContent, av: p.querySelector('.pU img.av')?.getAttribute('src') || '' };
           }),
         };
       }, B + path, kind, F);
@@ -88,6 +88,7 @@ for (let o = 0; ; o += 25) {
         fresh++;
         data.topics[t.t] = r.title || t.title;
         if (p.uid) data.users[p.uid] = p.user;
+        if (p.uid && p.av) (data.avatars ||= {})[p.uid] = p.av;
         if (known.has(p.id)) continue;
         known.add(p.id); added++;
         data.posts.push([p.id, t.t, p.uid || p.user, Math.round(pd(p.date) / 1000)]);

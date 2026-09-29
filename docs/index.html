@@ -84,6 +84,20 @@ aside{position:sticky;top:16px}
 .fame .mini{margin-left:8px}
 .empty{color:var(--mute);font-size:13px}
 .note{color:var(--mute);font-size:12px;margin:8px 0 0}
+.pie{position:fixed;z-index:50;width:250px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:0 12px 32px rgba(0,0,0,.25);pointer-events:none}
+.pie[hidden]{display:none}
+.pie h4{margin:0 0 8px;font-size:13px;font-weight:600;text-align:center}
+.pie .ring{position:relative;width:190px;height:190px;margin:0 auto}
+.pie .ring svg{width:100%;height:100%;display:block}
+.pie .av{position:absolute;width:38px;height:38px;border-radius:50%;transform:translate(-50%,-50%);border:3px solid;background:var(--card) center/cover no-repeat;display:grid;place-items:center;font-weight:700;font-size:15px;color:var(--ink)}
+.pie .mid{position:absolute;inset:0;display:grid;place-items:center;text-align:center;font-size:12px;color:var(--mute);pointer-events:none}
+.pie .mid b{display:block;font-size:20px;color:var(--ink)}
+.pie ul{list-style:none;margin:10px 0 0;padding:0;font-size:13px}
+.pie li{display:flex;align-items:center;gap:6px;padding:2px 0}
+.pie li i{width:10px;height:10px;border-radius:3px;flex:none}
+.pie li span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pie li em{font-style:normal;color:var(--mute);font-variant-numeric:tabular-nums}
+.bars .col{cursor:pointer}.bars .col:hover .b{filter:brightness(1.15)}
 </style>
 </head>
 <body>
@@ -150,6 +164,7 @@ aside{position:sticky;top:16px}
   <div class="card"><h3>Poprzednie tygodnie</h3><ul class="hist" id="hist"></ul></div>
   <div class="card"><h3>Galeria sław</h3><ul class="fame" id="fame"></ul></div>
 </aside>
+<div id="pie" class="pie" hidden></div>
 </div>
 <script>
 const $ = (id) => document.getElementById(id);
@@ -261,6 +276,44 @@ function renderCups(R) {
     || '<li class="empty">Nikt jeszcze nie ma pucharu.</li>';
 }
 
+// --- Kołowy wykres dnia: top 3 + reszta, z awatarami ---
+let dayUsers = new Map();
+const PIE = ['#e0a526', '#5b8def', '#d9667a', 'var(--mute)'];
+function pieHtml(k) {
+  const m = dayUsers.get(k); if (!m) return '';
+  const all = [...m].sort((a, b) => b[1] - a[1]), total = all.reduce((s, x) => s + x[1], 0);
+  const parts = all.slice(0, 3).map(([u, n]) => ({ u, n })); const rest = total - parts.reduce((s, p) => s + p.n, 0);
+  if (rest > 0) parts.push({ u: null, n: rest });
+  const R = 80, r = 50, C = 95; let a0 = -Math.PI / 2, svg = '', avs = '';
+  parts.forEach((p, i) => {
+    const frac = p.n / total, a1 = a0 + frac * 2 * Math.PI, col = p.u ? PIE[i] : PIE[3];
+    const pt = (a, rad) => `${C + rad * Math.cos(a)} ${C + rad * Math.sin(a)}`, big = frac > .5 ? 1 : 0;
+    svg += frac >= .999 ? `<circle cx="${C}" cy="${C}" r="${(R + r) / 2}" fill="none" stroke="${col}" stroke-width="${R - r}"/>`
+      : `<path d="M${pt(a0, R)} A${R} ${R} 0 ${big} 1 ${pt(a1, R)} L${pt(a1, r)} A${r} ${r} 0 ${big} 0 ${pt(a0, r)}Z" fill="${col}" stroke="var(--card)" stroke-width="2"/>`;
+    if (p.u && frac >= .06) {
+      const am = (a0 + a1) / 2, x = (C + (R + r) / 2 * Math.cos(am)) / 190 * 100, y = (C + (R + r) / 2 * Math.sin(am)) / 190 * 100;
+      const av = D.avatars?.[p.u];
+      avs += `<div class="av" style="left:${x}%;top:${y}%;border-color:${col};${av ? `background-image:url('${esc(av)}')` : ''}">${av ? '' : esc(nick(p.u)[0].toUpperCase())}</div>`;
+    }
+    a0 = a1;
+  });
+  const dt = new Date(k + 'T12:00').toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' });
+  return `<h4>${dt}</h4><div class="ring"><svg viewBox="0 0 190 190">${svg}</svg><div class="mid"><div><b>${fmt(total)}</b>postów</div></div>${avs}</div>
+    <ul>${parts.map((p, i) => `<li><i style="background:${p.u ? PIE[i] : PIE[3]}"></i><span>${p.u ? esc(nick(p.u)) : `reszta (${all.length - 3} os.)`}</span><em>${p.n} · ${Math.round(p.n / total * 100)}%</em></li>`).join('')}</ul>`;
+}
+function showPie(col, ev) {
+  const el = $('pie'), html = pieHtml(col.dataset.k);
+  if (!html) { el.hidden = true; return; }
+  el.innerHTML = html; el.hidden = false;
+  const b = col.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
+  let x = b.left + b.width / 2 - w / 2; x = Math.max(8, Math.min(x, innerWidth - w - 8));
+  let y = b.top - h - 10; if (y < 8) y = Math.min(b.bottom + 10, innerHeight - h - 8);
+  el.style.left = x + 'px'; el.style.top = y + 'px';
+}
+$('chart').addEventListener('mouseover', (e) => { const c = e.target.closest('.col'); if (c) showPie(c); });
+$('chart').addEventListener('mouseleave', () => { $('pie').hidden = true; });
+$('chart').addEventListener('click', (e) => { const c = e.target.closest('.col'); if (c) showPie(c); });
+document.addEventListener('scroll', () => { $('pie').hidden = true; }, { passive: true });
 fetch('data.json?' + Date.now()).then((r) => r.json()).then((d) => {
   D = d;
   // Wszystko liczymy od startu pucharów (21.09, poniedziałek 00:00); starsze posty zostają w pliku, ale ich nie pokazujemy.
@@ -289,11 +342,12 @@ $('q').addEventListener('input', render);
 function render() {
   const f = from / 1000, t = to / 1000;
   const posts = D.posts.filter((p) => p[3] >= f && p[3] <= t);
-  const users = new Map(), topics = new Set(), days = new Map();
+  const users = new Map(), topics = new Set(), days = new Map(); dayUsers = new Map();
   for (const [, tp, u, ts] of posts) {
     const x = users.get(u) || users.set(u, { u, n: 0, t: new Set() }).get(u);
     x.n++; x.t.add(tp); topics.add(tp);
     const k = ymd(ts * 1000); days.set(k, (days.get(k) || 0) + 1);
+    const du = dayUsers.get(k) || dayUsers.set(k, new Map()).get(k); du.set(u, (du.get(u) || 0) + 1);
   }
   const nDays = Math.max(1, Math.round((to - from) / day));
   $('tPosts').textContent = fmt(posts.length); $('tUsers').textContent = fmt(users.size);
@@ -311,7 +365,7 @@ function render() {
   const vals = keys.map((k) => days.get(k) || 0), max = Math.max(1, ...vals), many = keys.length > 21, step = Math.ceil(keys.length / 12);
   const WD = ['nd', 'pn', 'wt', 'śr', 'cz', 'pt', 'sb'], td = ymd(Date.now());
   $('chart').innerHTML = keys.map((k, i) => { const dt = new Date(k + 'T12:00'), v = vals[i], show = !many || i % step === 0;
-    return `<div class="col${k === td ? ' today' : ''}" title="${dt.toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' })}: ${v} postów${k === td ? ' (dzień trwa)' : ''}">
+    return `<div class="col${k === td ? ' today' : ''}" data-k="${k}" data-t="${dt.toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' })}: ${v} postów${k === td ? ' (dzień trwa)' : ''}">
       ${many ? '' : `<span class="v">${v}</span>`}<div class="b" style="height:${Math.round(v / max * 120)}px"></div>
       <span class="d">${show ? `${dt.getDate()}.${String(dt.getMonth() + 1).padStart(2, '0')}${many ? '' : `<i>${WD[dt.getDay()]}</i>`}` : '&nbsp;'}</span></div>`; }).join('');
 }
