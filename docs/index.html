@@ -128,11 +128,14 @@ aside{position:sticky;top:16px}
 .cup.fire{filter:drop-shadow(0 0 4px rgba(255,40,0,.7))}
 .cup.fire .fl{animation:flick .4s ease-in-out infinite alternate}
 @keyframes flick{from{transform:scale(.9,.84) skewX(-3deg)}to{transform:scale(1.06,1.1) skewX(3deg)}}
-.flow{position:absolute;left:28%;top:62%;width:3px;height:0;border-radius:2px 2px 3px 3px;background:linear-gradient(#ffb03a,#ff3b0a 40%,#c41808);box-shadow:0 0 5px rgba(255,70,10,.8);z-index:3;pointer-events:none;animation:flow 7s ease-in infinite}
-.flow::after{content:"";position:absolute;left:-1.5px;bottom:-3px;width:6px;height:6px;border-radius:50%;background:#e8260f;box-shadow:0 0 5px #ff5a1a}
-@keyframes flow{0%{height:0;opacity:1}55%{height:52px;opacity:1}80%{height:52px;opacity:1}100%{height:52px;opacity:0}}
-.lavadrop{position:fixed;left:0;top:0;width:3px;height:4px;border-radius:50% 50% 50% 50%/60% 60% 40% 40%;background:#ff3b0a;box-shadow:0 0 5px #ff5a1a;pointer-events:none;z-index:39}
-@media (prefers-reduced-motion:reduce){.flow{animation:none;height:20px}}
+.lavadrop{position:fixed;left:0;top:0;width:2.5px;height:2.5px;border-radius:50%;background:#ff4a1a;box-shadow:0 0 3px 1px rgba(255,60,10,.7);pointer-events:none;z-index:39}
+.legend{max-width:1200px;margin:0 auto;padding:8px 16px 48px}
+.legend h2{font-size:15px;margin:0 0 10px}
+.lg{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.lg>div{display:grid;grid-template-columns:34px 1fr;column-gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.lg .ic{grid-row:span 2;font-size:22px;text-align:center}
+.lg .ic .reign{font-size:12px}
+.lg b{font-size:14px}.lg>div>span:last-child{color:var(--mute);font-size:12px}
 </style>
 </head>
 <body>
@@ -212,6 +215,7 @@ aside{position:sticky;top:16px}
 </aside>
 <div id="pie" class="pie" hidden></div>
 </div>
+<div id="legendSlot"></div>
 <script>
 const $ = (id) => document.getElementById(id);
 let D, from, to, reign = new Set(), cups = new Map(); // uid -> [{t: 'w'|'m'|'y', label}]
@@ -256,7 +260,7 @@ const TYPE = { w: { name: 'tygodnia', sym: 'cup' }, m: { name: 'miesiąca', sym:
 const cupSvg = (t = 'w', cls = 'cup') => `<svg class="${cls}"><use href="#${TYPE[t].sym}"/></svg>`;
 
 // Odznaki przy nicku w rankingu: puchary (rok, płonące za miesiąc — każdy zamienia jeden złoty, złote za tydzień) i gwiazdka roku za nickiem
-const FIRE = `<span class="firew"><svg class="cup fire" viewBox="0 -14 64 78"><g class="fl"><path d="M32 -12c5 8 13 12 13 23a13 13 0 0 1-26 0c0-7 4-10 5-16 2 5 4 6 5 8 1-5 1-9 3-15z" fill="#e3140a"/><path d="M32 0c3 5 8 8 8 14a8 8 0 0 1-16 0c0-4 2-7 4-10 1 2 2 3 3 4z" fill="#ff7a1a"/><path d="M32 8c2 3 4 4 4 7a4 4 0 0 1-8 0c0-2 1-4 2-5z" fill="#ffd23f"/></g><use href="#cupR"/></svg><i class="flow"></i></span>`;
+const FIRE = `<span class="firew"><svg class="cup fire" viewBox="0 -14 64 78"><g class="fl"><path d="M32 -12c5 8 13 12 13 23a13 13 0 0 1-26 0c0-7 4-10 5-16 2 5 4 6 5 8 1-5 1-9 3-15z" fill="#e3140a"/><path d="M32 0c3 5 8 8 8 14a8 8 0 0 1-16 0c0-4 2-7 4-10 1 2 2 3 3 4z" fill="#ff7a1a"/><path d="M32 8c2 3 4 4 4 7a4 4 0 0 1-8 0c0-2 1-4 2-5z" fill="#ffd23f"/></g><use href="#cupR"/></svg></span>`;
 function nickBadges(u) {
   const c = cups.get(u) || [], n = (t) => c.filter((k) => k.t === t).length, y = n('y'), m = n('m'), w = n('w');
   const title = c.map((k) => 'Mistrz ' + TYPE[k.t].name + ': ' + k.label).join(', ');
@@ -373,21 +377,38 @@ $('chart').addEventListener('mouseover', (e) => { const c = e.target.closest('.c
 $('chart').addEventListener('mouseleave', () => { $('pie').hidden = true; });
 $('chart').addEventListener('click', (e) => { const c = e.target.closest('.col'); if (c) showPie(c); });
 document.addEventListener('scroll', () => { $('pie').hidden = true; }, { passive: true });
-// Kropelki lawy: z końca strumienia pierwszego płonącego pucharu co ~2,5–4 s spada malutka kropla na dół ekranu
-(function lavaTick() {
-  const f = document.querySelector('.flow');
-  if (f && !matchMedia('(prefers-reduced-motion: reduce)').matches && !document.hidden) {
-    const r = f.getBoundingClientRect();
-    if (r.height > 40 && r.bottom > 0 && r.top < innerHeight) {
+// Czerwony "śnieg": z płonących pucharów po trochu sypią się malutkie żarzące drobinki, kołyszą się i gasną
+(function emberTick() {
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches && !document.hidden && document.querySelectorAll('.lavadrop').length < 40) {
+    for (const c of [...document.querySelectorAll('.cup.fire')].slice(0, 6)) {
+      const r = c.getBoundingClientRect();
+      if (!r.width || r.bottom < 0 || r.top > innerHeight) continue;
       const d = document.createElement('div'); d.className = 'lavadrop'; document.body.appendChild(d);
-      let x = r.left, y = r.bottom, vy = .5;
-      const step = () => { vy += .22; y += vy; d.style.transform = `translate(${x}px,${y}px)`; d.style.opacity = Math.max(.25, 1 - (y - r.bottom) / innerHeight);
-        if (y < innerHeight) requestAnimationFrame(step); else d.remove(); };
-      step();
+      const x0 = r.left + r.width * (.25 + Math.random() * .5), y0 = r.top + r.height * (.45 + Math.random() * .4);
+      const fall = 25 + Math.random() * 45, dur = 1600 + Math.random() * 1400, sway = (Math.random() - .5) * 14, t0 = performance.now();
+      const step = (t) => { const k = Math.min(1, (t - t0) / dur);
+        d.style.transform = `translate(${x0 + Math.sin(k * 6) * sway * k}px,${y0 + fall * k}px)`; d.style.opacity = String(1 - k);
+        k < 1 ? requestAnimationFrame(step) : d.remove(); };
+      requestAnimationFrame(step);
     }
   }
-  setTimeout(lavaTick, 2500 + Math.random() * 1500);
+  setTimeout(emberTick, 220 + Math.random() * 300);
 })();
+
+// Legenda na dole strony (ikony te same co w rankingu)
+document.getElementById('legendSlot').outerHTML = `<footer class="legend">
+  <h2>Legenda</h2>
+  <div class="lg">
+    <div><span class="ic">@Y@</span><b>Puchar roku</b><span>najwięcej postów w całym roku (2026 liczony od 21.09); przyznawany 1 stycznia</span></div>
+    <div><span class="ic"><span class="ystar" style="margin:0">★</span></span><b>Błękitna gwiazdka</b><span>za nickiem — na zawsze dla każdego mistrza roku</span></div>
+    <div><span class="ic">@M@</span><b>Puchar miesiąca</b><span>najwięcej postów w miesiącu (od października); przyznawany 1. dnia kolejnego miesiąca</span></div>
+    <div><span class="ic">@F@</span><b>Płonący puchar</b><span>każdy tytuł mistrza miesiąca zamienia jeden złoty puchar w płonący</span></div>
+    <div><span class="ic"><span class="reign">Nick</span></span><b>Fioletowy nick</b><span>panujący mistrz miesiąca — do czasu kolejnego mistrza</span></div>
+    <div><span class="ic">@W@</span><b>Puchar tygodnia</b><span>najwięcej postów od poniedziałku 00:00 do niedzieli 23:59</span></div>
+  </div>
+  <p class="note">Remis = puchar dla wszystkich z tym samym wynikiem. Liczymy posty z sekcji Polska od 21.09.2026; dane odświeżają się co ok. 3 h. Kliknij spadający awatar, żeby zagrać w podbijanie.</p>
+</footer>
+`.replace('@Y@', cupSvg('y')).replace('@M@', cupSvg('m')).replace('@F@', FIRE).replace('@W@', cupSvg('w'));
 
 fetch('data.json?' + Date.now()).then((r) => r.json()).then((d) => {
   D = d;
