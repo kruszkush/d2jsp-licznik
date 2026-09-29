@@ -10,6 +10,9 @@
   #snow{position:fixed;inset:0;pointer-events:none;z-index:40;overflow:hidden}
   .flake{position:absolute;top:0;left:0;border-radius:50%;background:var(--card) center/cover no-repeat;border:2px solid;display:grid;place-items:center;font-weight:700;color:var(--ink);pointer-events:auto;cursor:pointer;user-select:none;opacity:.85;will-change:transform;box-shadow:0 2px 8px rgba(0,0,0,.2)}
   .flake:hover{opacity:1}
+  .flake .badge{position:absolute;right:-6px;top:-6px;background:#e0a526;color:#141413;font-weight:800;border-radius:999px;padding:1px 6px;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,.4);border:2px solid #141413;line-height:1.3;pointer-events:none}
+  .flake .b2{background:#ff8a3d}.flake .b3{background:#ff5a3d;color:#fff}.flake .b4{background:#d9264a;color:#fff}
+  .flake.ball .badge{display:none}
   .flake.ball{opacity:1;z-index:2;box-shadow:0 8px 20px rgba(0,0,0,.35)}
   #hud{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:60;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 18px;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;box-shadow:0 6px 18px rgba(0,0,0,.25);pointer-events:none}
   #hud small{font-size:12px;font-weight:500;color:var(--mute);margin-left:6px}
@@ -80,9 +83,10 @@
   function spawn() {
     if (!on || game || document.hidden || flakes.size >= 7 || !D?.users) return;
     const u = pickUser(); if (!u) return;
-    const size = Math.round(80 * scaleK());
+    const kind = pickKind(), size = Math.round(80 * kind.p * scaleK());
     const f = { u, size, x: Math.random() * (W - size), y: -size - 10, vy: (28 + Math.random() * 30) * scaleK(), sway: 20 + Math.random() * 30, ph: Math.random() * 6.28, rot: 0, vr: (Math.random() - .5) * 40 };
-    f.el = makeEl(u, size);
+    f.el = makeEl(u, size); f.base = kind.m;
+    if (kind.m > 1) { const b = document.createElement('span'); b.className = 'badge ' + kind.cls; b.textContent = 'x' + kind.m; f.el.appendChild(b); }
     f.el.addEventListener('pointerdown', (e) => { e.preventDefault(); game ? hit(f, e) : startGame(f, e); });
     flakes.add(f);
   }
@@ -91,6 +95,10 @@
   // --- gra ---
   // Co 8 podbić poziom w górę: awatar leci szybciej (cały ruch przyspiesza), a mnożnik punktów rośnie o 0,1
   // Rozmiar i fizyka liczone względem wielkości okna — przybliżenie strony (Ctrl +) nie ułatwia gry
+  // Rozmiary piłeczek: mniejsza = trudniej, ale większy mnożnik bazowy (mnoży się z mnożnikiem poziomu)
+  const KINDS = [{ p: 1, m: 1, w: 50 }, { p: .8, m: 1.3, w: 25, cls: 'b2' }, { p: .65, m: 1.7, w: 15, cls: 'b3' }, { p: .5, m: 2.2, w: 10, cls: 'b4' }];
+  const pickKind = () => { let r = Math.random() * 100; for (const k of KINDS) { if ((r -= k.w) < 0) return k; } return KINDS[0]; };
+  const totalMult = () => game ? Math.round(game.base * multOf(game.lvl) * 10) / 10 : 1;
   const scaleK = () => Math.max(.3, Math.min(innerWidth, innerHeight) / 950);
   const G = 1500, JUMP = 720, PER_LEVEL = 8;
   const speedOf = (lvl) => 1 + lvl * 0.07, multOf = (lvl) => Math.round((1 + lvl * 0.1) * 10) / 10;
@@ -99,7 +107,7 @@
   const edgeEl = document.createElement('div'); edgeEl.id = 'edge'; document.body.appendChild(edgeEl);
   // Duży, półprzezroczysty mnożnik w tle + poświata na brzegach ekranu rosnąca z poziomem
   function showMult(lvl, pulse) {
-    const m = multOf(lvl), heat = Math.min(1, lvl / 10);
+    const m = totalMult(), heat = Math.min(1, (m - 1) / 3);
     multEl.textContent = 'x' + m.toFixed(1);
     multEl.style.color = `hsl(${45 - heat * 45}, 95%, ${60 - heat * 10}%)`;
     multEl.classList.add('on'); edgeEl.style.opacity = String(heat * .9);
@@ -111,7 +119,7 @@
   function startGame(f, e) {
     for (const o of flakes) if (o !== f) o.el.remove();
     flakes.clear(); flakes.add(f);
-    game = { f, score: 0, hits: 0, lvl: 0, k: scaleK() }; f.el.classList.add('ball'); showMult(0, false);
+    game = { f, score: 0, hits: 0, lvl: 0, k: scaleK(), base: f.base || 1 }; f.el.classList.add('ball'); showMult(0, false);
     document.body.classList.add('playing'); getSelection()?.removeAllRanges(); const pie = document.getElementById('pie'); if (pie) pie.hidden = true; f.vx = 0; f.vy = 0;
     hit(f, e);
   }
@@ -119,13 +127,13 @@
     if (!game || game.f !== f) return;
     game.hits++;
     const up = game.hits % PER_LEVEL === 0 && game.hits > 0;
-    game.score += multOf(game.lvl);
-    if (up) { game.lvl++; flash(`Szybciej! x${multOf(game.lvl).toFixed(1)}`); showMult(game.lvl, true); }
+    game.score += totalMult();
+    if (up) { game.lvl++; flash(`Szybciej! x${totalMult().toFixed(1)}`); showMult(game.lvl, true); }
     const r = f.el.getBoundingClientRect(), off = ((e.clientX - (r.left + r.width / 2)) / (r.width / 2)) || 0;
     f.vy = -JUMP * game.k;
     f.vx = Math.max(-420, Math.min(420, -off * 320 + (Math.random() - .5) * 120)) * game.k;
     f.vr = -off * 360;
-    hud.hidden = false; hud.innerHTML = `${Math.round(game.score)}<small>pkt · x${multOf(game.lvl).toFixed(1)} · ${game.hits} podbić</small>`;
+    hud.hidden = false; hud.innerHTML = `${Math.round(game.score)}<small>pkt · x${totalMult().toFixed(1)} · ${game.hits} podbić</small>`;
   }
   function endGame() {
     const score = Math.round(game.score), f = game.f, gHits = game.hits; game = null; document.body.classList.remove('playing'); hideMult();
