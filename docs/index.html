@@ -40,6 +40,7 @@ a{color:var(--ink);text-decoration:none}a:hover{color:var(--acc)}
 aside{position:sticky;top:16px}
 @media (max-width:900px){aside{position:static}}
 .cup{width:1em;height:1em;vertical-align:-.12em;display:inline-block}
+.mini .cup+.cup{margin-left:2px}
 .mini{margin-left:6px;font-size:13px;color:var(--gold);font-weight:600;white-space:nowrap;cursor:default}
 .champ{position:relative;overflow:hidden;background:linear-gradient(160deg,var(--goldbg),var(--card) 70%);border:1px solid var(--goldline);border-radius:16px;padding:18px 16px 16px;text-align:center;margin-bottom:14px}
 .champ .big{width:84px;height:84px;filter:drop-shadow(0 6px 10px rgba(201,150,26,.35));animation:float 3.5s ease-in-out infinite}
@@ -136,6 +137,7 @@ function weekOf(ms) { const i = plInfo(ms); const mon = addDays(i.date, -i.wd); 
 const dm = (s) => { const [, m, d] = s.split('-'); return `${+d}.${m}`; };
 const weekLabel = (w) => `${dm(w.mon)}–${dm(addDays(w.mon, 6))}`;
 
+const FIRST_CUP_WEEK = '2026-09-21'; // puchary liczymy od tego tygodnia (poniedziałek)
 function computeCups() {
   const byWeek = new Map();
   for (const [, , u, ts] of D.posts) {
@@ -150,7 +152,7 @@ function computeCups() {
   for (const x of weeks) {
     x.rank = [...x.users].sort((a, b) => b[1] - a[1]);
     if (x.w.start <= now && now < x.w.end) current = x;
-    else if (x.w.start >= covered && x.w.end <= doneUpTo) { // tylko tygodnie, które mamy w całości
+    else if (x.w.mon >= FIRST_CUP_WEEK && x.w.start >= covered && x.w.end <= doneUpTo) { // tylko tygodnie, które mamy w całości
       const top = x.rank[0][1]; x.winners = x.rank.filter((r) => r[1] === top).map((r) => r[0]);
       past.push(x);
       for (const u of x.winners) (cups.get(u) || cups.set(u, []).get(u)).push(weekLabel(x.w));
@@ -225,7 +227,7 @@ function render() {
   $('rows').innerHTML = rank.map((x, i) => ({ x, i }))
     .filter(({ x }) => !q || nick(x.u).toLowerCase().includes(q))
     .map(({ x, i }) => { const c = cups.get(x.u);
-      return `<tr><td>${i+1}</td><td>${link(x.u)}${c ? `<span class="mini" title="Puchar tygodnia: ${c.join(', ')}">${cupSvg()}${c.length > 1 ? '×' + c.length : ''}</span>` : ''}</td><td class="n">${fmt(x.n)}</td><td class="n">${x.t.size}</td><td class="w"><div class="share" style="width:${x.n/top*100}%" title="${(x.n/posts.length*100).toFixed(1)}%"></div></td></tr>`; }).join('')
+      return `<tr><td>${i+1}</td><td>${link(x.u)}${c ? `<span class="mini" title="Puchar tygodnia: ${c.join(', ')}">${c.map(() => cupSvg()).join('')}</span>` : ''}</td><td class="n">${fmt(x.n)}</td><td class="n">${x.t.size}</td><td class="w"><div class="share" style="width:${x.n/top*100}%" title="${(x.n/posts.length*100).toFixed(1)}%"></div></td></tr>`; }).join('')
     || '<tr><td colspan="5" style="color:var(--mute)">Brak postów w tym zakresie.</td></tr>';
 
   const keys = []; for (let d = new Date(ymd(from) + 'T12:00').getTime(); d <= to; d += day) keys.push(ymd(d));
