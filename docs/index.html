@@ -132,10 +132,11 @@ aside{position:sticky;top:16px}
 .legend{max-width:1200px;margin:0 auto;padding:8px 16px 48px}
 .legend h2{font-size:15px;margin:0 0 10px}
 .lg{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
-.lg>div{display:grid;grid-template-columns:34px 1fr;column-gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
-.lg .ic{grid-row:span 2;font-size:22px;text-align:center}
+.lg>div{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.lg .ic{flex:none;width:28px;font-size:22px;text-align:center}
 .lg .ic .reign{font-size:12px}
-.lg b{font-size:14px}.lg>div>span:last-child{color:var(--mute);font-size:12px}
+.lg p{margin:0;display:flex;flex-direction:column;gap:1px;line-height:1.3}
+.lg b{font-size:14px}.lg p span{color:var(--mute);font-size:12.5px}
 </style>
 </head>
 <body>
@@ -399,12 +400,12 @@ document.addEventListener('scroll', () => { $('pie').hidden = true; }, { passive
 document.getElementById('legendSlot').outerHTML = `<footer class="legend">
   <h2>Legenda</h2>
   <div class="lg">
-    <div><span class="ic">@Y@</span><b>Puchar roku</b><span>najwięcej postów w całym roku (2026 liczony od 21.09); przyznawany 1 stycznia</span></div>
-    <div><span class="ic"><span class="ystar" style="margin:0">★</span></span><b>Błękitna gwiazdka</b><span>za nickiem — na zawsze dla każdego mistrza roku</span></div>
-    <div><span class="ic">@F@</span><b>Płonący puchar</b><span>każdy tytuł mistrza miesiąca zamienia jeden złoty puchar w płonący</span></div>
-    <div><span class="ic">@M@</span><b>Puchar miesiąca</b><span>najwięcej postów w miesiącu (od października); przyznawany 1. dnia kolejnego miesiąca</span></div>
-    <div><span class="ic"><span class="reign">Nick</span></span><b>Fioletowy nick</b><span>panujący mistrz miesiąca — do czasu kolejnego mistrza</span></div>
-    <div><span class="ic">@W@</span><b>Puchar tygodnia</b><span>najwięcej postów od poniedziałku 00:00 do niedzieli 23:59</span></div>
+    <div><span class="ic">@Y@</span><p><b>Puchar roku</b><span>najwięcej postów w całym roku</span></p></div>
+    <div><span class="ic"><span class="ystar" style="margin:0">★</span></span><p><b>Błękitna gwiazdka</b><span>przy nicku na zawsze, za każdy tytuł mistrza roku</span></p></div>
+    <div><span class="ic">@F@</span><p><b>Płonący puchar</b><span>każdy tytuł mistrza miesiąca zamienia jeden złoty puchar w płonący</span></p></div>
+    <div><span class="ic">@M@</span><p><b>Puchar miesiąca</b><span>najwięcej postów w miesiącu</span></p></div>
+    <div><span class="ic"><span class="reign">Nick</span></span><p><b>Fioletowy nick</b><span>panujący mistrz miesiąca, do czasu kolejnego mistrza</span></p></div>
+    <div><span class="ic">@W@</span><p><b>Puchar tygodnia</b><span>najwięcej postów od poniedziałku do niedzieli</span></p></div>
   </div>
   <p class="note">Remis = puchar dla wszystkich z tym samym wynikiem. Liczymy posty z sekcji Polska od 21.09.2026; dane odświeżają się co ok. 3 h. Kliknij spadający awatar, żeby zagrać w podbijanie.</p>
 </footer>
