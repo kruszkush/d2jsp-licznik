@@ -80,7 +80,7 @@ aside{position:sticky;top:16px}
 .who2{font-weight:700;font-size:15px;margin:2px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .who2.tbd{color:var(--mute);font-weight:500;font-style:italic;font-size:14px}
 .champ2 .meta{color:var(--mute);font-size:12px}
-.champ2 .lead{font-size:12px;margin-top:6px;padding-top:6px;border-top:1px dashed var(--line);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.champ2 .lead{font-size:12px;margin-top:6px;padding-top:6px;border-top:1px dashed var(--line)}
 .fame .mini{margin-left:8px}
 .empty{color:var(--mute);font-size:13px}
 .note{color:var(--mute);font-size:12px;margin:8px 0 0}
@@ -98,6 +98,10 @@ aside{position:sticky;top:16px}
 .pie li span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pie li em{font-style:normal;color:var(--mute);font-variant-numeric:tabular-nums}
 .bars .col{cursor:pointer}.bars .col:hover .b{filter:brightness(1.15)}
+.champ2 .ld{display:flex;justify-content:space-between;gap:6px;text-align:left;margin-top:2px}
+.champ2 .ldn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.champ2 .ldv{font-variant-numeric:tabular-nums;white-space:nowrap}
+.champ2 .ldv em{font-style:normal;color:var(--mute);margin-left:4px;font-size:11px}
 </style>
 </head>
 <body>
@@ -254,7 +258,8 @@ function renderCups(R) {
     if (won) body = `<div class="who2">${won.winners.map(link).join(' & ')}</div><div class="meta">${won.p.label} · ${fmt(won.rank[0][1])} postów</div>`;
     else if (c.notYet) body = `<div class="who2 tbd">jeszcze nieznany</div><div class="meta">liczenie od ${t === 'm' ? '1.10' : dm(START)}</div>`;
     else body = `<div class="who2 tbd">jeszcze nieznany</div><div class="meta">przyznanie za ${until(c.p.end)}</div>`;
-    const lead = !c.notYet && c.rank[0] ? `<div class="lead"><span style="color:var(--mute)">prowadzi</span><br>${link(c.rank[0][0])} · ${fmt(c.rank[0][1])}</div>` : '';
+    const top0 = c.rank[0]?.[1] || 0;
+    const lead = !c.notYet && c.rank[0] ? `<div class="lead"><span style="color:var(--mute)">${c.rank.length > 1 ? 'na czele' : 'prowadzi'}</span>${c.rank.slice(0, 3).map(([u, n], i) => `<div class="ld"><span class="ldn">${i + 1}. ${link(u)}</span><span class="ldv">${fmt(n)}${i ? `<em>−${fmt(top0 - n)}</em>` : ''}</span></div>`).join('')}</div>` : '';
     $('champ' + t.toUpperCase()).innerHTML = `${cupSvg(t, 'mid')}<div class="lab2 l${t}">Mistrz ${TYPE[t].name}</div>${body}${won && lead ? `<div class="meta sm">${c.p.label}:</div>` : ''}${lead}`;
   }
 
