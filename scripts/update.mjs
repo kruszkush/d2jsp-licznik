@@ -20,7 +20,7 @@ if (!data.from) data.from = START - BACKFILL * 864e5;
 const CUT = data.complete ? data.complete - OVERLAP : data.from;
 console.log('od', new Date(CUT).toISOString(), 'znanych postów', known.size);
 
-const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: false, args: ['--no-sandbox', '--window-size=1280,900'] });
+const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: false, userDataDir: process.env.PROFILE || undefined, args: ['--no-sandbox', '--window-size=1280,900'] });
 const page = await browser.newPage();
 // Czekamy jak zwykły użytkownik: do ~3 min, z jednym przeładowaniem w połowie.
 await page.goto(B + `forum.php?f=${F}`, { waitUntil: 'domcontentloaded', timeout: 60000 });

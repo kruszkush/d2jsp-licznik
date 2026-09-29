@@ -1,7 +1,6 @@
 name: aktualizacja
 on:
-  schedule:
-    - cron: '15 */3 * * *' # co 3 h; skrypt kończy od razu, jeśli w ciągu 20 h była udana aktualizacja
+  # Harmonogram działa na serwerze Google Cloud (scripts/serwer-cron.sh); tu tylko ręczne uruchomienie awaryjne.
   workflow_dispatch:
     inputs:
       dni:
