@@ -118,7 +118,12 @@ aside{position:sticky;top:16px}
 .champ .ld{display:flex;justify-content:space-between;gap:6px;text-align:left;margin-top:3px}
 .champ .ldn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .champ .ldv{font-variant-numeric:tabular-nums;white-space:nowrap}
-.ystar{color:#3fb0d8;margin-right:4px;text-shadow:0 0 6px rgba(63,176,216,.6);cursor:default}
+.ystar{color:#3fb0d8;margin-left:4px;text-shadow:0 0 6px rgba(63,176,216,.6);cursor:default}
+.reign a,.reign{color:#b98cff!important;font-weight:700;text-shadow:0 0 8px rgba(155,93,229,.75)}
+.cup.fire{width:1em;height:1.22em;vertical-align:-.2em;overflow:visible}
+.cup.fire .fl{transform-origin:32px 12px;animation:flick .45s ease-in-out infinite alternate}
+@keyframes flick{from{transform:scale(.92,.86)}to{transform:scale(1.05,1.08)}}
+@media (prefers-reduced-motion:reduce){.cup.fire .fl{animation:none}}
 </style>
 </head>
 <body>
@@ -179,9 +184,9 @@ aside{position:sticky;top:16px}
 </main>
 
 <aside class="side">
-  <div class="champ" id="champ"><div class="empty">Ładowanie pucharów…</div></div>
-  <div class="champ cm" id="champM"></div>
   <div class="champ cy" id="champY"></div>
+  <div class="champ cm" id="champM"></div>
+  <div class="champ" id="champ"><div class="empty">Ładowanie pucharów…</div></div>
   <div class="card"><h3 id="raceH">Wyścig o puchar</h3><ul class="race" id="race"></ul><p class="note" id="raceNote"></p></div>
   <div class="card"><h3>Poprzednie tygodnie</h3><ul class="hist" id="hist"></ul></div>
   <div class="card"><h3>Galeria sław</h3><ul class="fame" id="fame"></ul></div>
@@ -190,7 +195,7 @@ aside{position:sticky;top:16px}
 </div>
 <script>
 const $ = (id) => document.getElementById(id);
-let D, from, to, cups = new Map(); // uid -> [{t: 'w'|'m'|'y', label}]
+let D, from, to, reign = new Set(), cups = new Map(); // uid -> [{t: 'w'|'m'|'y', label}]
 const day = 864e5;
 const fmt = (n) => n.toLocaleString('pl-PL');
 const ymd = (t) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
@@ -231,6 +236,14 @@ const P = {
 const TYPE = { w: { name: 'tygodnia', sym: 'cup' }, m: { name: 'miesiąca', sym: 'cupM' }, y: { name: 'roku', sym: 'cupY' } };
 const cupSvg = (t = 'w', cls = 'cup') => `<svg class="${cls}"><use href="#${TYPE[t].sym}"/></svg>`;
 
+// Odznaki przy nicku w rankingu: puchary (rok, płonące za miesiąc — każdy zamienia jeden złoty, złote za tydzień) i gwiazdka roku za nickiem
+const FIRE = `<svg class="cup fire" viewBox="0 -14 64 78"><g class="fl"><path d="M32 -12c5 8 13 12 13 23a13 13 0 0 1-26 0c0-7 4-10 5-16 2 5 4 6 5 8 1-5 1-9 3-15z" fill="#ff6a1a"/><path d="M32 2c3 5 7 8 7 13a7 7 0 0 1-14 0c0-4 2-6 4-9 1 2 2 3 3 4z" fill="#ffd23f"/></g><use href="#cup"/></svg>`;
+function nickBadges(u) {
+  const c = cups.get(u) || [], n = (t) => c.filter((k) => k.t === t).length, y = n('y'), m = n('m'), w = n('w');
+  const title = c.map((k) => 'Mistrz ' + TYPE[k.t].name + ': ' + k.label).join(', ');
+  const icons = cupSvg('y').repeat(y) + FIRE.repeat(m) + cupSvg('w').repeat(Math.max(0, w - m));
+  return `<span class="${reign.has(u) ? 'reign' : ''}"${reign.has(u) ? ' title="Panujący mistrz miesiąca"' : ''}>${link(u)}</span>${y ? '<span class="ystar" title="Mistrz roku">★</span>' : ''}${icons ? `<span class="mini" title="${esc(title)}">${icons}</span>` : ''}`;
+}
 function computeAll() {
   const covered = D.from || D.posts[0][3] * 1000, doneUpTo = D.complete || new Date(D.updated).getTime(), now = Date.now();
   const res = {};
@@ -262,6 +275,7 @@ function computeAll() {
 const until = (ms) => { const l = ms - Date.now(), d = Math.floor(l / day), h = Math.floor(l % day / 3600e3); return `${d ? d + ' d ' : ''}${h} h`; };
 
 function renderCups(R) {
+  reign = new Set(R.m.past[0]?.winners || []); // fioletowy nick do czasu kolejnego mistrza miesiąca
   const last = R.w.past[0];
   $('champ').innerHTML = last
     ? `${cupSvg('w', 'big')}<div class="lab">Mistrz tygodnia</div><div class="wk" title="${last.p.label}">${last.p.nice}</div>
@@ -276,10 +290,10 @@ function renderCups(R) {
     const upcoming = c.notYet ? P[t].of(plMidnight((t === 'm' ? FIRST_MONTH + '-01' : START)) + 3600e3) : c.p;
     const standings = !c.notYet && c.rank.length
       ? `<div class="lead"><span>${won ? cap(c.p.label) + ' · w toku' : 'na czele'}</span>${c.rank.slice(0, 3).map(([u, n], i) => `<div class="ld"><span class="ldn">${i + 1}. ${link(u)}</span><span class="ldv">${fmt(n)}</span></div>`).join('')}</div>` : '';
-    const head = `${cupSvg(t, 'big')}<div class="lab">Mistrz ${TYPE[t].name}</div>`;
+    const head = `${cupSvg(t, 'big')}<div class="lab">Mistrz ${TYPE[t].name}${t === 'y' ? ' ' + (won ? won.p : upcoming).key : ''}</div>`;
     const body = won
-      ? `<div class="wk">${cap(won.p.label)}</div><div class="who">${won.winners.map(link).join(' & ')}</div><div class="meta">${fmt(won.rank[0][1])} postów · ${Math.round(won.rank[0][1] / won.total * 100)}% całego okresu</div>`
-      : `<div class="wk">${cap(upcoming.label)}</div><div class="who tbd">jeszcze nieznany</div><div class="meta">${c.notYet ? 'liczenie od ' + (t === 'm' ? '1.10' : dm(START)) : 'przyznanie za ' + until(c.p.end)}</div>`;
+      ? `${t === 'y' ? '' : `<div class="wk">${cap(won.p.label)}</div>`}<div class="who">${won.winners.map(link).join(' & ')}</div><div class="meta">${fmt(won.rank[0][1])} postów · ${Math.round(won.rank[0][1] / won.total * 100)}% całego okresu</div>`
+      : `${t === 'y' ? (upcoming.label.includes('od') ? `<div class="wk">liczony od ${dm(START)}</div>` : '') : `<div class="wk">${cap(upcoming.label)}</div>`}<div class="who tbd">jeszcze nieznany</div><div class="meta">${c.notYet ? 'liczenie od ' + (t === 'm' ? '1.10' : dm(START)) : 'przyznanie za ' + until(c.p.end)}</div>`;
     $('champ' + t.toUpperCase()).innerHTML = head + body + standings;
   }
 
@@ -384,7 +398,7 @@ function render() {
   $('rows').innerHTML = rank.map((x, i) => ({ x, i }))
     .filter(({ x }) => !q || nick(x.u).toLowerCase().includes(q))
     .map(({ x, i }) => { const c = cups.get(x.u);
-      return `<tr><td>${i+1}</td><td>${c?.some((k) => k.t === 'y') ? '<span class="ystar" title="Mistrz roku">★</span>' : ''}${link(x.u)}${c ? `<span class="mini" title="${c.map((k) => 'Mistrz ' + TYPE[k.t].name + ': ' + k.label).join('\n')}">${[...c].sort((p, q) => 'ymw'.indexOf(p.t) - 'ymw'.indexOf(q.t)).map((k) => cupSvg(k.t)).join('')}</span>` : ''}</td><td class="n">${fmt(x.n)}</td><td class="n">${x.t.size}</td><td class="w"><div class="share" style="width:${x.n/top*100}%" title="${(x.n/posts.length*100).toFixed(1)}%"></div></td></tr>`; }).join('')
+      return `<tr><td>${i+1}</td><td>${nickBadges(x.u)}</td><td class="n">${fmt(x.n)}</td><td class="n">${x.t.size}</td><td class="w"><div class="share" style="width:${x.n/top*100}%" title="${(x.n/posts.length*100).toFixed(1)}%"></div></td></tr>`; }).join('')
     || '<tr><td colspan="5" style="color:var(--mute)">Brak postów w tym zakresie.</td></tr>';
 
   const keys = []; for (let d = new Date(ymd(from) + 'T12:00').getTime(); d <= to; d += day) keys.push(ymd(d));

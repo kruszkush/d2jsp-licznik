@@ -104,7 +104,6 @@
     document.body.appendChild(ov);
     const close = () => ov.remove();
     ov.querySelector('#pilClose').onclick = close;
-    ov.addEventListener('click', (e) => { if (e.target === ov) close(); });
     const save = () => {
       const nick = ov.querySelector('#pilNick').value.trim();
       if (!nick) { ov.querySelector('#pilMsg').textContent = 'Wpisz nick.'; return; }
