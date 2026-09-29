@@ -27,8 +27,10 @@
   #over .row{display:flex;gap:8px;justify-content:center}
   #over button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
   #over .msg{font-size:12px;color:var(--mute);min-height:16px;margin-top:8px}
-  #mult{will-change:transform,opacity;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:39;pointer-events:none;font-weight:900;font-size:min(28vw,260px);line-height:1;opacity:0;transition:opacity .4s,color .6s;font-variant-numeric:tabular-nums;letter-spacing:-.04em}
+  #mult{will-change:transform,opacity;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:39;pointer-events:none;font-weight:900;font-size:min(20vw,220px);white-space:nowrap;line-height:1;opacity:0;transition:opacity .4s,color .6s;font-variant-numeric:tabular-nums;letter-spacing:-.04em}
   #mult.on{opacity:.13}
+  #mult .xx{font-size:.5em;margin:0 .12em;vertical-align:.25em;opacity:.7}
+  #mult .bs{opacity:.75}
   #mult.pulse{animation:mpulse .9s ease-out}
   @keyframes mpulse{0%{opacity:.13;transform:translate(-50%,-50%) scale(1)}25%{opacity:.4;transform:translate(-50%,-50%) scale(1.12)}100%{opacity:.13;transform:translate(-50%,-50%) scale(1)}}
   #edge{position:fixed;inset:0;z-index:38;pointer-events:none;opacity:0;transition:opacity .6s;will-change:opacity;background:radial-gradient(ellipse at center,transparent 55%,rgba(255,90,20,.45) 100%)}
@@ -114,7 +116,8 @@
   // Duży, półprzezroczysty mnożnik w tle + poświata na brzegach ekranu rosnąca z poziomem
   function showMult(lvl, pulse) {
     const m = totalMult(), heat = Math.min(1, (m - 1) / 3);
-    multEl.textContent = 'x' + m.toFixed(1);
+    const lv = multOf(lvl).toFixed(1), b = game ? game.base : 1;
+    multEl.innerHTML = b > 1 ? `<span class="lv">${lv}</span><span class="xx">×</span><span class="bs">${b.toFixed(1)}</span>` : `<span class="lv">x${lv}</span>`;
     multEl.style.color = `hsl(${45 - heat * 45}, 95%, ${60 - heat * 10}%)`;
     multEl.classList.add('on'); edgeEl.style.opacity = String(heat * .9);
     if (pulse) { multEl.classList.remove('pulse'); void multEl.offsetWidth; multEl.classList.add('pulse'); }
