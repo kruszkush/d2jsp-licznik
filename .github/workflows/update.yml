@@ -1,7 +1,7 @@
 name: aktualizacja
 on:
   schedule:
-    - cron: '15 3 * * *' # codziennie ok. 5:15 czasu polskiego
+    - cron: '15 */3 * * *' # co 3 h; skrypt kończy od razu, jeśli w ciągu 20 h była udana aktualizacja
   workflow_dispatch:
     inputs:
       dni:
@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
+      FORCE: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
       TZ: Europe/Warsaw # Chrome i skrypt w tej samej strefie; d2jsp pokazuje daty w strefie przeglądarki
     steps:
       - uses: actions/checkout@v4

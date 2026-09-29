@@ -1,4 +1,4 @@
-﻿// Dopisuje nowe posty z forum d2jsp do docs/data.json (historia), strona liczy rankingi po stronie przeglądarki.
+// Dopisuje nowe posty z forum d2jsp do docs/data.json (historia), strona liczy rankingi po stronie przeglądarki.
 // Użycie: node scripts/update.mjs [dni_wstecz_przy_pierwszym_uruchomieniu=30] [forum=230]
 // Zwykły Chrome z oknem (na serwerze pod xvfb-run) — przechodzi normalne sprawdzenie przeglądarki, nic nie obchodzimy.
 import puppeteer from 'puppeteer-core';
@@ -15,6 +15,7 @@ const data = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : { forum
 const known = new Set(data.posts.map((p) => p[0]));
 // data.complete = chwila ostatniego PEŁNEGO przebiegu; po przerwanym przebiegu następny powtarza to samo okno (duplikaty odpadają).
 const START = Date.now();
+if (data.complete && START - data.complete < 20 * 3600e3 && !process.env.FORCE) { console.log('dzisiejsza aktualizacja już zrobiona'); process.exit(0); }
 if (!data.from) data.from = START - BACKFILL * 864e5;
 const CUT = data.complete ? data.complete - OVERLAP : data.from;
 console.log('od', new Date(CUT).toISOString(), 'znanych postów', known.size);
