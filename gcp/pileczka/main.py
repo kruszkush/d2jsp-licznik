@@ -43,10 +43,6 @@ def pileczka(req):
             return cors(req, {"error": "zły nick lub wynik"}, 400)
         key = ip_key(req)
         ref = COL.document(key)
-        # nick należy do adresu, który zapisał go pierwszy (bez rozróżniania wielkości liter)
-        for d in COL.where("nickLower", "==", nick.lower()).stream():
-            if d.id != key:
-                return cors(req, {"error": "Ten nick jest już zajęty, wybierz inny."}, 409)
 
         @firestore.transactional
         def save(tx):
