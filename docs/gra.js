@@ -44,7 +44,8 @@
     const me = (ls.get('pilNick') || '').toLowerCase();
     document.getElementById('pil').innerHTML = top.length ? top.map((r, i) => `<li class="${r.nick.toLowerCase() === me ? 'me' : ''}"><span style="width:22px;color:var(--mute)">${i + 1}.</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.nick)}</span><b>${r.score}</b></li>`).join('') : '<li class="empty">Jeszcze nikt nie zagrał.</li>';
   }
-  const loadRank = () => fetch(API).then((r) => r.json()).then((j) => showRank(j.top || [])).catch(() => {});
+  const loadRank = (n = 0) => fetch(API).then((r) => { if (!r.ok) throw 0; return r.json(); }).then((j) => showRank(j.top || []))
+    .catch(() => { card.hidden = false; document.getElementById('pil').innerHTML = '<li class="empty">Ranking chwilowo niedostępny, ponawiam…</li>'; if (n < 5) setTimeout(() => loadRank(n + 1), 15000); });
   if (ls.get('pilGral')) loadRank();
 
   // --- płatki ---

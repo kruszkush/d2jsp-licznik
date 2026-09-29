@@ -15,6 +15,5 @@ def stop_billing(event):
         return
     billing = discovery.build("cloudbilling", "v1", cache_discovery=False)
     name = f"projects/{PROJECT}"
-    if billing.projects().getBillingInfo(name=name).execute().get("billingEnabled"):
-        billing.projects().updateBillingInfo(name=name, body={"billingAccountName": ""}).execute()
-        print("Płatności odłączone od projektu.")
+    billing.projects().updateBillingInfo(name=name, body={"billingAccountName": ""}).execute()
+    print("Płatności odłączone od projektu.")
