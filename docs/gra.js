@@ -80,8 +80,8 @@
   function spawn() {
     if (!on || game || document.hidden || flakes.size >= 7 || !D?.users) return;
     const u = pickUser(); if (!u) return;
-    const size = 80;
-    const f = { u, size, x: Math.random() * (W - size), y: -size - 10, vy: 28 + Math.random() * 30, sway: 20 + Math.random() * 30, ph: Math.random() * 6.28, rot: 0, vr: (Math.random() - .5) * 40 };
+    const size = Math.round(80 * scaleK());
+    const f = { u, size, x: Math.random() * (W - size), y: -size - 10, vy: (28 + Math.random() * 30) * scaleK(), sway: 20 + Math.random() * 30, ph: Math.random() * 6.28, rot: 0, vr: (Math.random() - .5) * 40 };
     f.el = makeEl(u, size);
     f.el.addEventListener('pointerdown', (e) => { e.preventDefault(); game ? hit(f, e) : startGame(f, e); });
     flakes.add(f);
@@ -90,6 +90,8 @@
 
   // --- gra ---
   // Co 8 podbić poziom w górę: awatar leci szybciej (cały ruch przyspiesza), a mnożnik punktów rośnie o 0,1
+  // Rozmiar i fizyka liczone względem wielkości okna — przybliżenie strony (Ctrl +) nie ułatwia gry
+  const scaleK = () => Math.max(.3, Math.min(innerWidth, innerHeight) / 950);
   const G = 1500, JUMP = 720, PER_LEVEL = 8;
   const speedOf = (lvl) => 1 + lvl * 0.07, multOf = (lvl) => Math.round((1 + lvl * 0.1) * 10) / 10;
   const hud = document.createElement('div'); hud.id = 'hud'; hud.hidden = true; document.body.appendChild(hud);
@@ -109,7 +111,7 @@
   function startGame(f, e) {
     for (const o of flakes) if (o !== f) o.el.remove();
     flakes.clear(); flakes.add(f);
-    game = { f, score: 0, hits: 0, lvl: 0 }; f.el.classList.add('ball'); showMult(0, false);
+    game = { f, score: 0, hits: 0, lvl: 0, k: scaleK() }; f.el.classList.add('ball'); showMult(0, false);
     document.body.classList.add('playing'); getSelection()?.removeAllRanges(); const pie = document.getElementById('pie'); if (pie) pie.hidden = true; f.vx = 0; f.vy = 0;
     hit(f, e);
   }
@@ -120,8 +122,8 @@
     game.score += multOf(game.lvl);
     if (up) { game.lvl++; flash(`Szybciej! x${multOf(game.lvl).toFixed(1)}`); showMult(game.lvl, true); }
     const r = f.el.getBoundingClientRect(), off = ((e.clientX - (r.left + r.width / 2)) / (r.width / 2)) || 0;
-    f.vy = -JUMP;
-    f.vx = Math.max(-420, Math.min(420, -off * 320 + (Math.random() - .5) * 120));
+    f.vy = -JUMP * game.k;
+    f.vx = Math.max(-420, Math.min(420, -off * 320 + (Math.random() - .5) * 120)) * game.k;
     f.vr = -off * 360;
     hud.hidden = false; hud.innerHTML = `${Math.round(game.score)}<small>pkt · x${multOf(game.lvl).toFixed(1)} · ${game.hits} podbić</small>`;
   }
@@ -162,7 +164,7 @@
     for (const f of flakes) {
       if (game && game.f === f) {
         const sd = dt * speedOf(game.lvl);
-        f.vy += G * sd; f.x += f.vx * sd; f.y += f.vy * sd; f.rot += f.vr * sd;
+        f.vy += G * game.k * sd; f.x += f.vx * sd; f.y += f.vy * sd; f.rot += f.vr * sd;
         if (f.x < 0) { f.x = 0; f.vx = Math.abs(f.vx) * .8; }
         if (f.x > W - f.size) { f.x = W - f.size; f.vx = -Math.abs(f.vx) * .8; }
         if (f.y < 0) { f.y = 0; f.vy = Math.abs(f.vy) * .3; }
