@@ -16,7 +16,7 @@ def cors(req, body, status=200):
     return body, status, h
 
 def top():
-    return [{"nick": d.get("nick"), "score": d.get("score"), "hits": d.get("hits"), "ball": d.get("ball"), "ballUid": d.get("ballUid")} for d in
+    return [{"nick": d.get("nick"), "score": d.get("score"), "hits": d.get("hits"), "ball": d.get("ball"), "ballUid": d.get("ballUid"), "dev": d.get("dev")} for d in
             (x.to_dict() for x in COL.order_by("score", direction=firestore.Query.DESCENDING).limit(20).stream())]
 
 def ip_key(req):
@@ -44,6 +44,7 @@ def pileczka(req):
         hits = j.get("hits") if isinstance(j.get("hits"), int) and 0 < j.get("hits") <= 100000 else None
         ball = str(j.get("ball", ""))[:30] or None
         ball_uid = str(j.get("ballUid", ""))[:12] if str(j.get("ballUid", "")).isdigit() else None
+        dev = j.get("dev") if j.get("dev") in ("m", "d") else None
         key = ip_key(req)
         nl = nick.lower()
         ref = COL.document(hashlib.sha256(("nick:" + nl).encode()).hexdigest()[:32])  # jeden wpis na nick
@@ -54,7 +55,7 @@ def pileczka(req):
             prev = old.to_dict() if old.exists else {}
             doc = {"nick": nick, "nickLower": nl, "ip": key, "ts": int(time.time())}
             if score >= prev.get("score", 0):  # nowy rekord: zapisujemy też, ile podbić i czyim awatarem
-                doc.update(score=score, hits=hits, ball=ball, ballUid=ball_uid)
+                doc.update(score=score, hits=hits, ball=ball, ballUid=ball_uid, dev=dev)
             tx.set(ref, doc, merge=True)
         save(db.transaction())
         # jeden wpis na adres: inne nicki zapisane z tego adresu usuwamy

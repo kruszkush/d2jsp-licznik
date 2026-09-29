@@ -49,6 +49,7 @@
   .pil .pn>span,.pil .pn small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .pil .pn small{color:var(--mute);font-size:11.5px;display:flex;align-items:center;gap:4px}
   .pil .pn small i{width:14px;height:14px;border-radius:50%;background:center/cover;flex:none}
+  .pil .dev{font-size:12px;margin-right:5px;opacity:.8;font-weight:400}
   .pil li:last-child{border:0}.pil{margin:0;padding:0}.pil .me{color:var(--acc);font-weight:700}`;
   document.head.appendChild(css);
 
@@ -68,7 +69,7 @@
   function showRank(top) {
     card.hidden = false;
     const me = (ls.get('pilNick') || '').toLowerCase();
-    document.getElementById('pil').innerHTML = top.length ? top.map((r, i) => `<li class="${r.nick.toLowerCase() === me ? 'me' : ''}"><span style="width:22px;color:var(--mute)">${i + 1}.</span><span class="pn"><span>${esc(r.nick)}</span>${r.hits ? `<small>${ballAv(r)}${r.hits}× ${esc(r.ball || '')}</small>` : ''}</span><b>${r.score}</b></li>`).join('') : '<li class="empty">Jeszcze nikt nie zagrał.</li>';
+    document.getElementById('pil').innerHTML = top.length ? top.map((r, i) => `<li class="${r.nick.toLowerCase() === me ? 'me' : ''}"><span style="width:22px;color:var(--mute)">${i + 1}.</span><span class="pn"><span>${esc(r.nick)}</span>${r.hits ? `<small>${ballAv(r)}${r.hits}× ${esc(r.ball || '')}</small>` : ''}</span><b>${r.dev ? `<span class="dev" title="${r.dev === 'm' ? 'telefon' : 'komputer'}">${r.dev === 'm' ? '📱' : '🖥️'}</span>` : ''}${r.score}</b></li>`).join('') : '<li class="empty">Jeszcze nikt nie zagrał.</li>';
   }
   const loadRank = (n = 0) => fetch(API).then((r) => { if (!r.ok) throw 0; return r.json(); }).then((j) => showRank(j.top || []))
     .catch(() => { card.hidden = false; document.getElementById('pil').innerHTML = '<li class="empty">Ranking chwilowo niedostępny, ponawiam…</li>'; if (n < 5) setTimeout(() => loadRank(n + 1), 15000); });
@@ -114,7 +115,8 @@
   // liczone od wysokości okna: na telefonie (wąski, wysoki ekran) awatary nie są malutkie, a wysokość podbicia jest proporcjonalna
   const scaleK = () => Math.max(.5, Math.min(1.4, innerHeight / 950));
   const G = 1500, JUMP = 720, PER_LEVEL = 8;
-  const speedOf = (lvl) => 1 + lvl * 0.07, multOf = (lvl) => Math.round((1 + lvl * 0.1) * 10) / 10;
+  const TOUCH = matchMedia('(pointer: coarse)').matches; // na dotyku gra się łatwiej (kciuk, cały ekran w zasięgu) — +20% prędkości
+  const speedOf = (lvl) => (1 + lvl * 0.07) * (TOUCH ? 1.2 : 1), multOf = (lvl) => Math.round((1 + lvl * 0.1) * 10) / 10;
   const hud = document.createElement('div'); hud.id = 'hud'; hud.hidden = true; document.body.appendChild(hud);
   const multEl = document.createElement('div'); multEl.id = 'mult'; document.body.appendChild(multEl);
   const edgeEl = document.createElement('div'); edgeEl.id = 'edge'; document.body.appendChild(edgeEl);
@@ -170,7 +172,7 @@
       if (!nick) { ov.querySelector('#pilMsg').textContent = 'Wpisz nick.'; return; }
       ls.set('pilNick', nick); ls.set('pilGral', '1');
       ov.querySelector('#pilMsg').textContent = 'Zapisuję…';
-      fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nick, score, hits: gHits, ball: D.users[f.u] || '', ballUid: /^\d+$/.test(f.u) ? f.u : '' }) })
+      fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nick, score, dev: TOUCH ? 'm' : 'd', hits: gHits, ball: D.users[f.u] || '', ballUid: /^\d+$/.test(f.u) ? f.u : '' }) })
         .then((r) => r.json()).then((j) => { if (j.top) { showRank(j.top); close(); card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } else ov.querySelector('#pilMsg').textContent = j.error || 'Błąd zapisu.'; })
         .catch(() => { ov.querySelector('#pilMsg').textContent = 'Nie udało się zapisać, spróbuj jeszcze raz.'; });
     };
