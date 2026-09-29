@@ -141,7 +141,7 @@
     hud.hidden = false; hud.innerHTML = `${Math.round(game.score)}<small>pkt · x${totalMult().toFixed(1)} · ${game.hits} podbić</small>`;
   }
   function endGame() {
-    const score = Math.round(game.score), f = game.f, gHits = game.hits; game = null; document.body.classList.remove('playing'); hideMult();
+    const score = Math.round(game.score), f = game.f, gHits = game.hits, gBase = game.base, gLvl = game.lvl, gMult = totalMult(); game = null; document.body.classList.remove('playing'); hideMult();
     f.el.remove(); flakes.clear(); hud.hidden = true;
     const ov = document.createElement('div'); ov.id = 'over';
     const av = D.avatars?.[f.u], who = D.users[f.u] || '?', hits = gHits;
@@ -150,6 +150,7 @@
       <div class="who">${esc(who)}</div>
       <div class="txt">Podrzuciłeś ${esc(who)} <b>${hits}</b> ${hits === 1 ? 'raz' : 'razy'}</div>
       <div class="sc">${score}<small> pkt</small></div>
+      <div class="txt" style="margin:-8px 0 12px">${gBase > 1 ? `piłeczka x${gBase} · ` : ""}poziom ${gLvl + 1} · x${gMult.toFixed(1)} na koniec</div>
       <input id="pilNick" maxlength="20" placeholder="Twój nick" value="${esc(ls.get('pilNick') || '')}">
       <div class="row"><button class="pri" id="pilSave">Zapisz wynik</button><button id="pilClose">Zamknij</button></div><div class="msg" id="pilMsg"></div></div>`;
     document.body.appendChild(ov);
