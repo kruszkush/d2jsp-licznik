@@ -29,8 +29,7 @@
   #over .msg{font-size:12px;color:var(--mute);min-height:16px;margin-top:8px}
   #mult{will-change:transform,opacity;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:39;pointer-events:none;font-weight:900;font-size:min(20vw,220px);white-space:nowrap;line-height:1;opacity:0;transition:opacity .4s,color .6s;font-variant-numeric:tabular-nums;letter-spacing:-.04em}
   #mult.on{opacity:.13}
-  #mult .xx{font-size:.5em;margin:0 .12em;vertical-align:.25em;opacity:.7}
-  #mult .bs{opacity:.75}
+  #mult .bs{display:inline-block;font-size:.3em;color:#fff;border-radius:999px;padding:.05em .45em;margin-left:.15em;vertical-align:-.1em;letter-spacing:0;opacity:.9}
   #mult.pulse{animation:mpulse .9s ease-out}
   @keyframes mpulse{0%{opacity:.13;transform:translate(-50%,-50%) scale(1)}25%{opacity:.4;transform:translate(-50%,-50%) scale(1.12)}100%{opacity:.13;transform:translate(-50%,-50%) scale(1)}}
   #edge{position:fixed;inset:0;z-index:38;pointer-events:none;opacity:0;transition:opacity .6s;will-change:opacity;background:radial-gradient(ellipse at center,transparent 55%,rgba(255,90,20,.45) 100%)}
@@ -105,6 +104,7 @@
   // Rozmiary piłeczek: mniejsza = trudniej, ale większy mnożnik bazowy (mnoży się z mnożnikiem poziomu)
   const KINDS = [{ p: 1, m: 1, w: 50 }, { p: .8, m: 1.3, w: 25, cls: 'b2' }, { p: .65, m: 1.7, w: 15, cls: 'b3' }, { p: .5, m: 2.2, w: 10, cls: 'b4' }];
   const pickKind = () => { let r = Math.random() * 100; for (const k of KINDS) { if ((r -= k.w) < 0) return k; } return KINDS[0]; };
+  const BADGE = { 1.3: '#ff8a3d', 1.7: '#ff5a3d', 2.2: '#d9264a' }; // kolory jak plakietki na piłeczkach
   const totalMult = () => game ? Math.round(game.base * multOf(game.lvl) * 10) / 10 : 1;
   // liczone od wysokości okna: na telefonie (wąski, wysoki ekran) awatary nie są malutkie, a wysokość podbicia jest proporcjonalna
   const scaleK = () => Math.max(.5, Math.min(1.4, innerHeight / 950));
@@ -117,7 +117,7 @@
   function showMult(lvl, pulse) {
     const m = totalMult(), heat = Math.min(1, (m - 1) / 3);
     const lv = multOf(lvl).toFixed(1), b = game ? game.base : 1;
-    multEl.innerHTML = b > 1 ? `<span class="lv">${lv}</span><span class="xx">×</span><span class="bs">${b.toFixed(1)}</span>` : `<span class="lv">x${lv}</span>`;
+    multEl.innerHTML = `<span class="lv">x${lv}</span>` + (b > 1 ? `<span class="bs" style="background:${BADGE[b]}">×${b}</span>` : '');
     multEl.style.color = `hsl(${45 - heat * 45}, 95%, ${60 - heat * 10}%)`;
     multEl.classList.add('on'); edgeEl.style.opacity = String(heat * .9);
     if (pulse) { multEl.classList.remove('pulse'); void multEl.offsetWidth; multEl.classList.add('pulse'); }
