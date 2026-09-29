@@ -67,7 +67,7 @@
   function spawn() {
     if (!on || game || document.hidden || flakes.size >= 7 || !D?.users) return;
     const u = pickUser(); if (!u) return;
-    const size = 34 + Math.random() * 22;
+    const size = 80;
     const f = { u, size, x: Math.random() * (W - size), y: -size - 10, vy: 28 + Math.random() * 30, sway: 20 + Math.random() * 30, ph: Math.random() * 6.28, rot: 0, vr: (Math.random() - .5) * 40 };
     f.el = makeEl(u, size);
     f.el.addEventListener('pointerdown', (e) => { e.preventDefault(); game ? hit(f, e) : startGame(f, e); });
