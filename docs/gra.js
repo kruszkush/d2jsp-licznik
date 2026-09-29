@@ -146,7 +146,9 @@
     game.score += totalMult();
     if (up) { game.lvl++; flash(`Szybciej! x${totalMult().toFixed(1)}`); showMult(game.lvl, true); }
     const r = f.el.getBoundingClientRect(), off = ((e.clientX - (r.left + r.width / 2)) / (r.width / 2)) || 0;
-    f.vy = -JUMP * game.k;
+    // podbicie nie wyrzuca ponad górną krawędź: siła ograniczona tak, żeby szczyt lotu był ok. 12 px pod górą ekranu
+    const room = Math.max(0, f.y - 12), vMax = Math.sqrt(2 * G * game.k * room);
+    f.vy = -Math.max(JUMP * game.k * .3, Math.min(JUMP * game.k, vMax));
     f.vx = Math.max(-420, Math.min(420, -off * 320 + (Math.random() - .5) * 120)) * game.k;
     f.vr = -off * 360;
     hud.hidden = false; hud.innerHTML = `${Math.round(game.score)}<small>pkt · ${game.base > 1 ? `x${game.base} more · ` : ''}+${game.lvl * 10}% increased = x${totalMult().toFixed(1)} · ${game.hits} podbić</small>`;
