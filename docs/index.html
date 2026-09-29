@@ -378,38 +378,28 @@ $('chart').addEventListener('mouseover', (e) => { const c = e.target.closest('.c
 $('chart').addEventListener('mouseleave', () => { $('pie').hidden = true; });
 $('chart').addEventListener('click', (e) => { const c = e.target.closest('.col'); if (c) showPie(c); });
 document.addEventListener('scroll', () => { $('pie').hidden = true; }, { passive: true });
-// Czerwony "śnieg": z płonących pucharów po trochu sypią się malutkie żarzące drobinki, kołyszą się i gasną
-(function emberTick() {
-  if (!matchMedia('(prefers-reduced-motion: reduce)').matches && !document.hidden && document.querySelectorAll('.lavadrop').length < 40) {
-    for (const c of [...document.querySelectorAll('.cup.fire')].slice(0, 6)) {
+// Czerwony "śnieg": z płonących pucharów po trochu sypią się malutkie żarzące drobinki (jedna pętla animacji na wszystkie)
+(() => {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const parts = [];
+  setInterval(() => {
+    if (document.hidden || parts.length > 24) return;
+    for (const c of [...document.querySelectorAll('.cup.fire')].slice(0, 4)) {
       const r = c.getBoundingClientRect();
       if (!r.width || r.bottom < 0 || r.top > innerHeight) continue;
       const d = document.createElement('div'); d.className = 'lavadrop'; document.body.appendChild(d);
-      const x0 = r.left + r.width * (.25 + Math.random() * .5), y0 = r.top + r.height * (.45 + Math.random() * .4);
-      const fall = 25 + Math.random() * 45, dur = 1600 + Math.random() * 1400, sway = (Math.random() - .5) * 14, t0 = performance.now();
-      const step = (t) => { const k = Math.min(1, (t - t0) / dur);
-        d.style.transform = `translate(${x0 + Math.sin(k * 6) * sway * k}px,${y0 + fall * k}px)`; d.style.opacity = String(1 - k);
-        k < 1 ? requestAnimationFrame(step) : d.remove(); };
-      requestAnimationFrame(step);
+      parts.push({ d, x0: r.left + r.width * (.25 + Math.random() * .5), y0: r.top + r.height * (.45 + Math.random() * .4), fall: 25 + Math.random() * 45, dur: 1600 + Math.random() * 1400, sway: (Math.random() - .5) * 14, t0: performance.now() });
     }
-  }
-  setTimeout(emberTick, 220 + Math.random() * 300);
+  }, 380);
+  (function loop(t) {
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const p = parts[i], k = Math.min(1, (t - p.t0) / p.dur);
+      p.d.style.transform = `translate(${p.x0 + Math.sin(k * 6) * p.sway * k}px,${p.y0 + p.fall * k}px)`; p.d.style.opacity = 1 - k;
+      if (k >= 1) { p.d.remove(); parts.splice(i, 1); }
+    }
+    requestAnimationFrame(loop);
+  })(performance.now());
 })();
-
-// Legenda na dole strony (ikony te same co w rankingu)
-document.getElementById('legendSlot').outerHTML = `<footer class="legend">
-  <h2>Legenda</h2>
-  <div class="lg">
-    <div><span class="ic">@Y@</span><p><b>Puchar roku</b><span>najwięcej postów w całym roku</span></p></div>
-    <div><span class="ic"><span class="ystar" style="margin:0">★</span></span><p><b>Błękitna gwiazdka</b><span>przy nicku na zawsze, za każdy tytuł mistrza roku</span></p></div>
-    <div><span class="ic">@F@</span><p><b>Płonący puchar</b><span>każdy tytuł mistrza miesiąca zamienia jeden złoty puchar w płonący</span></p></div>
-    <div><span class="ic">@M@</span><p><b>Puchar miesiąca</b><span>najwięcej postów w miesiącu</span></p></div>
-    <div><span class="ic"><span class="reign">Nick</span></span><p><b>Fioletowy nick</b><span>panujący mistrz miesiąca, do czasu kolejnego mistrza</span></p></div>
-    <div><span class="ic">@W@</span><p><b>Puchar tygodnia</b><span>najwięcej postów od poniedziałku do niedzieli</span></p></div>
-  </div>
-  <p class="note">Remis = puchar dla wszystkich z tym samym wynikiem. Liczymy posty z sekcji Polska od 21.09.2026; dane odświeżają się co ok. 3 h. Kliknij spadający awatar, żeby zagrać w podbijanie.</p>
-</footer>
-`.replace('@Y@', cupSvg('y')).replace('@M@', cupSvg('m')).replace('@F@', FIRE).replace('@W@', cupSvg('w'));
 
 fetch('data.json?' + Date.now()).then((r) => r.json()).then((d) => {
   D = d;
@@ -472,6 +462,6 @@ function render() {
       <span class="d">${show ? `${dt.getDate()}.${String(dt.getMonth() + 1).padStart(2, '0')}${many ? '' : `<i>${WD[dt.getDay()]}</i>`}` : '&nbsp;'}</span></div>`; }).join('');
 }
 </script>
-<script src="gra.js?v=1790718096"></script>
+<script src="gra.js?v=1790718230"></script>
 </body>
 </html>

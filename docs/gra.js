@@ -8,12 +8,12 @@
   const css = document.createElement('style');
   css.textContent = `
   #snow{position:fixed;inset:0;pointer-events:none;z-index:40;overflow:hidden}
-  .flake{position:absolute;top:0;left:0;border-radius:50%;background:var(--card) center/cover no-repeat;border:2px solid;display:grid;place-items:center;font-weight:700;color:var(--ink);pointer-events:auto;cursor:pointer;user-select:none;opacity:.85;will-change:transform;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+  .flake{position:absolute;top:0;left:0;border-radius:50%;background:var(--card) center/cover no-repeat;border:2px solid;display:grid;place-items:center;font-weight:700;color:var(--ink);pointer-events:auto;cursor:pointer;user-select:none;opacity:.85;will-change:transform;contain:layout paint}
   .flake:hover{opacity:1}
   .flake .badge{position:absolute;right:-6px;top:-6px;background:#e0a526;color:#141413;font-weight:800;border-radius:999px;padding:1px 6px;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,.4);border:2px solid #141413;line-height:1.3;pointer-events:none}
   .flake .b2{background:#ff8a3d}.flake .b3{background:#ff5a3d;color:#fff}.flake .b4{background:#d9264a;color:#fff}
   .flake.ball .badge{display:none}
-  .flake.ball{opacity:1;z-index:2;box-shadow:0 8px 20px rgba(0,0,0,.35)}
+  .flake.ball{opacity:1;z-index:2}
   #hud{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:60;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 18px;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;box-shadow:0 6px 18px rgba(0,0,0,.25);pointer-events:none}
   #hud small{font-size:12px;font-weight:500;color:var(--mute);margin-left:6px}
   #over{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:rgba(0,0,0,.45)}
@@ -27,11 +27,11 @@
   #over .row{display:flex;gap:8px;justify-content:center}
   #over button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
   #over .msg{font-size:12px;color:var(--mute);min-height:16px;margin-top:8px}
-  #mult{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:39;pointer-events:none;font-weight:900;font-size:min(28vw,260px);line-height:1;opacity:0;transition:opacity .4s,color .6s;font-variant-numeric:tabular-nums;letter-spacing:-.04em}
+  #mult{will-change:transform,opacity;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:39;pointer-events:none;font-weight:900;font-size:min(28vw,260px);line-height:1;opacity:0;transition:opacity .4s,color .6s;font-variant-numeric:tabular-nums;letter-spacing:-.04em}
   #mult.on{opacity:.13}
   #mult.pulse{animation:mpulse .9s ease-out}
   @keyframes mpulse{0%{opacity:.13;transform:translate(-50%,-50%) scale(1)}25%{opacity:.4;transform:translate(-50%,-50%) scale(1.12)}100%{opacity:.13;transform:translate(-50%,-50%) scale(1)}}
-  #edge{position:fixed;inset:0;z-index:38;pointer-events:none;opacity:0;transition:opacity .6s;box-shadow:inset 0 0 120px 20px rgba(255,90,20,.55)}
+  #edge{position:fixed;inset:0;z-index:38;pointer-events:none;opacity:0;transition:opacity .6s;will-change:opacity;background:radial-gradient(ellipse at center,transparent 55%,rgba(255,90,20,.45) 100%)}
   #lvlup{position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:60;font-weight:800;font-size:20px;color:#ff7a1a;text-shadow:0 0 10px rgba(255,120,30,.6);opacity:0;pointer-events:none}
   #lvlup.go{animation:lvl 1.1s ease-out}
   @keyframes lvl{0%{opacity:0;transform:translate(-50%,10px) scale(.8)}20%{opacity:1;transform:translate(-50%,0) scale(1.1)}100%{opacity:0;transform:translate(-50%,-18px) scale(1)}}
