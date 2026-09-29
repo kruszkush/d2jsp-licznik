@@ -95,7 +95,7 @@
   function spawn() {
     if (!on || game || document.hidden || flakes.size >= 7 || !D?.users) return;
     const u = pickUser(); if (!u) return;
-    const kind = pickKind(), size = Math.round(80 * kind.p * scaleK());
+    const kind = pickKind(), size = Math.round(80 * kind.p * scaleK() * (TOUCH ? 1.2 : 1)); // na telefonie o 20% większe
     const f = { u, size, x: Math.random() * (W - size), y: -size - 10, vy: (28 + Math.random() * 30) * scaleK(), sway: 20 + Math.random() * 30, ph: Math.random() * 6.28, rot: 0, vr: (Math.random() - .5) * 40 };
     f.el = makeEl(u, size); f.base = kind.m;
     if (kind.m > 1) { const b = document.createElement('span'); b.className = 'badge ' + kind.cls; b.textContent = 'x' + kind.m; f.el.appendChild(b); }
