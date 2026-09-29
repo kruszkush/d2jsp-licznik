@@ -35,7 +35,7 @@ let lastAt = 0;
 async function get(path, kind) {
   const wait = lastAt + GAP - Date.now(); if (wait > 0) await new Promise((r) => setTimeout(r, wait));
   lastAt = Date.now();
-  for (let a = 0; a < 3; a++) {
+  for (let a = 0; a < 4; a++) {
     try {
       // Zwykłe otwarcie strony w karcie (jak człowiek), a nie zapytanie w tle — Cloudflare to przepuszcza.
       const res = await page.goto(B + path, { waitUntil: 'domcontentloaded', timeout: 60000 });
@@ -63,7 +63,7 @@ async function get(path, kind) {
       }, B + path, kind, F);
     } catch (e) {
       console.log('ponawiam', path, e.message);
-      await new Promise((r) => setTimeout(r, 15000 * (a + 1)));
+      await new Promise((r) => setTimeout(r, 30000 * 2 ** a)); // 30 s, 60 s, 120 s, 240 s
     }
   }
   throw new Error('Nie udało się pobrać ' + path);
@@ -92,7 +92,7 @@ if (process.env.AVATARS) {
 }
 const pd = (s) => new Date(String(s).replace(/(am|pm)$/, ' $1')).getTime();
 let added = 0;
-const seen = new Set();
+const seen = new Set(), skipped = [];
 try {
 for (let o = 0; ; o += 25) {
   const topics = (await get(`forum.php?f=${F}&o=${o}`, 'list')).filter((t) => !seen.has(t.t));
@@ -101,6 +101,7 @@ for (let o = 0; ; o += 25) {
   for (const t of topics) {
     seen.add(t.t);
     let fresh = 0;
+    try {
     for (let po = t.maxO; po >= 0; po -= 10) {
       const r = await get(`topic.php?t=${t.t}&f=${F}&o=${po}`, 'topic');
       const newer = r.posts.filter((p) => p.id && pd(p.date) >= CUT);
@@ -115,12 +116,18 @@ for (let o = 0; ; o += 25) {
       }
       if (newer.length < r.posts.length || !r.posts.length) break;
     }
+    } catch (e) {
+      // pojedynczy temat nie przerywa całości; przy wielu blokadach z rzędu kończymy
+      skipped.push(t.t); fresh++; console.log('pomijam temat', t.t, e.message);
+      if (skipped.length > 5) throw new Error('za dużo blokad');
+    }
     if (fresh) freshTopics++;
   }
   console.log(`lista o=${o}: ${freshTopics}/${topics.length} tematów ze świeżymi postami, nowych postów razem ${added}`);
   if (!freshTopics) break;
 }
-data.complete = START;
+if (skipped.length <= 3) data.complete = START; // kilka pominiętych tematów nie blokuje postępu
+console.log('pominięte tematy:', skipped.length);
 } catch (e) {
   console.log('PRZERWANO:', e.message, '— zapisuję częściowy postęp');
   save(); await browser.close(); process.exit(1);
