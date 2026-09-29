@@ -39,4 +39,4 @@ jobs:
           [ -f docs/data.json ] || exit 0
           git add docs/data.json
           git diff --cached --quiet || git commit -m "Dane: $(date -u +%F)"
-          git push
+          git pull --rebase -X theirs && git push
