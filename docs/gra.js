@@ -104,7 +104,8 @@
   const KINDS = [{ p: 1, m: 1, w: 50 }, { p: .8, m: 1.3, w: 25, cls: 'b2' }, { p: .65, m: 1.7, w: 15, cls: 'b3' }, { p: .5, m: 2.2, w: 10, cls: 'b4' }];
   const pickKind = () => { let r = Math.random() * 100; for (const k of KINDS) { if ((r -= k.w) < 0) return k; } return KINDS[0]; };
   const totalMult = () => game ? Math.round(game.base * multOf(game.lvl) * 10) / 10 : 1;
-  const scaleK = () => Math.max(.3, Math.min(innerWidth, innerHeight) / 950);
+  // liczone od wysokości okna: na telefonie (wąski, wysoki ekran) awatary nie są malutkie, a wysokość podbicia jest proporcjonalna
+  const scaleK = () => Math.max(.5, Math.min(1.4, innerHeight / 950));
   const G = 1500, JUMP = 720, PER_LEVEL = 8;
   const speedOf = (lvl) => 1 + lvl * 0.07, multOf = (lvl) => Math.round((1 + lvl * 0.1) * 10) / 10;
   const hud = document.createElement('div'); hud.id = 'hud'; hud.hidden = true; document.body.appendChild(hud);
