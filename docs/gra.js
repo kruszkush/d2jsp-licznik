@@ -20,6 +20,14 @@
   #over .row{display:flex;gap:8px;justify-content:center}
   #over button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
   #over .msg{font-size:12px;color:var(--mute);min-height:16px;margin-top:8px}
+  #mult{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:39;pointer-events:none;font-weight:900;font-size:min(28vw,260px);line-height:1;opacity:0;transition:opacity .4s,color .6s;font-variant-numeric:tabular-nums;letter-spacing:-.04em}
+  #mult.on{opacity:.13}
+  #mult.pulse{animation:mpulse .9s ease-out}
+  @keyframes mpulse{0%{opacity:.13;transform:translate(-50%,-50%) scale(1)}25%{opacity:.4;transform:translate(-50%,-50%) scale(1.12)}100%{opacity:.13;transform:translate(-50%,-50%) scale(1)}}
+  #edge{position:fixed;inset:0;z-index:38;pointer-events:none;opacity:0;transition:opacity .6s;box-shadow:inset 0 0 120px 20px rgba(255,90,20,.55)}
+  #lvlup{position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:60;font-weight:800;font-size:20px;color:#ff7a1a;text-shadow:0 0 10px rgba(255,120,30,.6);opacity:0;pointer-events:none}
+  #lvlup.go{animation:lvl 1.1s ease-out}
+  @keyframes lvl{0%{opacity:0;transform:translate(-50%,10px) scale(.8)}20%{opacity:1;transform:translate(-50%,0) scale(1.1)}100%{opacity:0;transform:translate(-50%,-18px) scale(1)}}
   #snowBtn{position:fixed;left:12px;bottom:12px;z-index:45;font-size:12px;padding:4px 10px;opacity:.75}
   body.playing{user-select:none;-webkit-user-select:none}
   body.playing .wrap{pointer-events:none}
@@ -77,26 +85,44 @@
   const clearFlakes = () => { for (const f of flakes) f.el.remove(); flakes.clear(); };
 
   // --- gra ---
-  const G = 1500, JUMP = 720;
+  // Co 4 podbicia poziom w górę: awatar leci szybciej (cały ruch przyspiesza), a mnożnik punktów rośnie o 0,1
+  const G = 1500, JUMP = 720, PER_LEVEL = 4;
+  const speedOf = (lvl) => 1 + lvl * 0.13, multOf = (lvl) => Math.round((1 + lvl * 0.1) * 10) / 10;
   const hud = document.createElement('div'); hud.id = 'hud'; hud.hidden = true; document.body.appendChild(hud);
+  const multEl = document.createElement('div'); multEl.id = 'mult'; document.body.appendChild(multEl);
+  const edgeEl = document.createElement('div'); edgeEl.id = 'edge'; document.body.appendChild(edgeEl);
+  // Duży, półprzezroczysty mnożnik w tle + poświata na brzegach ekranu rosnąca z poziomem
+  function showMult(lvl, pulse) {
+    const m = multOf(lvl), heat = Math.min(1, lvl / 10);
+    multEl.textContent = 'x' + m.toFixed(1);
+    multEl.style.color = `hsl(${45 - heat * 45}, 95%, ${60 - heat * 10}%)`;
+    multEl.classList.add('on'); edgeEl.style.opacity = String(heat * .9);
+    if (pulse) { multEl.classList.remove('pulse'); void multEl.offsetWidth; multEl.classList.add('pulse'); }
+  }
+  const hideMult = () => { multEl.classList.remove('on', 'pulse'); edgeEl.style.opacity = '0'; };
+  const flashEl = document.createElement('div'); flashEl.id = 'lvlup'; document.body.appendChild(flashEl);
+  function flash(t) { flashEl.textContent = t; flashEl.classList.remove('go'); void flashEl.offsetWidth; flashEl.classList.add('go'); }
   function startGame(f, e) {
     for (const o of flakes) if (o !== f) o.el.remove();
     flakes.clear(); flakes.add(f);
-    game = { f, score: 0 }; f.el.classList.add('ball');
+    game = { f, score: 0, hits: 0, lvl: 0 }; f.el.classList.add('ball'); showMult(0, false);
     document.body.classList.add('playing'); getSelection()?.removeAllRanges(); const pie = document.getElementById('pie'); if (pie) pie.hidden = true; f.vx = 0; f.vy = 0;
     hit(f, e);
   }
   function hit(f, e) {
     if (!game || game.f !== f) return;
-    game.score++;
+    game.hits++;
+    const up = game.hits % PER_LEVEL === 0 && game.hits > 0;
+    game.score += multOf(game.lvl);
+    if (up) { game.lvl++; flash(`Szybciej! x${multOf(game.lvl).toFixed(1)}`); showMult(game.lvl, true); }
     const r = f.el.getBoundingClientRect(), off = ((e.clientX - (r.left + r.width / 2)) / (r.width / 2)) || 0;
-    f.vy = -(JUMP + Math.min(game.score * 6, 240));
+    f.vy = -JUMP;
     f.vx = Math.max(-420, Math.min(420, -off * 320 + (Math.random() - .5) * 120));
     f.vr = -off * 360;
-    hud.hidden = false; hud.innerHTML = `${game.score}<small>podbić</small>`;
+    hud.hidden = false; hud.innerHTML = `${Math.round(game.score)}<small>pkt · x${multOf(game.lvl).toFixed(1)} · ${game.hits} podbić</small>`;
   }
   function endGame() {
-    const score = game.score, f = game.f; game = null; document.body.classList.remove('playing');
+    const score = Math.round(game.score), f = game.f; game = null; document.body.classList.remove('playing'); hideMult();
     f.el.remove(); flakes.clear(); hud.hidden = true;
     const ov = document.createElement('div'); ov.id = 'over';
     ov.innerHTML = `<div class="box"><h3>Koniec gry!</h3><div class="sc">${score}</div>
@@ -126,7 +152,8 @@
     acc += dt; if (acc > 2.2) { acc = 0; spawn(); }
     for (const f of flakes) {
       if (game && game.f === f) {
-        f.vy += G * dt; f.x += f.vx * dt; f.y += f.vy * dt; f.rot += f.vr * dt;
+        const sd = dt * speedOf(game.lvl);
+        f.vy += G * sd; f.x += f.vx * sd; f.y += f.vy * sd; f.rot += f.vr * sd;
         if (f.x < 0) { f.x = 0; f.vx = Math.abs(f.vx) * .8; }
         if (f.x > W - f.size) { f.x = W - f.size; f.vx = -Math.abs(f.vx) * .8; }
         if (f.y < 0) { f.y = 0; f.vy = Math.abs(f.vy) * .3; }

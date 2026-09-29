@@ -1,0 +1,679 @@
+{
+  "documents": [
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/32ca89a0335a96acff5b92dc6ffc93bf",
+      "fields": {
+        "ts": {
+          "integerValue": "1790716283"
+        },
+        "nick": {
+          "stringValue": "test-ip"
+        },
+        "ip": {
+          "stringValue": "32ca89a0335a96acff5b92dc6ffc93bf"
+        },
+        "score": {
+          "integerValue": "3"
+        }
+      },
+      "createTime": "2026-09-29T21:11:23.295813Z",
+      "updateTime": "2026-09-29T21:11:23.295813Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/_ braknicku",
+      "fields": {
+        "ts": {
+          "integerValue": "1790715511"
+        },
+        "score": {
+          "integerValue": "43"
+        },
+        "nick": {
+          "stringValue": "🥇 BrakNicku"
+        }
+      },
+      "createTime": "2026-09-29T20:58:31.451905Z",
+      "updateTime": "2026-09-29T20:58:31.451905Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/_ braknicku _",
+      "fields": {
+        "ts": {
+          "integerValue": "1790715454"
+        },
+        "score": {
+          "integerValue": "37"
+        },
+        "nick": {
+          "stringValue": "🥇 BrakNicku 🥇"
+        }
+      },
+      "createTime": "2026-09-29T20:57:34.529291Z",
+      "updateTime": "2026-09-29T20:57:34.529291Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/_braknicku _",
+      "fields": {
+        "ts": {
+          "integerValue": "1790714823"
+        },
+        "nick": {
+          "stringValue": "🤯BrakNicku 😎"
+        },
+        "score": {
+          "integerValue": "17"
+        }
+      },
+      "createTime": "2026-09-29T20:47:03.984968Z",
+      "updateTime": "2026-09-29T20:47:03.984968Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/_braknicku_",
+      "fields": {
+        "nick": {
+          "stringValue": "🤯BrakNicku😎"
+        },
+        "score": {
+          "integerValue": "22"
+        },
+        "ts": {
+          "integerValue": "1790714858"
+        }
+      },
+      "createTime": "2026-09-29T20:47:38.106683Z",
+      "updateTime": "2026-09-29T20:47:38.106683Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/bez nicku",
+      "fields": {
+        "nick": {
+          "stringValue": "Bez nicku"
+        },
+        "ts": {
+          "integerValue": "1790714450"
+        },
+        "score": {
+          "integerValue": "8"
+        }
+      },
+      "createTime": "2026-09-29T20:40:50.863541Z",
+      "updateTime": "2026-09-29T20:40:50.863541Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/brak nicku",
+      "fields": {
+        "score": {
+          "integerValue": "25"
+        },
+        "nick": {
+          "stringValue": "Brak Nicku"
+        },
+        "ts": {
+          "integerValue": "1790715310"
+        }
+      },
+      "createTime": "2026-09-29T20:55:10.387113Z",
+      "updateTime": "2026-09-29T20:55:10.387113Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/braknicku",
+      "fields": {
+        "score": {
+          "integerValue": "22"
+        },
+        "ts": {
+          "integerValue": "1790714654"
+        },
+        "nick": {
+          "stringValue": "BrakNicku"
+        }
+      },
+      "createTime": "2026-09-29T20:19:54.662662Z",
+      "updateTime": "2026-09-29T20:44:14.088196Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/braknicku _",
+      "fields": {
+        "ts": {
+          "integerValue": "1790714729"
+        },
+        "nick": {
+          "stringValue": "BrakNicku 😎"
+        },
+        "score": {
+          "integerValue": "28"
+        }
+      },
+      "createTime": "2026-09-29T20:45:29.300725Z",
+      "updateTime": "2026-09-29T20:45:29.300725Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/braknicku najlepszy",
+      "fields": {
+        "ts": {
+          "integerValue": "1790715360"
+        },
+        "nick": {
+          "stringValue": "BrakNicku Najlepszy"
+        },
+        "score": {
+          "integerValue": "29"
+        }
+      },
+      "createTime": "2026-09-29T20:56:00.588368Z",
+      "updateTime": "2026-09-29T20:56:00.588368Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/braknicku_",
+      "fields": {
+        "nick": {
+          "stringValue": "BrakNicku🐖"
+        },
+        "score": {
+          "integerValue": "83"
+        },
+        "ts": {
+          "integerValue": "1790716003"
+        }
+      },
+      "createTime": "2026-09-29T21:06:43.583028Z",
+      "updateTime": "2026-09-29T21:06:43.583028Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/butelka",
+      "fields": {
+        "score": {
+          "integerValue": "11"
+        },
+        "nick": {
+          "stringValue": "Butelka"
+        },
+        "ts": {
+          "integerValue": "1790714433"
+        }
+      },
+      "createTime": "2026-09-29T20:40:33.225643Z",
+      "updateTime": "2026-09-29T20:40:33.225643Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/collinz",
+      "fields": {
+        "score": {
+          "integerValue": "16"
+        },
+        "ts": {
+          "integerValue": "1790715497"
+        },
+        "nick": {
+          "stringValue": "CollinZ"
+        }
+      },
+      "createTime": "2026-09-29T20:49:56.152464Z",
+      "updateTime": "2026-09-29T20:58:17.036867Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/cweliuszmarcinos",
+      "fields": {
+        "ts": {
+          "integerValue": "1790716011"
+        },
+        "score": {
+          "integerValue": "32"
+        },
+        "nick": {
+          "stringValue": "cweliuszmarcinos"
+        }
+      },
+      "createTime": "2026-09-29T21:06:51.149164Z",
+      "updateTime": "2026-09-29T21:06:51.149164Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/daj murzynka",
+      "fields": {
+        "score": {
+          "integerValue": "9"
+        },
+        "ts": {
+          "integerValue": "1790714803"
+        },
+        "nick": {
+          "stringValue": "Daj murzynka"
+        }
+      },
+      "createTime": "2026-09-29T20:46:43.865280Z",
+      "updateTime": "2026-09-29T20:46:43.865280Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/james",
+      "fields": {
+        "ts": {
+          "integerValue": "1790714684"
+        },
+        "score": {
+          "integerValue": "15"
+        },
+        "nick": {
+          "stringValue": "James"
+        }
+      },
+      "createTime": "2026-09-29T20:28:24.428340Z",
+      "updateTime": "2026-09-29T20:44:44.682197Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/james_on",
+      "fields": {
+        "nick": {
+          "stringValue": "James_On"
+        },
+        "score": {
+          "integerValue": "24"
+        },
+        "ts": {
+          "integerValue": "1790715694"
+        }
+      },
+      "createTime": "2026-09-29T20:43:31.967208Z",
+      "updateTime": "2026-09-29T21:01:34.227615Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/james_on to cienias",
+      "fields": {
+        "ts": {
+          "integerValue": "1790715882"
+        },
+        "score": {
+          "integerValue": "33"
+        },
+        "nick": {
+          "stringValue": "James_On to cienias"
+        }
+      },
+      "createTime": "2026-09-29T21:04:42.501226Z",
+      "updateTime": "2026-09-29T21:04:42.501226Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/jameson",
+      "fields": {
+        "ts": {
+          "integerValue": "1790716127"
+        },
+        "nick": {
+          "stringValue": "JAMESON"
+        },
+        "score": {
+          "integerValue": "19"
+        }
+      },
+      "createTime": "2026-09-29T20:49:04.076555Z",
+      "updateTime": "2026-09-29T21:08:47.638285Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/jameson to gejuch",
+      "fields": {
+        "ts": {
+          "integerValue": "1790714338"
+        },
+        "nick": {
+          "stringValue": "JamesOn to gejuch"
+        },
+        "score": {
+          "integerValue": "5"
+        }
+      },
+      "createTime": "2026-09-29T20:38:58.729451Z",
+      "updateTime": "2026-09-29T20:38:58.729451Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/kaucjomat z biedry",
+      "fields": {
+        "ts": {
+          "integerValue": "1790714386"
+        },
+        "nick": {
+          "stringValue": "Kaucjomat z Biedry"
+        },
+        "score": {
+          "integerValue": "3"
+        }
+      },
+      "createTime": "2026-09-29T20:39:46.867227Z",
+      "updateTime": "2026-09-29T20:39:46.867227Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/kaucjomat z lidla",
+      "fields": {
+        "ts": {
+          "integerValue": "1790714372"
+        },
+        "score": {
+          "integerValue": "2"
+        },
+        "nick": {
+          "stringValue": "Kaucjomat z Lidla"
+        }
+      },
+      "createTime": "2026-09-29T20:39:32.719753Z",
+      "updateTime": "2026-09-29T20:39:32.719753Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/kondes 60",
+      "fields": {
+        "ts": {
+          "integerValue": "1790715656"
+        },
+        "score": {
+          "integerValue": "14"
+        },
+        "nick": {
+          "stringValue": "kondes 60"
+        }
+      },
+      "createTime": "2026-09-29T20:45:09.172104Z",
+      "updateTime": "2026-09-29T21:00:56.168358Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/kondes ma małego siu",
+      "fields": {
+        "nick": {
+          "stringValue": "Kondes ma małego siu"
+        },
+        "ts": {
+          "integerValue": "1790714320"
+        },
+        "score": {
+          "integerValue": "1"
+        }
+      },
+      "createTime": "2026-09-29T20:38:40.281433Z",
+      "updateTime": "2026-09-29T20:38:40.281433Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/krul james_on",
+      "fields": {
+        "nick": {
+          "stringValue": "Krul James_on"
+        },
+        "ts": {
+          "integerValue": "1790714036"
+        },
+        "score": {
+          "integerValue": "20"
+        }
+      },
+      "createTime": "2026-09-29T20:33:56.440778Z",
+      "updateTime": "2026-09-29T20:33:56.440778Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/krul james_on czwart",
+      "fields": {
+        "score": {
+          "integerValue": "9"
+        },
+        "nick": {
+          "stringValue": "Krul James_on Czwart"
+        },
+        "ts": {
+          "integerValue": "1790714875"
+        }
+      },
+      "createTime": "2026-09-29T20:47:55.253396Z",
+      "updateTime": "2026-09-29T20:47:55.253396Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/krul james_on drugi",
+      "fields": {
+        "ts": {
+          "integerValue": "1790714852"
+        },
+        "nick": {
+          "stringValue": "Krul James_on Drugi"
+        },
+        "score": {
+          "integerValue": "12"
+        }
+      },
+      "createTime": "2026-09-29T20:35:11.434831Z",
+      "updateTime": "2026-09-29T20:47:32.066539Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/krul james_on trzeci",
+      "fields": {
+        "nick": {
+          "stringValue": "Krul James_on Trzeci"
+        },
+        "score": {
+          "integerValue": "12"
+        },
+        "ts": {
+          "integerValue": "1790714219"
+        }
+      },
+      "createTime": "2026-09-29T20:36:59.794150Z",
+      "updateTime": "2026-09-29T20:36:59.794150Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/król james_on",
+      "fields": {
+        "ts": {
+          "integerValue": "1790715101"
+        },
+        "score": {
+          "integerValue": "18"
+        },
+        "nick": {
+          "stringValue": "Król James_on"
+        }
+      },
+      "createTime": "2026-09-29T20:42:19.028551Z",
+      "updateTime": "2026-09-29T20:51:41.843808Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/kupa",
+      "fields": {
+        "score": {
+          "integerValue": "17"
+        },
+        "ts": {
+          "integerValue": "1790716188"
+        },
+        "nick": {
+          "stringValue": "Kupa"
+        }
+      },
+      "createTime": "2026-09-29T21:09:48.785245Z",
+      "updateTime": "2026-09-29T21:09:48.785245Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/kupcia",
+      "fields": {
+        "score": {
+          "integerValue": "24"
+        },
+        "nick": {
+          "stringValue": "Kupcia"
+        },
+        "ts": {
+          "integerValue": "1790712781"
+        }
+      },
+      "createTime": "2026-09-29T20:13:01.222415Z",
+      "updateTime": "2026-09-29T20:13:01.222415Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/mokotow rulez",
+      "fields": {
+        "ts": {
+          "integerValue": "1790714409"
+        },
+        "nick": {
+          "stringValue": "Mokotow rulez"
+        },
+        "score": {
+          "integerValue": "4"
+        }
+      },
+      "createTime": "2026-09-29T20:40:09.903253Z",
+      "updateTime": "2026-09-29T20:40:09.903253Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/mokotuff",
+      "fields": {
+        "ts": {
+          "integerValue": "1790714364"
+        },
+        "score": {
+          "integerValue": "5"
+        },
+        "nick": {
+          "stringValue": "Mokotuff"
+        }
+      },
+      "createTime": "2026-09-29T20:39:24.100730Z",
+      "updateTime": "2026-09-29T20:39:24.100730Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/murzyn warszawski",
+      "fields": {
+        "nick": {
+          "stringValue": "Murzyn warszawski"
+        },
+        "score": {
+          "integerValue": "10"
+        },
+        "ts": {
+          "integerValue": "1790715175"
+        }
+      },
+      "createTime": "2026-09-29T20:52:55.073075Z",
+      "updateTime": "2026-09-29T20:52:55.073075Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/odajcie stupki kurwy",
+      "fields": {
+        "score": {
+          "integerValue": "14"
+        },
+        "nick": {
+          "stringValue": "Odajcie Stupki kurwy"
+        },
+        "ts": {
+          "integerValue": "1790714438"
+        }
+      },
+      "createTime": "2026-09-29T20:40:38.122898Z",
+      "updateTime": "2026-09-29T20:40:38.122898Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/pilka",
+      "fields": {
+        "score": {
+          "integerValue": "21"
+        },
+        "ts": {
+          "integerValue": "1790716234"
+        },
+        "nick": {
+          "stringValue": "Pilka"
+        }
+      },
+      "createTime": "2026-09-29T21:10:34.412964Z",
+      "updateTime": "2026-09-29T21:10:34.412964Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/pizda",
+      "fields": {
+        "nick": {
+          "stringValue": "pizda"
+        },
+        "ts": {
+          "integerValue": "1790716209"
+        },
+        "score": {
+          "integerValue": "44"
+        }
+      },
+      "createTime": "2026-09-29T21:10:09.274159Z",
+      "updateTime": "2026-09-29T21:10:09.274159Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/pozdrawiam",
+      "fields": {
+        "ts": {
+          "integerValue": "1790715573"
+        },
+        "score": {
+          "integerValue": "1"
+        },
+        "nick": {
+          "stringValue": "Pozdrawiam"
+        }
+      },
+      "createTime": "2026-09-29T20:59:33.485155Z",
+      "updateTime": "2026-09-29T20:59:33.485155Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/pozer",
+      "fields": {
+        "score": {
+          "integerValue": "4"
+        },
+        "ts": {
+          "integerValue": "1790714470"
+        },
+        "nick": {
+          "stringValue": "pozer"
+        }
+      },
+      "createTime": "2026-09-29T20:41:10.965126Z",
+      "updateTime": "2026-09-29T20:41:10.965126Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/sir braknicku",
+      "fields": {
+        "ts": {
+          "integerValue": "1790716068"
+        },
+        "nick": {
+          "stringValue": "Sir BrakNicku"
+        },
+        "score": {
+          "integerValue": "59"
+        }
+      },
+      "createTime": "2026-09-29T21:07:49.006548Z",
+      "updateTime": "2026-09-29T21:07:49.006548Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/sirbraknicku",
+      "fields": {
+        "ts": {
+          "integerValue": "1790716143"
+        },
+        "nick": {
+          "stringValue": "SirBrakNicku"
+        },
+        "score": {
+          "integerValue": "36"
+        }
+      },
+      "createTime": "2026-09-29T21:09:03.044766Z",
+      "updateTime": "2026-09-29T21:09:03.044766Z"
+    },
+    {
+      "name": "projects/rich-chimera-344319/databases/(default)/documents/pileczka/stopy smierdza",
+      "fields": {
+        "ts": {
+          "integerValue": "1790716165"
+        },
+        "score": {
+          "integerValue": "11"
+        },
+        "nick": {
+          "stringValue": "Stopy smierdza"
+        }
+      },
+      "createTime": "2026-09-29T21:09:25.782737Z",
+      "updateTime": "2026-09-29T21:09:25.782737Z"
+    }
+  ]
+}
