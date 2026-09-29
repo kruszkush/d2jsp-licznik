@@ -24,6 +24,8 @@ SA=bezpiecznik@$P.iam.gserviceaccount.com
 "$G" functions deploy bezpiecznik --gen2 --region=$REGION --runtime=python312 --source=bezpiecznik \
   --entry-point=stop_billing --trigger-topic=budzet-stop --service-account=$SA \
   --set-env-vars=PROJECT_ID=$P --memory=256Mi --max-instances=1 --quiet
+# Wyzwalacz działa na koncie bezpiecznika — musi mieć prawo wywołać funkcję
+"$G" run services add-iam-policy-binding bezpiecznik --region=$REGION --member=serviceAccount:$SA --role=roles/run.invoker >/dev/null
 
 if ! "$G" billing budgets list --billing-account=$BA --format='value(displayName)' | grep -qx bezpiecznik; then
   "$G" billing budgets create --billing-account=$BA --display-name=bezpiecznik \
