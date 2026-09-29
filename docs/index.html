@@ -124,6 +124,15 @@ aside{position:sticky;top:16px}
 .cup.fire .fl{transform-origin:32px 12px;animation:flick .45s ease-in-out infinite alternate}
 @keyframes flick{from{transform:scale(.92,.86)}to{transform:scale(1.05,1.08)}}
 @media (prefers-reduced-motion:reduce){.cup.fire .fl{animation:none}}
+.firew{position:relative;display:inline-block}
+.cup.fire{filter:drop-shadow(0 0 4px rgba(255,40,0,.7))}
+.cup.fire .fl{animation:flick .4s ease-in-out infinite alternate}
+@keyframes flick{from{transform:scale(.9,.84) skewX(-3deg)}to{transform:scale(1.06,1.1) skewX(3deg)}}
+.flow{position:absolute;left:28%;top:62%;width:3px;height:0;border-radius:2px 2px 3px 3px;background:linear-gradient(#ffb03a,#ff3b0a 40%,#c41808);box-shadow:0 0 5px rgba(255,70,10,.8);z-index:3;pointer-events:none;animation:flow 7s ease-in infinite}
+.flow::after{content:"";position:absolute;left:-1.5px;bottom:-3px;width:6px;height:6px;border-radius:50%;background:#e8260f;box-shadow:0 0 5px #ff5a1a}
+@keyframes flow{0%{height:0;opacity:1}55%{height:52px;opacity:1}80%{height:52px;opacity:1}100%{height:52px;opacity:0}}
+.lavadrop{position:fixed;left:0;top:0;width:3px;height:4px;border-radius:50% 50% 50% 50%/60% 60% 40% 40%;background:#ff3b0a;box-shadow:0 0 5px #ff5a1a;pointer-events:none;z-index:39}
+@media (prefers-reduced-motion:reduce){.flow{animation:none;height:20px}}
 </style>
 </head>
 <body>
@@ -153,6 +162,16 @@ aside{position:sticky;top:16px}
       <path d="M28 38h8l2 8H26z" fill="#2a8fb8"/>
       <path d="M17 46h30l3 11H14z" fill="url(#gy)"/>
       <path d="M32 16l6 7-6 9-6-9z" fill="#fff" fill-opacity=".85"/>
+    </symbol>
+    <linearGradient id="gred" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7a4d"/><stop offset=".55" stop-color="#e3261b"/><stop offset="1" stop-color="#7d0a06"/></linearGradient>
+    <linearGradient id="glava" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd23f"/><stop offset=".35" stop-color="#ff6a1a"/><stop offset="1" stop-color="#c41808"/></linearGradient>
+    <symbol id="cupR" viewBox="0 0 64 64">
+      <path d="M18 8h28v14c0 9-6 16-14 16S18 31 18 22z" fill="url(#gred)"/>
+      <path d="M18 12H9c0 10 5 15 11 16M46 12h9c0 10-5 15-11 16" fill="none" stroke="#b3140c" stroke-width="4" stroke-linecap="round"/>
+      <path d="M28 37h8l2 10H26z" fill="#b3140c"/><rect x="20" y="47" width="24" height="8" rx="2" fill="url(#gred)"/>
+      <path d="M25 13c0 6 1 11 4 15" stroke="#fff" stroke-opacity=".4" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M17 8h30c0 3-2 4-4 4H21c-2 0-4-1-4-4z" fill="url(#glava)"/>
+      <path d="M21 10c-2 0-3 2-3 5v8c0 2 1 3 2 3s2-1 2-3v-8z" fill="url(#glava)"/>
     </symbol>
   </defs>
 </svg>
@@ -237,7 +256,7 @@ const TYPE = { w: { name: 'tygodnia', sym: 'cup' }, m: { name: 'miesiąca', sym:
 const cupSvg = (t = 'w', cls = 'cup') => `<svg class="${cls}"><use href="#${TYPE[t].sym}"/></svg>`;
 
 // Odznaki przy nicku w rankingu: puchary (rok, płonące za miesiąc — każdy zamienia jeden złoty, złote za tydzień) i gwiazdka roku za nickiem
-const FIRE = `<svg class="cup fire" viewBox="0 -14 64 78"><g class="fl"><path d="M32 -12c5 8 13 12 13 23a13 13 0 0 1-26 0c0-7 4-10 5-16 2 5 4 6 5 8 1-5 1-9 3-15z" fill="#ff6a1a"/><path d="M32 2c3 5 7 8 7 13a7 7 0 0 1-14 0c0-4 2-6 4-9 1 2 2 3 3 4z" fill="#ffd23f"/></g><use href="#cup"/></svg>`;
+const FIRE = `<span class="firew"><svg class="cup fire" viewBox="0 -14 64 78"><g class="fl"><path d="M32 -12c5 8 13 12 13 23a13 13 0 0 1-26 0c0-7 4-10 5-16 2 5 4 6 5 8 1-5 1-9 3-15z" fill="#e3140a"/><path d="M32 0c3 5 8 8 8 14a8 8 0 0 1-16 0c0-4 2-7 4-10 1 2 2 3 3 4z" fill="#ff7a1a"/><path d="M32 8c2 3 4 4 4 7a4 4 0 0 1-8 0c0-2 1-4 2-5z" fill="#ffd23f"/></g><use href="#cupR"/></svg><i class="flow"></i></span>`;
 function nickBadges(u) {
   const c = cups.get(u) || [], n = (t) => c.filter((k) => k.t === t).length, y = n('y'), m = n('m'), w = n('w');
   const title = c.map((k) => 'Mistrz ' + TYPE[k.t].name + ': ' + k.label).join(', ');
@@ -354,6 +373,22 @@ $('chart').addEventListener('mouseover', (e) => { const c = e.target.closest('.c
 $('chart').addEventListener('mouseleave', () => { $('pie').hidden = true; });
 $('chart').addEventListener('click', (e) => { const c = e.target.closest('.col'); if (c) showPie(c); });
 document.addEventListener('scroll', () => { $('pie').hidden = true; }, { passive: true });
+// Kropelki lawy: z końca strumienia pierwszego płonącego pucharu co ~2,5–4 s spada malutka kropla na dół ekranu
+(function lavaTick() {
+  const f = document.querySelector('.flow');
+  if (f && !matchMedia('(prefers-reduced-motion: reduce)').matches && !document.hidden) {
+    const r = f.getBoundingClientRect();
+    if (r.height > 40 && r.bottom > 0 && r.top < innerHeight) {
+      const d = document.createElement('div'); d.className = 'lavadrop'; document.body.appendChild(d);
+      let x = r.left, y = r.bottom, vy = .5;
+      const step = () => { vy += .22; y += vy; d.style.transform = `translate(${x}px,${y}px)`; d.style.opacity = Math.max(.25, 1 - (y - r.bottom) / innerHeight);
+        if (y < innerHeight) requestAnimationFrame(step); else d.remove(); };
+      step();
+    }
+  }
+  setTimeout(lavaTick, 2500 + Math.random() * 1500);
+})();
+
 fetch('data.json?' + Date.now()).then((r) => r.json()).then((d) => {
   D = d;
   // Wszystko liczymy od startu pucharów (21.09, poniedziałek 00:00); starsze posty zostają w pliku, ale ich nie pokazujemy.
