@@ -85,9 +85,9 @@
   const clearFlakes = () => { for (const f of flakes) f.el.remove(); flakes.clear(); };
 
   // --- gra ---
-  // Co 4 podbicia poziom w górę: awatar leci szybciej (cały ruch przyspiesza), a mnożnik punktów rośnie o 0,1
-  const G = 1500, JUMP = 720, PER_LEVEL = 4;
-  const speedOf = (lvl) => 1 + lvl * 0.13, multOf = (lvl) => Math.round((1 + lvl * 0.1) * 10) / 10;
+  // Co 8 podbić poziom w górę: awatar leci szybciej (cały ruch przyspiesza), a mnożnik punktów rośnie o 0,1
+  const G = 1500, JUMP = 720, PER_LEVEL = 8;
+  const speedOf = (lvl) => 1 + lvl * 0.07, multOf = (lvl) => Math.round((1 + lvl * 0.1) * 10) / 10;
   const hud = document.createElement('div'); hud.id = 'hud'; hud.hidden = true; document.body.appendChild(hud);
   const multEl = document.createElement('div'); multEl.id = 'mult'; document.body.appendChild(multEl);
   const edgeEl = document.createElement('div'); edgeEl.id = 'edge'; document.body.appendChild(edgeEl);

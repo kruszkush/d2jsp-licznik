@@ -1,6 +1,6 @@
 # Ranking gry "piłeczka": GET -> top 20, POST {nick, score} -> jeden wpis na adres IP (najlepszy wynik, ostatni nick).
 # IP nie jest zapisywane wprost — tylko jego skrót (sha256 z solą).
-import hashlib, os, re, time
+import hashlib, ipaddress, os, re, time
 import functions_framework
 from google.cloud import firestore
 
@@ -21,6 +21,12 @@ def top():
 
 def ip_key(req):
     ip = (req.headers.get("X-Forwarded-For", "") or req.remote_addr or "").split(",")[0].strip()
+    try:  # IPv6 zmienia końcówkę adresu co jakiś czas — liczymy całą sieć /64 jako jeden adres
+        a = ipaddress.ip_address(ip)
+        if a.version == 6:
+            ip = str(ipaddress.ip_network(f"{ip}/64", strict=False))
+    except ValueError:
+        pass
     return hashlib.sha256((SALT + ip).encode()).hexdigest()[:32]
 
 @functions_framework.http
