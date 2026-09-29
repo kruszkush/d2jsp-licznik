@@ -15,7 +15,7 @@ const data = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : { forum
 const known = new Set(data.posts.map((p) => p[0]));
 // data.complete = chwila ostatniego PEŁNEGO przebiegu; po przerwanym przebiegu następny powtarza to samo okno (duplikaty odpadają).
 const START = Date.now();
-if (data.complete && START - data.complete < 20 * 3600e3 && !process.env.FORCE) { console.log('dzisiejsza aktualizacja już zrobiona'); process.exit(0); }
+// (bez pomijania: serwer uruchamia co 3 h i za każdym razem dopisuje nowe posty)
 if (!data.from) data.from = START - BACKFILL * 864e5;
 const CUT = data.complete ? data.complete - OVERLAP : data.from;
 console.log('od', new Date(CUT).toISOString(), 'znanych postów', known.size);
