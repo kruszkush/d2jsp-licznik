@@ -106,6 +106,19 @@ aside{position:sticky;top:16px}
 .champ2 .ldn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .champ2 .ldv{font-variant-numeric:tabular-nums;white-space:nowrap}
 .champ2 .ldv em{font-style:normal;color:var(--mute);margin-left:4px;font-size:11px}
+.champ.cm{background:linear-gradient(160deg,rgba(155,93,229,.16),var(--card) 70%);border-color:rgba(155,93,229,.4)}
+.champ.cm::before{background:radial-gradient(closest-side,rgba(190,140,255,.28),transparent)}
+.champ.cm .lab{color:#a46ff0}.champ.cm .big{filter:drop-shadow(0 6px 10px rgba(123,63,209,.35))}
+.champ.cy{background:linear-gradient(160deg,rgba(63,170,210,.18),var(--card) 70%);border-color:rgba(63,170,210,.45)}
+.champ.cy::before{background:radial-gradient(closest-side,rgba(127,217,240,.3),transparent)}
+.champ.cy .lab{color:#3fb0d8}.champ.cy .big{filter:drop-shadow(0 6px 10px rgba(42,143,184,.35))}
+.champ .who.tbd{color:var(--mute);font-weight:500;font-style:italic;font-size:18px}
+.champ .lead{font-size:13px;margin-top:10px;padding-top:8px;border-top:1px dashed var(--line);position:relative}
+.champ .lead>span{color:var(--mute);font-size:12px}
+.champ .ld{display:flex;justify-content:space-between;gap:6px;text-align:left;margin-top:3px}
+.champ .ldn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.champ .ldv{font-variant-numeric:tabular-nums;white-space:nowrap}
+.ystar{color:#3fb0d8;margin-right:4px;text-shadow:0 0 6px rgba(63,176,216,.6);cursor:default}
 </style>
 </head>
 <body>
@@ -167,7 +180,8 @@ aside{position:sticky;top:16px}
 
 <aside class="side">
   <div class="champ" id="champ"><div class="empty">Ładowanie pucharów…</div></div>
-  <div class="duo"><div class="champ2 cm" id="champM"></div><div class="champ2 cy" id="champY"></div></div>
+  <div class="champ cm" id="champM"></div>
+  <div class="champ cy" id="champY"></div>
   <div class="card"><h3 id="raceH">Wyścig o puchar</h3><ul class="race" id="race"></ul><p class="note" id="raceNote"></p></div>
   <div class="card"><h3>Poprzednie tygodnie</h3><ul class="hist" id="hist"></ul></div>
   <div class="card"><h3>Galeria sław</h3><ul class="fame" id="fame"></ul></div>
@@ -255,16 +269,18 @@ function renderCups(R) {
        <div class="meta">${fmt(last.rank[0][1])} postów · ${Math.round(last.rank[0][1] / last.total * 100)}% całego tygodnia</div>`
     : `${cupSvg('w', 'big')}<div class="lab">Pierwszy puchar</div><div class="meta">zostanie przyznany po niedzieli</div>`;
 
-  // Mistrz miesiąca i roku: zwycięzca ostatniego okresu albo kto prowadzi w bieżącym
+  // Mistrz miesiąca i roku: duże karty jak tygodnia; zwycięzca ostatniego okresu albo kto prowadzi w bieżącym
+  const cap = (x) => x[0].toUpperCase() + x.slice(1);
   for (const t of ['m', 'y']) {
     const { past, current: c } = R[t], won = past[0];
-    let body;
-    if (won) body = `<div class="who2">${won.winners.map(link).join(' & ')}</div><div class="meta">${won.p.label} · ${fmt(won.rank[0][1])} postów</div>`;
-    else if (c.notYet) body = `<div class="who2 tbd">jeszcze nieznany</div><div class="meta">liczenie od ${t === 'm' ? '1.10' : dm(START)}</div>`;
-    else body = `<div class="who2 tbd">jeszcze nieznany</div><div class="meta">przyznanie za ${until(c.p.end)}</div>`;
-    const top0 = c.rank[0]?.[1] || 0;
-    const lead = !c.notYet && c.rank[0] ? `<div class="lead"><span style="color:var(--mute)">${c.rank.length > 1 ? 'na czele' : 'prowadzi'}</span>${c.rank.slice(0, 3).map(([u, n], i) => `<div class="ld"><span class="ldn">${i + 1}. ${link(u)}</span><span class="ldv">${fmt(n)}</span></div>`).join('')}</div>` : '';
-    $('champ' + t.toUpperCase()).innerHTML = `${cupSvg(t, 'mid')}<div class="lab2 l${t}">Mistrz ${TYPE[t].name}</div>${body}${won && lead ? `<div class="meta sm">${c.p.label}:</div>` : ''}${lead}`;
+    const upcoming = c.notYet ? P[t].of(plMidnight((t === 'm' ? FIRST_MONTH + '-01' : START)) + 3600e3) : c.p;
+    const standings = !c.notYet && c.rank.length
+      ? `<div class="lead"><span>${won ? cap(c.p.label) + ' · w toku' : 'na czele'}</span>${c.rank.slice(0, 3).map(([u, n], i) => `<div class="ld"><span class="ldn">${i + 1}. ${link(u)}</span><span class="ldv">${fmt(n)}</span></div>`).join('')}</div>` : '';
+    const head = `${cupSvg(t, 'big')}<div class="lab">Mistrz ${TYPE[t].name}</div>`;
+    const body = won
+      ? `<div class="wk">${cap(won.p.label)}</div><div class="who">${won.winners.map(link).join(' & ')}</div><div class="meta">${fmt(won.rank[0][1])} postów · ${Math.round(won.rank[0][1] / won.total * 100)}% całego okresu</div>`
+      : `<div class="wk">${cap(upcoming.label)}</div><div class="who tbd">jeszcze nieznany</div><div class="meta">${c.notYet ? 'liczenie od ' + (t === 'm' ? '1.10' : dm(START)) : 'przyznanie za ' + until(c.p.end)}</div>`;
+    $('champ' + t.toUpperCase()).innerHTML = head + body + standings;
   }
 
   const c = R.w.current, lead = c.rank[0]?.[1] || 1;
@@ -324,7 +340,6 @@ $('chart').addEventListener('mouseover', (e) => { const c = e.target.closest('.c
 $('chart').addEventListener('mouseleave', () => { $('pie').hidden = true; });
 $('chart').addEventListener('click', (e) => { const c = e.target.closest('.col'); if (c) showPie(c); });
 document.addEventListener('scroll', () => { $('pie').hidden = true; }, { passive: true });
-if (/uklad=pion/.test(location.search)) document.querySelector('.duo').classList.add('stack');
 fetch('data.json?' + Date.now()).then((r) => r.json()).then((d) => {
   D = d;
   // Wszystko liczymy od startu pucharów (21.09, poniedziałek 00:00); starsze posty zostają w pliku, ale ich nie pokazujemy.
@@ -369,7 +384,7 @@ function render() {
   $('rows').innerHTML = rank.map((x, i) => ({ x, i }))
     .filter(({ x }) => !q || nick(x.u).toLowerCase().includes(q))
     .map(({ x, i }) => { const c = cups.get(x.u);
-      return `<tr><td>${i+1}</td><td>${link(x.u)}${c ? `<span class="mini" title="${c.map((k) => 'Mistrz ' + TYPE[k.t].name + ': ' + k.label).join('\n')}">${[...c].sort((p, q) => 'ymw'.indexOf(p.t) - 'ymw'.indexOf(q.t)).map((k) => cupSvg(k.t)).join('')}</span>` : ''}</td><td class="n">${fmt(x.n)}</td><td class="n">${x.t.size}</td><td class="w"><div class="share" style="width:${x.n/top*100}%" title="${(x.n/posts.length*100).toFixed(1)}%"></div></td></tr>`; }).join('')
+      return `<tr><td>${i+1}</td><td>${c?.some((k) => k.t === 'y') ? '<span class="ystar" title="Mistrz roku">★</span>' : ''}${link(x.u)}${c ? `<span class="mini" title="${c.map((k) => 'Mistrz ' + TYPE[k.t].name + ': ' + k.label).join('\n')}">${[...c].sort((p, q) => 'ymw'.indexOf(p.t) - 'ymw'.indexOf(q.t)).map((k) => cupSvg(k.t)).join('')}</span>` : ''}</td><td class="n">${fmt(x.n)}</td><td class="n">${x.t.size}</td><td class="w"><div class="share" style="width:${x.n/top*100}%" title="${(x.n/posts.length*100).toFixed(1)}%"></div></td></tr>`; }).join('')
     || '<tr><td colspan="5" style="color:var(--mute)">Brak postów w tym zakresie.</td></tr>';
 
   const keys = []; for (let d = new Date(ymd(from) + 'T12:00').getTime(); d <= to; d += day) keys.push(ymd(d));

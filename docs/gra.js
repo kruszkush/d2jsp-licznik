@@ -21,6 +21,8 @@
   #over button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
   #over .msg{font-size:12px;color:var(--mute);min-height:16px;margin-top:8px}
   #snowBtn{position:fixed;left:12px;bottom:12px;z-index:45;font-size:12px;padding:4px 10px;opacity:.75}
+  body.playing{user-select:none;-webkit-user-select:none}
+  body.playing .wrap{pointer-events:none}
   .pil li{list-style:none;display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--line);font-size:14px}
   .pil li:last-child{border:0}.pil{margin:0;padding:0}.pil .me{color:var(--acc);font-weight:700}`;
   document.head.appendChild(css);
@@ -79,7 +81,8 @@
   function startGame(f, e) {
     for (const o of flakes) if (o !== f) o.el.remove();
     flakes.clear(); flakes.add(f);
-    game = { f, score: 0 }; f.el.classList.add('ball'); f.vx = 0; f.vy = 0;
+    game = { f, score: 0 }; f.el.classList.add('ball');
+    document.body.classList.add('playing'); getSelection()?.removeAllRanges(); const pie = document.getElementById('pie'); if (pie) pie.hidden = true; f.vx = 0; f.vy = 0;
     hit(f, e);
   }
   function hit(f, e) {
@@ -92,7 +95,7 @@
     hud.hidden = false; hud.innerHTML = `${game.score}<small>podbić</small>`;
   }
   function endGame() {
-    const score = game.score, f = game.f; game = null;
+    const score = game.score, f = game.f; game = null; document.body.classList.remove('playing');
     f.el.remove(); flakes.clear(); hud.hidden = true;
     const ov = document.createElement('div'); ov.id = 'over';
     ov.innerHTML = `<div class="box"><h3>Koniec gry!</h3><div class="sc">${score}</div>

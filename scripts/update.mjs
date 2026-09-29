@@ -70,6 +70,25 @@ async function get(path, kind) {
 }
 
 const save = () => { data.posts.sort((a, b) => a[3] - b[3]); data.updated = new Date().toISOString(); writeFileSync(FILE, JSON.stringify(data)); };
+// Tryb jednorazowy AVATARS=1: zbiera awatary z ostatnich stron tematów, w których pisano od startu (bez liczenia postów).
+if (process.env.AVATARS) {
+  const since = (data.from || 0) / 1000, want = new Set(data.posts.filter((p) => p[3] >= since).map((p) => p[1]));
+  let got = 0;
+  for (let o = 0; o < 500 && want.size; o += 25) {
+    const list = await get(`forum.php?f=${F}&o=${o}`, 'list');
+    if (!list.length) break;
+    for (const t of list.filter((t) => want.has(t.t))) {
+      want.delete(t.t);
+      for (const po of [t.maxO, t.maxO - 10].filter((x) => x >= 0)) {
+        for (const p of (await get(`topic.php?t=${t.t}&f=${F}&o=${po}`, 'topic')).posts)
+          if (p.uid && p.av && (data.avatars ||= {})[p.uid] !== p.av) { data.avatars[p.uid] = p.av; got++; }
+      }
+    }
+    console.log(`lista o=${o}: awatarów ${Object.keys(data.avatars || {}).length}`);
+  }
+  await browser.close();
+  writeFileSync(FILE, JSON.stringify(data)); console.log('awatary: nowych', got); process.exit(0);
+}
 const pd = (s) => new Date(String(s).replace(/(am|pm)$/, ' $1')).getTime();
 let added = 0;
 const seen = new Set();
