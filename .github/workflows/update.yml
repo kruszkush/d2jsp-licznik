@@ -13,7 +13,7 @@ concurrency: aktualizacja
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     env:
       TZ: Europe/Warsaw # Chrome i skrypt w tej samej strefie; d2jsp pokazuje daty w strefie przeglądarki
     steps:
@@ -21,7 +21,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: npm install --no-save puppeteer-core@23
-      - name: pobranie (3 próby co 5 min)
+      - name: pobranie (3 próby co 5 min, postęp zapisuje się także przy przerwaniu)
         run: |
           for i in 1 2 3; do
             xvfb-run -a node scripts/update.mjs ${{ inputs.dni || 30 }} && exit 0
@@ -31,9 +31,11 @@ jobs:
       - if: failure()
         uses: actions/upload-artifact@v4
         with: { name: blad, path: blad.png, if-no-files-found: ignore }
-      - run: |
+      - if: always()
+        run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          [ -f docs/data.json ] || exit 0
           git add docs/data.json
           git diff --cached --quiet || git commit -m "Dane: $(date -u +%F)"
           git push

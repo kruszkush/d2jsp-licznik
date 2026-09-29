@@ -1,4 +1,4 @@
-// Dopisuje nowe posty z forum d2jsp do docs/data.json (historia), strona liczy rankingi po stronie przeglądarki.
+﻿// Dopisuje nowe posty z forum d2jsp do docs/data.json (historia), strona liczy rankingi po stronie przeglądarki.
 // Użycie: node scripts/update.mjs [dni_wstecz_przy_pierwszym_uruchomieniu=30] [forum=230]
 // Zwykły Chrome z oknem (na serwerze pod xvfb-run) — przechodzi normalne sprawdzenie przeglądarki, nic nie obchodzimy.
 import puppeteer from 'puppeteer-core';
@@ -7,14 +7,16 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 const [BACKFILL = 30, F = 230] = process.argv.slice(2).map(Number);
 const FILE = 'docs/data.json';
 const B = 'https://forums.d2jsp.org/';
-const GAP = 400; // uprzejme tempo: maks. ~2,5 podstrony/s
+const GAP = 1200; // uprzejme tempo: niecała 1 podstrona/s
 const OVERLAP = 2 * 864e5; // ponownie sprawdzamy ostatnie 2 doby (spóźnione/edytowane posty)
 
 // data.json: { forum, updated, users: {uid: nick}, topics: {t: tytuł}, posts: [[id, t, uid, unixSekundy], ...] }
 const data = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : { forum: F, users: {}, topics: {}, posts: [] };
 const known = new Set(data.posts.map((p) => p[0]));
-const last = data.posts.reduce((m, p) => Math.max(m, p[3] * 1000), 0);
-const CUT = last ? last - OVERLAP : Date.now() - BACKFILL * 864e5;
+// data.complete = chwila ostatniego PEŁNEGO przebiegu; po przerwanym przebiegu następny powtarza to samo okno (duplikaty odpadają).
+const START = Date.now();
+if (!data.from) data.from = START - BACKFILL * 864e5;
+const CUT = data.complete ? data.complete - OVERLAP : data.from;
 console.log('od', new Date(CUT).toISOString(), 'znanych postów', known.size);
 
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: false, args: ['--no-sandbox', '--window-size=1280,900'] });
@@ -57,15 +59,20 @@ async function get(path, kind) {
         };
       }, B + path, kind, F);
     } catch (e) {
-      console.log('ponawiam', path, e.message); await new Promise((r) => setTimeout(r, 5000 * (a + 1)));
+      console.log('ponawiam', path, e.message);
+      // Ponowne sprawdzenie przeglądarki: otwieramy stronę normalnie w karcie i czekamy, aż Chrome je przejdzie.
+      await page.goto(B + path, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {});
+      for (let i = 0; i < 60 && !/d2jsp/i.test(await page.title().catch(() => '')); i++) await new Promise((r) => setTimeout(r, 2000));
     }
   }
   throw new Error('Nie udało się pobrać ' + path);
 }
 
+const save = () => { data.posts.sort((a, b) => a[3] - b[3]); data.updated = new Date().toISOString(); writeFileSync(FILE, JSON.stringify(data)); };
 const pd = (s) => new Date(String(s).replace(/(am|pm)$/, ' $1')).getTime();
 let added = 0;
 const seen = new Set();
+try {
 for (let o = 0; ; o += 25) {
   const topics = (await get(`forum.php?f=${F}&o=${o}`, 'list')).filter((t) => !seen.has(t.t));
   if (!topics.length) break;
@@ -91,10 +98,12 @@ for (let o = 0; ; o += 25) {
   console.log(`lista o=${o}: ${freshTopics}/${topics.length} tematów ze świeżymi postami, nowych postów razem ${added}`);
   if (!freshTopics) break;
 }
+data.complete = START;
+} catch (e) {
+  console.log('PRZERWANO:', e.message, '— zapisuję częściowy postęp');
+  save(); await browser.close(); process.exit(1);
+}
 await browser.close();
-
-data.posts.sort((a, b) => a[3] - b[3]);
-data.updated = new Date().toISOString();
-writeFileSync(FILE, JSON.stringify(data));
+save();
 console.log('dodano', added, 'razem', data.posts.length);
 process.exit(0);
