@@ -8,7 +8,7 @@ const [BACKFILL = 30, F = 230] = process.argv.slice(2).map(Number);
 const FILE = 'docs/data.json';
 const B = 'https://forums.d2jsp.org/';
 const GAP = 1200; // uprzejme tempo: niecała 1 podstrona/s
-const OVERLAP = 2 * 864e5; // ponownie sprawdzamy ostatnie 2 doby (spóźnione/edytowane posty)
+const OVERLAP = 6 * 3600e3; // zakładka 6 h (mało podstron = mniejsza szansa na blokadę)
 
 // data.json: { forum, updated, users: {uid: nick}, topics: {t: tytuł}, posts: [[id, t, uid, unixSekundy], ...] }
 const data = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : { forum: F, users: {}, topics: {}, posts: [] };
