@@ -248,6 +248,8 @@ function renderCups(R) {
 
 fetch('data.json?' + Date.now()).then((r) => r.json()).then((d) => {
   D = d;
+  // Wszystko liczymy od startu pucharów (21.09, poniedziałek 00:00); starsze posty zostają w pliku, ale ich nie pokazujemy.
+  const s0 = plMidnight(START); D.posts = D.posts.filter((p) => p[3] * 1000 >= s0); D.from = Math.max(D.from || 0, s0);
   $('sub').textContent = `Sekcja f=${d.forum} · dane od ${new Date(d.from || d.posts[0][3]*1000).toLocaleDateString('pl-PL')} · aktualizacja ${new Date(d.updated).toLocaleString('pl-PL')}`;
   renderCups(computeAll());
   setDays(30);
@@ -255,7 +257,7 @@ fetch('data.json?' + Date.now()).then((r) => r.json()).then((d) => {
 
 function setDays(n) {
   const now = Date.now();
-  to = now; from = n ? now - n * day : D.posts[0][3] * 1000;
+  to = now; from = n ? Math.max(now - n * day, D.from) : D.from;
   document.querySelectorAll('#ranges button').forEach((b) => b.classList.toggle('on', +b.dataset.d === n));
   $('from').value = ymd(from); $('to').value = ymd(to);
   render();
