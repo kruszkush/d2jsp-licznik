@@ -19,8 +19,13 @@ console.log('od', new Date(CUT).toISOString(), 'znanych postów', known.size);
 
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: false, args: ['--no-sandbox', '--window-size=1280,900'] });
 const page = await browser.newPage();
+// Czekamy jak zwykły użytkownik: do ~3 min, z jednym przeładowaniem w połowie.
 await page.goto(B + `forum.php?f=${F}`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-for (let i = 0; i < 45 && /just a moment|attention required/i.test(await page.title()); i++) await new Promise((r) => setTimeout(r, 2000));
+for (let i = 0; i < 90 && !/d2jsp/i.test(await page.title().catch(() => '')); i++) {
+  if (i === 45) await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => {});
+  await new Promise((r) => setTimeout(r, 2000));
+}
+if (!/d2jsp/i.test(await page.title())) await page.screenshot({ path: 'blad.png' });
 if (!/d2jsp/i.test(await page.title())) throw new Error('Nie wpuszczono na forum: ' + (await page.title()));
 
 let lastAt = 0;
