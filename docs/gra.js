@@ -23,6 +23,11 @@
   #over .who{font-weight:700;font-size:16px}
   #over .txt{color:var(--mute);font-size:14px;margin-top:2px}
   #over .sc small{font-size:16px;color:var(--mute);font-weight:600}
+  #over .eq{display:flex;align-items:center;justify-content:center;gap:6px;margin:-4px 0 14px}
+  #over .ch{display:flex;flex-direction:column;align-items:center;border:1px solid var(--line);border-radius:10px;padding:4px 10px;min-width:58px;line-height:1.15}
+  #over .ch b{font-size:17px}#over .ch i{font-style:normal;font-size:10.5px;opacity:.8}
+  #over .ch.tot{border-color:var(--acc);color:var(--acc)}
+  #over .op{color:var(--mute);font-weight:700;font-size:16px}
   #over input{width:100%;margin-bottom:10px;text-align:center}
   #over .row{display:flex;gap:8px;justify-content:center}
   #over button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
@@ -154,7 +159,7 @@
       <div class="who">${esc(who)}</div>
       <div class="txt">Podrzuciłeś ${esc(who)} <b>${hits}</b> ${hits === 1 ? 'raz' : 'razy'}</div>
       <div class="sc">${score}<small> pkt</small></div>
-      <div class="txt" style="margin:-8px 0 12px">${gBase > 1 ? `piłeczka x${gBase} more · ` : ""}+${gLvl * 10}% increased · razem x${gMult.toFixed(1)} na koniec</div>
+      <div class="eq">${gBase > 1 ? `<span class="ch" style="background:${BADGE[gBase]};color:#fff"><b>×${gBase}</b><i>piłeczka</i></span><span class="op">×</span>` : ''}<span class="ch"><b>×${multOf(gLvl).toFixed(1)}</b><i>poziom ${gLvl + 1}</i></span><span class="op">=</span><span class="ch tot"><b>×${gMult.toFixed(1)}</b><i>na koniec</i></span></div>
       <input id="pilNick" maxlength="20" placeholder="Twój nick" value="${esc(ls.get('pilNick') || '')}">
       <div class="row"><button class="pri" id="pilSave">Zapisz wynik</button><button id="pilClose">Zamknij</button></div><div class="msg" id="pilMsg"></div></div>`;
     document.body.appendChild(ov);
