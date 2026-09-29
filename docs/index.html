@@ -69,7 +69,7 @@ aside{position:sticky;top:16px}
 .track{height:4px;border-radius:2px;background:var(--line);margin-top:3px}
 .track i{display:block;height:100%;border-radius:2px;background:var(--gold)}
 .num{font-variant-numeric:tabular-nums;color:var(--mute);font-size:13px;white-space:nowrap}
-.hist .dt{color:var(--mute);font-size:12px;width:92px;flex:none}
+.hist .dt{color:var(--mute);font-size:12px;width:92px;flex:none;line-height:1.25}
 .duo{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
 .champ2{border-radius:14px;padding:12px 10px;text-align:center;border:1px solid var(--line);background:var(--card);min-width:0}
 .champ2.cm{background:linear-gradient(160deg,rgba(155,93,229,.14),var(--card) 75%);border-color:rgba(155,93,229,.35)}
@@ -267,7 +267,7 @@ function renderCups(R) {
   $('raceNote').innerHTML = `Koniec: niedziela 23:59 (za ${until(c.p.end)})<br><b>Ostatnia aktualizacja:</b> ${today ? 'dziś' : yest ? 'wczoraj' : up.toLocaleDateString('pl-PL')} ${up.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })} · kolejna co ok. 3 h`;
 
   const hist = [...R.y.past.map((x) => ['y', x]), ...R.m.past.map((x) => ['m', x]), ...R.w.past.map((x) => ['w', x])].sort((a, b) => b[1].p.end - a[1].p.end || 'ymw'.indexOf(a[0]) - 'ymw'.indexOf(b[0]));
-  $('hist').innerHTML = hist.map(([t, x]) => `<li><span class="dt">${x.p.label}</span>${cupSvg(t)}<div class="grow"><div class="nm">${x.winners.map(link).join(' & ')}</div></div><span class="num">${fmt(x.rank[0][1])}</span></li>`).join('')
+  $('hist').innerHTML = hist.map(([t, x]) => `<li><span class="dt" title="${x.p.label}">${t === 'w' ? x.p.nice.replace(' · ', '<br>') : x.p.label}</span>${cupSvg(t)}<div class="grow"><div class="nm">${x.winners.map(link).join(' & ')}</div></div><span class="num">${fmt(x.rank[0][1])}</span></li>`).join('')
     || '<li class="empty">Brak przyznanych pucharów.</li>';
 
   const score = (l) => l.reduce((s, c) => s + { y: 10000, m: 100, w: 1 }[c.t], 0);
