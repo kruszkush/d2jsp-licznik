@@ -7,7 +7,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 const [BACKFILL = 30, F = 230] = process.argv.slice(2).map(Number);
 const FILE = 'docs/data.json';
 const B = 'https://forums.d2jsp.org/';
-const GAP = 1500; // uprzejme tempo: niecała 1 podstrona/s
+const GAP = process.env.AVATARS ? 3000 : 1500; // uprzejme tempo: niecała 1 podstrona/s
 const OVERLAP = 6 * 3600e3; // zakładka 6 h (mało podstron = mniejsza szansa na blokadę)
 
 // data.json: { forum, updated, users: {uid: nick}, topics: {t: tytuł}, posts: [[id, t, uid, unixSekundy], ...] }
@@ -80,7 +80,8 @@ if (process.env.AVATARS) {
     for (const t of list.filter((t) => want.has(t.t))) {
       want.delete(t.t);
       for (const po of [t.maxO, t.maxO - 10].filter((x) => x >= 0)) {
-        for (const p of (await get(`topic.php?t=${t.t}&f=${F}&o=${po}`, 'topic')).posts)
+        const r = await get(`topic.php?t=${t.t}&f=${F}&o=${po}`, 'topic').catch((e) => (console.log('pomijam', e.message), { posts: [] }));
+        for (const p of r.posts)
           if (p.uid && p.av && (data.avatars ||= {})[p.uid] !== p.av) { data.avatars[p.uid] = p.av; got++; }
       }
     }
