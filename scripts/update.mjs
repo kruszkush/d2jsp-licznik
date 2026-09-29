@@ -7,7 +7,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 const [BACKFILL = 30, F = 230] = process.argv.slice(2).map(Number);
 const FILE = 'docs/data.json';
 const B = 'https://forums.d2jsp.org/';
-const GAP = 1200; // uprzejme tempo: niecała 1 podstrona/s
+const GAP = 1500; // uprzejme tempo: niecała 1 podstrona/s
 const OVERLAP = 6 * 3600e3; // zakładka 6 h (mało podstron = mniejsza szansa na blokadę)
 
 // data.json: { forum, updated, users: {uid: nick}, topics: {t: tytuł}, posts: [[id, t, uid, unixSekundy], ...] }
@@ -37,10 +37,12 @@ async function get(path, kind) {
   lastAt = Date.now();
   for (let a = 0; a < 3; a++) {
     try {
+      // Zwykłe otwarcie strony w karcie (jak człowiek), a nie zapytanie w tle — Cloudflare to przepuszcza.
+      const res = await page.goto(B + path, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      for (let i = 0; i < 45 && !/d2jsp/i.test(await page.title().catch(() => '')); i++) await new Promise((r) => setTimeout(r, 2000));
+      if (!/d2jsp/i.test(await page.title()) || (res && res.status() >= 400 && res.status() !== 403)) throw new Error('HTTP ' + (res && res.status()));
       return await page.evaluate(async (url, kind, F) => {
-        const r = await fetch(url, { credentials: 'include' });
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        const d = new DOMParser().parseFromString(await r.text(), 'text/html');
+        const d = document;
         if (kind === 'list') {
           const out = {};
           for (const a of d.querySelectorAll('a[href*="topic.php?t="]')) {
@@ -61,9 +63,7 @@ async function get(path, kind) {
       }, B + path, kind, F);
     } catch (e) {
       console.log('ponawiam', path, e.message);
-      // Ponowne sprawdzenie przeglądarki: otwieramy stronę normalnie w karcie i czekamy, aż Chrome je przejdzie.
-      await page.goto(B + path, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {});
-      for (let i = 0; i < 60 && !/d2jsp/i.test(await page.title().catch(() => '')); i++) await new Promise((r) => setTimeout(r, 2000));
+      await new Promise((r) => setTimeout(r, 15000 * (a + 1)));
     }
   }
   throw new Error('Nie udało się pobrać ' + path);
