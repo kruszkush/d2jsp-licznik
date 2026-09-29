@@ -39,6 +39,10 @@
   body.playing{user-select:none;-webkit-user-select:none}
   body.playing .wrap{pointer-events:none}
   .pil li{list-style:none;display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .pil .pn{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+  .pil .pn>span,.pil .pn small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pil .pn small{color:var(--mute);font-size:11.5px;display:flex;align-items:center;gap:4px}
+  .pil .pn small i{width:14px;height:14px;border-radius:50%;background:center/cover;flex:none}
   .pil li:last-child{border:0}.pil{margin:0;padding:0}.pil .me{color:var(--acc);font-weight:700}`;
   document.head.appendChild(css);
 
@@ -54,10 +58,11 @@
   const card = document.createElement('div'); card.className = 'card'; card.hidden = true;
   card.innerHTML = '<h3>Piłeczka · ranking</h3><ul class="pil" id="pil"><li class="empty">Ładowanie…</li></ul>';
   fameCard?.after(card);
+  const ballAv = (r) => { const a = r.ballUid && D?.avatars?.[r.ballUid]; return a ? `<i style="background-image:url('${esc(a)}')"></i>` : ''; };
   function showRank(top) {
     card.hidden = false;
     const me = (ls.get('pilNick') || '').toLowerCase();
-    document.getElementById('pil').innerHTML = top.length ? top.map((r, i) => `<li class="${r.nick.toLowerCase() === me ? 'me' : ''}"><span style="width:22px;color:var(--mute)">${i + 1}.</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.nick)}</span><b>${r.score}</b></li>`).join('') : '<li class="empty">Jeszcze nikt nie zagrał.</li>';
+    document.getElementById('pil').innerHTML = top.length ? top.map((r, i) => `<li class="${r.nick.toLowerCase() === me ? 'me' : ''}"><span style="width:22px;color:var(--mute)">${i + 1}.</span><span class="pn"><span>${esc(r.nick)}</span>${r.hits ? `<small>${ballAv(r)}${r.hits}× ${esc(r.ball || '')}</small>` : ''}</span><b>${r.score}</b></li>`).join('') : '<li class="empty">Jeszcze nikt nie zagrał.</li>';
   }
   const loadRank = (n = 0) => fetch(API).then((r) => { if (!r.ok) throw 0; return r.json(); }).then((j) => showRank(j.top || []))
     .catch(() => { card.hidden = false; document.getElementById('pil').innerHTML = '<li class="empty">Ranking chwilowo niedostępny, ponawiam…</li>'; if (n < 5) setTimeout(() => loadRank(n + 1), 15000); });
@@ -155,7 +160,7 @@
       if (!nick) { ov.querySelector('#pilMsg').textContent = 'Wpisz nick.'; return; }
       ls.set('pilNick', nick); ls.set('pilGral', '1');
       ov.querySelector('#pilMsg').textContent = 'Zapisuję…';
-      fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nick, score }) })
+      fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nick, score, hits: gHits, ball: D.users[f.u] || '', ballUid: /^\d+$/.test(f.u) ? f.u : '' }) })
         .then((r) => r.json()).then((j) => { if (j.top) { showRank(j.top); close(); card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } else ov.querySelector('#pilMsg').textContent = j.error || 'Błąd zapisu.'; })
         .catch(() => { ov.querySelector('#pilMsg').textContent = 'Nie udało się zapisać, spróbuj jeszcze raz.'; });
     };
