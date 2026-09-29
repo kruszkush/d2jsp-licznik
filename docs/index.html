@@ -5,18 +5,21 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Licznik postów d2jsp</title>
 <style>
-:root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e4e2dc;--acc:#b4441f;--bar:#d9825f}
-@media (prefers-color-scheme:dark){:root{--bg:#141413;--card:#1e1e1c;--ink:#ecebe6;--mute:#9a9892;--line:#33322f;--acc:#e0764f;--bar:#a9573a}}
+:root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e4e2dc;--acc:#b4441f;--bar:#d9825f;
+ --gold:#c9961a;--gold2:#f3d46b;--goldbg:#fff8e3;--goldline:#efd89a;--silver:#9aa0a6;--bronze:#b3713f}
+@media (prefers-color-scheme:dark){:root{--bg:#141413;--card:#1e1e1c;--ink:#ecebe6;--mute:#9a9892;--line:#33322f;--acc:#e0764f;--bar:#a9573a;
+ --gold:#e6b93a;--gold2:#ffe38a;--goldbg:#2a2415;--goldline:#5a4a1f;--silver:#b8bdc2;--bronze:#cf8a55}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-main{max-width:900px;margin:0 auto;padding:24px 16px 48px}
+.wrap{max-width:1200px;margin:0 auto;padding:24px 16px 48px;display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:20px;align-items:start}
+@media (max-width:900px){.wrap{grid-template-columns:1fr}aside{order:-1}}
 h1{font-size:24px;margin:0 0 4px}
 .sub{color:var(--mute);margin:0 0 20px;font-size:13px}
 .ranges{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:16px}
 button{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:6px 12px;border-radius:999px;cursor:pointer}
 button.on{background:var(--acc);border-color:var(--acc);color:#fff}
-input{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:5px 8px;border-radius:8px}
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+input{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:5px 8px;border-radius:8px;max-width:100%}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
 .tile{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
 .tile b{display:block;font-size:24px;font-variant-numeric:tabular-nums}
 .tile span{color:var(--mute);font-size:12px}
@@ -27,15 +30,56 @@ table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
 th,td{text-align:left;padding:6px 4px;border-bottom:1px solid var(--line)}
 th{color:var(--mute);font-weight:500;font-size:12px}
 td.n,th.n{text-align:right}
-td a{color:var(--ink);text-decoration:none}td a:hover{color:var(--acc)}
+a{color:var(--ink);text-decoration:none}a:hover{color:var(--acc)}
 .share{height:6px;background:var(--bar);border-radius:3px;min-width:2px}
-.w{width:30%}
+.w{width:26%}
 @media (max-width:560px){.w{display:none}}
 .head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
 .head h2{margin:0}
+/* puchary */
+aside{position:sticky;top:16px}
+@media (max-width:900px){aside{position:static}}
+.cup{width:1em;height:1em;vertical-align:-.12em;display:inline-block}
+.mini{margin-left:6px;font-size:13px;color:var(--gold);font-weight:600;white-space:nowrap;cursor:default}
+.champ{position:relative;overflow:hidden;background:linear-gradient(160deg,var(--goldbg),var(--card) 70%);border:1px solid var(--goldline);border-radius:16px;padding:18px 16px 16px;text-align:center;margin-bottom:14px}
+.champ .big{width:84px;height:84px;filter:drop-shadow(0 6px 10px rgba(201,150,26,.35));animation:float 3.5s ease-in-out infinite}
+@keyframes float{50%{transform:translateY(-4px) rotate(-2deg)}}
+@media (prefers-reduced-motion:reduce){.champ .big{animation:none}}
+.champ .lab{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-top:6px}
+.champ .who{font-size:22px;font-weight:700;margin:2px 0;word-break:break-word}
+.champ .who a{color:var(--ink);text-decoration:none}
+.champ .meta{color:var(--mute);font-size:13px}
+.champ::before{content:"";position:absolute;inset:-40% -20% auto;height:120%;background:radial-gradient(closest-side,rgba(243,212,107,.35),transparent);pointer-events:none}
+.side h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:0 0 8px;font-weight:600}
+.race li,.hist li,.fame li{list-style:none;display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px}
+.race,.hist,.fame{margin:0;padding:0}
+.race li:last-child,.hist li:last-child,.fame li:last-child{border:0}
+.pos{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;color:#fff;flex:none}
+.p1{background:var(--gold)}.p2{background:var(--silver)}.p3{background:var(--bronze)}
+.grow{flex:1;min-width:0}
+.grow .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.track{height:4px;border-radius:2px;background:var(--line);margin-top:3px}
+.track i{display:block;height:100%;border-radius:2px;background:var(--gold)}
+.num{font-variant-numeric:tabular-nums;color:var(--mute);font-size:13px;white-space:nowrap}
+.hist .dt{color:var(--mute);font-size:12px;width:92px;flex:none}
+.empty{color:var(--mute);font-size:13px}
+.note{color:var(--mute);font-size:12px;margin:8px 0 0}
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="gg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--gold2)"/><stop offset="1" stop-color="var(--gold)"/></linearGradient>
+    <symbol id="cup" viewBox="0 0 64 64">
+      <path d="M18 8h28v14c0 9-6 16-14 16S18 31 18 22z" fill="url(#gg)"/>
+      <path d="M18 12H9c0 10 5 15 11 16M46 12h9c0 10-5 15-11 16" fill="none" stroke="var(--gold)" stroke-width="4" stroke-linecap="round"/>
+      <path d="M28 37h8l2 10H26z" fill="var(--gold)"/>
+      <rect x="20" y="47" width="24" height="8" rx="2" fill="url(#gg)"/>
+      <path d="M25 13c0 6 1 11 4 15" stroke="#fff" stroke-opacity=".55" stroke-width="3" fill="none" stroke-linecap="round"/>
+    </symbol>
+  </defs>
+</svg>
+<div class="wrap">
 <main>
 <h1>Licznik postów — d2jsp Polska</h1>
 <p class="sub" id="sub">Ładowanie danych…</p>
@@ -61,18 +105,91 @@ td a{color:var(--ink);text-decoration:none}td a:hover{color:var(--acc)}
   <table><thead><tr><th>#</th><th>Użytkownik</th><th class="n">Posty</th><th class="n">Tematy</th><th class="w">Udział</th></tr></thead><tbody id="rows"></tbody></table>
 </div>
 </main>
+
+<aside class="side">
+  <div class="champ" id="champ"><div class="empty">Ładowanie pucharów…</div></div>
+  <div class="card"><h3 id="raceH">Wyścig o puchar</h3><ul class="race" id="race"></ul><p class="note" id="raceNote"></p></div>
+  <div class="card"><h3>Poprzednie tygodnie</h3><ul class="hist" id="hist"></ul></div>
+  <div class="card"><h3>Galeria sław</h3><ul class="fame" id="fame"></ul></div>
+</aside>
+</div>
 <script>
 const $ = (id) => document.getElementById(id);
-let D, from, to;
+let D, from, to, cups = new Map(); // uid -> [etykiety tygodni]
 const day = 864e5;
 const fmt = (n) => n.toLocaleString('pl-PL');
 const ymd = (t) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const cupSvg = (cls = 'cup') => `<svg class="${cls}"><use href="#cup"/></svg>`;
+const nick = (u) => D.users[u] || u;
+const link = (u) => /^\d+$/.test(u) ? `<a href="https://forums.d2jsp.org/user.php?i=${u}" target="_blank" rel="noopener">${esc(nick(u))}</a>` : esc(nick(u));
+
+// --- Tygodnie: poniedziałek 00:00 – niedziela 23:59:59 czasu polskiego ---
+const PL = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Warsaw', year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short', timeZoneName: 'longOffset' });
+function plInfo(ms) { const p = Object.fromEntries(PL.formatToParts(ms).map((x) => [x.type, x.value])); return { date: `${p.year}-${p.month}-${p.day}`, wd: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].indexOf(p.weekday), off: p.timeZoneName.replace('GMT', '') || '+00:00' }; }
+function plMidnight(dateStr) { // chwila 00:00 czasu polskiego danego dnia
+  const guess = new Date(dateStr + 'T12:00:00Z').getTime();
+  return new Date(`${dateStr}T00:00:00${plInfo(guess).off}`).getTime();
+}
+const addDays = (dateStr, n) => { const d = new Date(dateStr + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+function weekOf(ms) { const i = plInfo(ms); const mon = addDays(i.date, -i.wd); return { mon, start: plMidnight(mon), end: plMidnight(addDays(mon, 7)) }; }
+const dm = (s) => { const [, m, d] = s.split('-'); return `${+d}.${m}`; };
+const weekLabel = (w) => `${dm(w.mon)}–${dm(addDays(w.mon, 6))}`;
+
+function computeCups() {
+  const byWeek = new Map();
+  for (const [, , u, ts] of D.posts) {
+    const w = weekOf(ts * 1000);
+    const x = byWeek.get(w.mon) || byWeek.set(w.mon, { w, users: new Map(), total: 0 }).get(w.mon);
+    x.users.set(u, (x.users.get(u) || 0) + 1); x.total++;
+  }
+  const covered = D.from || D.posts[0][3] * 1000, doneUpTo = D.complete || new Date(D.updated).getTime();
+  const weeks = [...byWeek.values()].sort((a, b) => b.w.start - a.w.start);
+  const past = [], now = Date.now();
+  let current = null;
+  for (const x of weeks) {
+    x.rank = [...x.users].sort((a, b) => b[1] - a[1]);
+    if (x.w.start <= now && now < x.w.end) current = x;
+    else if (x.w.start >= covered && x.w.end <= doneUpTo) { // tylko tygodnie, które mamy w całości
+      const top = x.rank[0][1]; x.winners = x.rank.filter((r) => r[1] === top).map((r) => r[0]);
+      past.push(x);
+      for (const u of x.winners) (cups.get(u) || cups.set(u, []).get(u)).push(weekLabel(x.w));
+    }
+  }
+  if (!current) { const w = weekOf(now); current = { w, rank: [], total: 0 }; }
+  return { past, current };
+}
+
+function renderCups({ past, current }) {
+  const last = past[0];
+  $('champ').innerHTML = last
+    ? `${cupSvg('big')}<div class="lab">Mistrz tygodnia · ${weekLabel(last.w)}</div>
+       <div class="who">${last.winners.map(link).join(' & ')}</div>
+       <div class="meta">${fmt(last.rank[0][1])} postów · ${Math.round(last.rank[0][1] / last.total * 100)}% całego tygodnia</div>`
+    : `${cupSvg('big')}<div class="lab">Pierwszy puchar</div><div class="meta">zostanie przyznany po niedzieli</div>`;
+
+  const lead = current.rank[0]?.[1] || 1, left = current.w.end - Date.now();
+  $('raceH').textContent = `Wyścig · ${weekLabel(current.w)}`;
+  $('race').innerHTML = current.rank.slice(0, 5).map(([u, n], i) => `<li><span class="pos ${i < 3 ? 'p' + (i + 1) : ''}" ${i >= 3 ? 'style="background:var(--line);color:var(--mute)"' : ''}>${i + 1}</span>
+    <div class="grow"><div class="nm">${link(u)}</div><div class="track"><i style="width:${n / lead * 100}%"></i></div></div><span class="num">${fmt(n)}</span></li>`).join('')
+    || '<li class="empty">Jeszcze nikt nie pisał w tym tygodniu.</li>';
+  const d = Math.floor(left / day), h = Math.floor(left % day / 3600e3);
+  $('raceNote').textContent = `Koniec: niedziela 23:59 (za ${d ? d + ' d ' : ''}${h} h). Wyniki na żywo z ostatniej aktualizacji.`;
+
+  $('hist').innerHTML = past.map((x) => `<li><span class="dt">${weekLabel(x.w)}</span>${cupSvg()}<div class="grow"><div class="nm">${x.winners.map(link).join(' & ')}</div></div><span class="num">${fmt(x.rank[0][1])}</span></li>`).join('')
+    || '<li class="empty">Brak zakończonych tygodni.</li>';
+
+  const fame = [...cups].sort((a, b) => b[1].length - a[1].length);
+  $('fame').innerHTML = fame.map(([u, w]) => `<li><div class="grow"><div class="nm">${link(u)}</div></div><span class="mini" title="${w.join(', ')}">${cupSvg()} ×${w.length}</span></li>`).join('')
+    || '<li class="empty">Nikt jeszcze nie ma pucharu.</li>';
+}
 
 fetch('data.json?' + Date.now()).then((r) => r.json()).then((d) => {
   D = d;
-  $('sub').textContent = `Sekcja f=${d.forum} · dane od ${new Date(d.posts[0][3]*1000).toLocaleDateString('pl-PL')} · aktualizacja ${new Date(d.updated).toLocaleString('pl-PL')} (raz dziennie)`;
+  $('sub').textContent = `Sekcja f=${d.forum} · dane od ${new Date(d.from || d.posts[0][3]*1000).toLocaleDateString('pl-PL')} · aktualizacja ${new Date(d.updated).toLocaleString('pl-PL')}`;
+  renderCups(computeCups());
   setDays(30);
-}).catch(() => { $('sub').textContent = 'Brak danych — pierwsza aktualizacja jeszcze się nie zakończyła.'; });
+}).catch((e) => { console.error(e); $('sub').textContent = 'Brak danych — pierwsza aktualizacja jeszcze się nie zakończyła.'; });
 
 function setDays(n) {
   const now = Date.now();
@@ -105,9 +222,10 @@ function render() {
 
   const rank = [...users.values()].sort((a, b) => b.n - a.n);
   const top = rank[0]?.n || 1, q = $('q').value.trim().toLowerCase();
-  $('rows').innerHTML = rank.map((x, i) => ({ x, i, nick: D.users[x.u] || x.u }))
-    .filter(({ nick }) => !q || nick.toLowerCase().includes(q))
-    .map(({ x, i, nick }) => `<tr><td>${i+1}</td><td>${/^\d+$/.test(x.u) ? `<a href="https://forums.d2jsp.org/user.php?i=${x.u}" target="_blank" rel="noopener">${esc(nick)}</a>` : esc(nick)}</td><td class="n">${fmt(x.n)}</td><td class="n">${x.t.size}</td><td class="w"><div class="share" style="width:${x.n/top*100}%" title="${(x.n/posts.length*100).toFixed(1)}%"></div></td></tr>`).join('')
+  $('rows').innerHTML = rank.map((x, i) => ({ x, i }))
+    .filter(({ x }) => !q || nick(x.u).toLowerCase().includes(q))
+    .map(({ x, i }) => { const c = cups.get(x.u);
+      return `<tr><td>${i+1}</td><td>${link(x.u)}${c ? `<span class="mini" title="Puchar tygodnia: ${c.join(', ')}">${cupSvg()}${c.length > 1 ? '×' + c.length : ''}</span>` : ''}</td><td class="n">${fmt(x.n)}</td><td class="n">${x.t.size}</td><td class="w"><div class="share" style="width:${x.n/top*100}%" title="${(x.n/posts.length*100).toFixed(1)}%"></div></td></tr>`; }).join('')
     || '<tr><td colspan="5" style="color:var(--mute)">Brak postów w tym zakresie.</td></tr>';
 
   const keys = []; for (let d = new Date(ymd(from) + 'T12:00').getTime(); d <= to; d += day) keys.push(ymd(d));
@@ -115,7 +233,6 @@ function render() {
   $('chart').setAttribute('viewBox', `0 0 ${W} ${H}`);
   $('chart').innerHTML = vals.map((v, i) => `<rect x="${i*bw+bw*0.1}" y="${H - v/max*(H-4)}" width="${bw*0.8}" height="${v/max*(H-4)}" fill="var(--bar)" rx="2"><title>${keys[i]}: ${v}</title></rect>`).join('');
 }
-const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 </script>
 </body>
 </html>
