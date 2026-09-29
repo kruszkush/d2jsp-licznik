@@ -50,7 +50,7 @@ aside{position:sticky;top:16px}
 .mini .cup+.cup{margin-left:2px}
 .mini{margin-left:6px;font-size:13px;color:var(--gold);font-weight:600;white-space:nowrap;cursor:default}
 .champ{position:relative;overflow:hidden;background:linear-gradient(160deg,var(--goldbg),var(--card) 70%);border:1px solid var(--goldline);border-radius:16px;padding:18px 16px 16px;text-align:center;margin-bottom:14px}
-.champ .big{width:84px;height:84px;filter:drop-shadow(0 6px 10px rgba(201,150,26,.35));animation:float 3.5s ease-in-out infinite}
+.champ .big{width:84px;height:84px;filter:drop-shadow(0 6px 10px rgba(201,150,26,.35));animation:float 3.5s ease-in-out infinite;will-change:transform}
 @keyframes float{50%{transform:translateY(-4px) rotate(-2deg)}}
 @media (prefers-reduced-motion:reduce){.champ .big{animation:none}}
 .champ .lab{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-top:6px}
@@ -125,7 +125,7 @@ aside{position:sticky;top:16px}
 @keyframes flick{from{transform:scale(.92,.86)}to{transform:scale(1.05,1.08)}}
 @media (prefers-reduced-motion:reduce){.cup.fire .fl{animation:none}}
 .firew{position:relative;display:inline-block}
-.cup.fire{filter:drop-shadow(0 0 4px rgba(255,40,0,.7))}
+.cup.fire{}
 .cup.fire .fl{animation:flick .4s ease-in-out infinite alternate}
 @keyframes flick{from{transform:scale(.9,.84) skewX(-3deg)}to{transform:scale(1.06,1.1) skewX(3deg)}}
 .lavadrop{position:fixed;left:0;top:0;width:2.5px;height:2.5px;border-radius:50%;background:#ff4a1a;box-shadow:0 0 3px 1px rgba(255,60,10,.7);pointer-events:none;z-index:39}
@@ -462,6 +462,6 @@ function render() {
       <span class="d">${show ? `${dt.getDate()}.${String(dt.getMonth() + 1).padStart(2, '0')}${many ? '' : `<i>${WD[dt.getDay()]}</i>`}` : '&nbsp;'}</span></div>`; }).join('');
 }
 </script>
-<script src="gra.js?v=1790718230"></script>
+<script src="gra.js?v=1790718253"></script>
 </body>
 </html>
