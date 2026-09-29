@@ -42,20 +42,18 @@ def pileczka(req):
         if not nick or not isinstance(score, int) or not 0 < score <= 100000:
             return cors(req, {"error": "zły nick lub wynik"}, 400)
         key = ip_key(req)
-        ref = COL.document(key)
+        nl = nick.lower()
+        ref = COL.document(hashlib.sha256(("nick:" + nl).encode()).hexdigest()[:32])  # jeden wpis na nick
 
         @firestore.transactional
         def save(tx):
             old = ref.get(transaction=tx)
             best = max(score, old.get("score")) if old.exists else score
-            tx.set(ref, {"nick": nick, "nickLower": nick.lower(), "score": best, "ip": key, "ts": int(time.time())})
+            tx.set(ref, {"nick": nick, "nickLower": nl, "score": best, "ip": key, "ts": int(time.time())})
         save(db.transaction())
-        # sprzątanie: inne wpisy z tego samego IP (np. starsze) usuwamy
+        # jeden wpis na adres: inne nicki zapisane z tego adresu usuwamy
         for d in COL.where("ip", "==", key).stream():
-            if d.id != key:
-                d.reference.delete()
-        for d in COL.where("nick", "==", nick).stream():  # stary wpis bez IP z tym samym nickiem
-            if "ip" not in d.to_dict():
+            if d.id != ref.id:
                 d.reference.delete()
         return cors(req, {"top": top()})
     return cors(req, {"error": "metoda"}, 405)
