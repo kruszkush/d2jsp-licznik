@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Licznik postów d2jsp</title>
+<style>
+:root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e4e2dc;--acc:#b4441f;--bar:#d9825f}
+@media (prefers-color-scheme:dark){:root{--bg:#141413;--card:#1e1e1c;--ink:#ecebe6;--mute:#9a9892;--line:#33322f;--acc:#e0764f;--bar:#a9573a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:900px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:24px;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 20px;font-size:13px}
+.ranges{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:16px}
+button{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:6px 12px;border-radius:999px;cursor:pointer}
+button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+input{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:5px 8px;border-radius:8px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.tile b{display:block;font-size:24px;font-variant-numeric:tabular-nums}
+.tile span{color:var(--mute);font-size:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:16px}
+.card h2{font-size:15px;margin:0 0 10px}
+#chart{width:100%;height:140px;display:block}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:6px 4px;border-bottom:1px solid var(--line)}
+th{color:var(--mute);font-weight:500;font-size:12px}
+td.n,th.n{text-align:right}
+td a{color:var(--ink);text-decoration:none}td a:hover{color:var(--acc)}
+.share{height:6px;background:var(--bar);border-radius:3px;min-width:2px}
+.w{width:30%}
+@media (max-width:560px){.w{display:none}}
+.head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.head h2{margin:0}
+</style>
+</head>
+<body>
+<main>
+<h1>Licznik postów — d2jsp Polska</h1>
+<p class="sub" id="sub">Ładowanie danych…</p>
+
+<div class="ranges" id="ranges">
+  <button data-d="1">24 h</button><button data-d="7">7 dni</button><button data-d="30" class="on">30 dni</button>
+  <button data-d="90">90 dni</button><button data-d="0">Całość</button>
+  <span style="margin-left:6px;color:var(--mute);font-size:13px">lub od</span><input type="date" id="from">
+  <span style="color:var(--mute);font-size:13px">do</span><input type="date" id="to">
+</div>
+
+<div class="tiles">
+  <div class="tile"><b id="tPosts">–</b><span>postów</span></div>
+  <div class="tile"><b id="tUsers">–</b><span>piszących</span></div>
+  <div class="tile"><b id="tTopics">–</b><span>tematów</span></div>
+  <div class="tile"><b id="tAvg">–</b><span>postów dziennie</span></div>
+</div>
+
+<div class="card"><h2>Posty dziennie</h2><svg id="chart" preserveAspectRatio="none"></svg></div>
+
+<div class="card">
+  <div class="head"><h2>Ranking</h2><input id="q" placeholder="Szukaj nicku…"></div>
+  <table><thead><tr><th>#</th><th>Użytkownik</th><th class="n">Posty</th><th class="n">Tematy</th><th class="w">Udział</th></tr></thead><tbody id="rows"></tbody></table>
+</div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+let D, from, to;
+const day = 864e5;
+const fmt = (n) => n.toLocaleString('pl-PL');
+const ymd = (t) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+
+fetch('data.json?' + Date.now()).then((r) => r.json()).then((d) => {
+  D = d;
+  $('sub').textContent = `Sekcja f=${d.forum} · dane od ${new Date(d.posts[0][3]*1000).toLocaleDateString('pl-PL')} · aktualizacja ${new Date(d.updated).toLocaleString('pl-PL')} (raz dziennie)`;
+  setDays(30);
+}).catch(() => { $('sub').textContent = 'Brak danych — pierwsza aktualizacja jeszcze się nie zakończyła.'; });
+
+function setDays(n) {
+  const now = Date.now();
+  to = now; from = n ? now - n * day : D.posts[0][3] * 1000;
+  document.querySelectorAll('#ranges button').forEach((b) => b.classList.toggle('on', +b.dataset.d === n));
+  $('from').value = ymd(from); $('to').value = ymd(to);
+  render();
+}
+$('ranges').addEventListener('click', (e) => { if (e.target.dataset.d) setDays(+e.target.dataset.d); });
+for (const id of ['from', 'to']) $(id).addEventListener('change', () => {
+  if (!$('from').value || !$('to').value) return;
+  from = new Date($('from').value + 'T00:00').getTime(); to = new Date($('to').value + 'T23:59:59').getTime();
+  document.querySelectorAll('#ranges button').forEach((b) => b.classList.remove('on'));
+  render();
+});
+$('q').addEventListener('input', render);
+
+function render() {
+  const f = from / 1000, t = to / 1000;
+  const posts = D.posts.filter((p) => p[3] >= f && p[3] <= t);
+  const users = new Map(), topics = new Set(), days = new Map();
+  for (const [, tp, u, ts] of posts) {
+    const x = users.get(u) || users.set(u, { u, n: 0, t: new Set() }).get(u);
+    x.n++; x.t.add(tp); topics.add(tp);
+    const k = ymd(ts * 1000); days.set(k, (days.get(k) || 0) + 1);
+  }
+  const nDays = Math.max(1, Math.round((to - from) / day));
+  $('tPosts').textContent = fmt(posts.length); $('tUsers').textContent = fmt(users.size);
+  $('tTopics').textContent = fmt(topics.size); $('tAvg').textContent = fmt(Math.round(posts.length / nDays));
+
+  const rank = [...users.values()].sort((a, b) => b.n - a.n);
+  const top = rank[0]?.n || 1, q = $('q').value.trim().toLowerCase();
+  $('rows').innerHTML = rank.map((x, i) => ({ x, i, nick: D.users[x.u] || x.u }))
+    .filter(({ nick }) => !q || nick.toLowerCase().includes(q))
+    .map(({ x, i, nick }) => `<tr><td>${i+1}</td><td>${/^\d+$/.test(x.u) ? `<a href="https://forums.d2jsp.org/user.php?i=${x.u}" target="_blank" rel="noopener">${esc(nick)}</a>` : esc(nick)}</td><td class="n">${fmt(x.n)}</td><td class="n">${x.t.size}</td><td class="w"><div class="share" style="width:${x.n/top*100}%" title="${(x.n/posts.length*100).toFixed(1)}%"></div></td></tr>`).join('')
+    || '<tr><td colspan="5" style="color:var(--mute)">Brak postów w tym zakresie.</td></tr>';
+
+  const keys = []; for (let d = new Date(ymd(from) + 'T12:00').getTime(); d <= to; d += day) keys.push(ymd(d));
+  const vals = keys.map((k) => days.get(k) || 0), max = Math.max(1, ...vals), W = 1000, H = 140, bw = W / keys.length;
+  $('chart').setAttribute('viewBox', `0 0 ${W} ${H}`);
+  $('chart').innerHTML = vals.map((v, i) => `<rect x="${i*bw+bw*0.1}" y="${H - v/max*(H-4)}" width="${bw*0.8}" height="${v/max*(H-4)}" fill="var(--bar)" rx="2"><title>${keys[i]}: ${v}</title></rect>`).join('');
+}
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+</script>
+</body>
+</html>
