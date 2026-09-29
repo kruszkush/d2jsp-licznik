@@ -16,6 +16,10 @@
   #over{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:rgba(0,0,0,.45)}
   #over .box{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;width:min(320px,calc(100vw - 32px));text-align:center}
   #over h3{margin:0 0 4px;font-size:18px}#over .sc{font-size:44px;font-weight:800;margin:4px 0 12px}
+  #over .ball{width:80px;height:80px;border-radius:50%;border:3px solid;margin:6px auto 6px;background:var(--card) center/cover no-repeat;display:grid;place-items:center;font-size:32px;font-weight:800}
+  #over .who{font-weight:700;font-size:16px}
+  #over .txt{color:var(--mute);font-size:14px;margin-top:2px}
+  #over .sc small{font-size:16px;color:var(--mute);font-weight:600}
   #over input{width:100%;margin-bottom:10px;text-align:center}
   #over .row{display:flex;gap:8px;justify-content:center}
   #over button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
@@ -122,10 +126,15 @@
     hud.hidden = false; hud.innerHTML = `${Math.round(game.score)}<small>pkt · x${multOf(game.lvl).toFixed(1)} · ${game.hits} podbić</small>`;
   }
   function endGame() {
-    const score = Math.round(game.score), f = game.f; game = null; document.body.classList.remove('playing'); hideMult();
+    const score = Math.round(game.score), f = game.f, gHits = game.hits; game = null; document.body.classList.remove('playing'); hideMult();
     f.el.remove(); flakes.clear(); hud.hidden = true;
     const ov = document.createElement('div'); ov.id = 'over';
-    ov.innerHTML = `<div class="box"><h3>Koniec gry!</h3><div class="sc">${score}</div>
+    const av = D.avatars?.[f.u], who = D.users[f.u] || '?', hits = gHits;
+    ov.innerHTML = `<div class="box"><h3>Koniec gry!</h3>
+      <div class="ball" style="border-color:${f.el.style.borderColor};${av ? `background-image:url('${esc(av)}')` : ''}">${av ? '' : esc(who[0].toUpperCase())}</div>
+      <div class="who">${esc(who)}</div>
+      <div class="txt">Podrzuciłeś ${esc(who)} <b>${hits}</b> ${hits === 1 ? 'raz' : 'razy'}</div>
+      <div class="sc">${score}<small> pkt</small></div>
       <input id="pilNick" maxlength="20" placeholder="Twój nick" value="${esc(ls.get('pilNick') || '')}">
       <div class="row"><button class="pri" id="pilSave">Zapisz wynik</button><button id="pilClose">Zamknij</button></div><div class="msg" id="pilMsg"></div></div>`;
     document.body.appendChild(ov);
