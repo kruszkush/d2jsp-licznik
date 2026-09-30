@@ -153,7 +153,7 @@
         const v = a.v || 0;
         if (a.id === 'ostry') b.ostry += v; else if (a.id === 'stlumiony') b.stlum += v / 100; else if (a.id === 'ciezki') b.ciezki += v / 100;
         else if (a.id === 'zreczny') b.zreczny += v / 100; else if (a.id === 'szczesliwy') b.lucky += v; else if (a.id === 'rozpedzony') b.rozp += v / 100;
-        else if (a.id === 'wytrwalosci') b.wytrw = Math.max(b.wytrw, v); else if (a.id === 'olbrzyma') b.olb += v / 100;
+        else if (a.id === 'wytrwalosci') b.wytrw += v / 100; else if (a.id === 'olbrzyma') b.olb += v / 100;
         else if (a.id === 'mrozu') b.mrozu += v; else if (a.id === 'lowcy') b.lowcy += v; else if (a.id === 'serii') b.serii += v;
         else if (a.id === 'brawurowy') b.brawur += v; else if (a.id === 'zuchwaly') b.zuch += v; else if (a.id === 'echa') b.echa += v / 100; else if (a.id === 'stroza') b.guardian += v;
       }
@@ -165,7 +165,7 @@
     b.setMult = b.setN >= 3 ? .5 : b.setN === 2 ? .2 : 0; if (b.setN === 4) b.guardian++;
     for (const k of Object.keys(b)) if (typeof b[k] === 'number') b[k] = r3(b[k]);
     // limity łączne (afiksy mogą się powtarzać, ale suma ma sufit)
-    const CAP = { stlum: .3, ciezki: .25, zreczny: .6, olb: .25, rozp: .6, lowcy: 1.5, lucky: 100, brawur: .5, zuch: .08, echa: .25 };
+    const CAP = { stlum: .3, ciezki: .25, zreczny: .6, olb: .25, rozp: .6, lowcy: 1.5, lucky: 100, wytrw: .3, brawur: .5, zuch: .08, echa: .25 };
     for (const k in CAP) b[k] = Math.min(CAP[k], b[k]);
     return b;
   }
@@ -181,7 +181,8 @@
   const scaleK = () => Math.max(.5, Math.min(1.4, innerHeight / 950));
   const G = 1500, JUMP = 610, PER_LEVEL = 8;
   const TOUCH = matchMedia('(pointer: coarse)').matches; // na dotyku gra się łatwiej (kciuk, cały ekran w zasięgu) — +20% prędkości
-  const speedOf = (lvl) => (1 + lvl * 0.07) * (TOUCH ? 1.2 : 1), multOf = (lvl, b = B) => Math.round((1 + b.rozp + lvl * 0.1) * 100) / 100;
+  const speedOf = (lvl, w = 0) => (1 + lvl * 0.07 * (1 - w)) * (TOUCH ? 1.2 : 1), // Wytrwałości: wolniejszy przyrost prędkości
+    multOf = (lvl, b = B) => Math.round((1 + b.rozp + lvl * 0.1) * 100) / 100;
   const hud = document.createElement('div'); hud.id = 'hud'; hud.hidden = true; document.body.appendChild(hud);
   const multEl = document.createElement('div'); multEl.id = 'mult'; document.body.appendChild(multEl);
   const edgeEl = document.createElement('div'); edgeEl.id = 'edge'; document.body.appendChild(edgeEl);
@@ -213,7 +214,7 @@
     }
     for (const o of flakes) if (o !== f) o.el.remove();
     flakes.clear(); flakes.add(f);
-    game = { f, score: 0, hits: 0, lvl: 0, k: scaleK(), base: f.base || 1, B, per: B.wytrw || PER_LEVEL, saves: B.guardian, lowRun: 0, zuchAcc: 0, bans: B.kapcie, topB: f.top || 0, crown: B.korona ? f.top || 0 : 0 }; f.el.classList.add('ball'); showMult(0, false);
+    game = { f, score: 0, hits: 0, lvl: 0, k: scaleK(), base: f.base || 1, B, per: PER_LEVEL, saves: B.guardian, lowRun: 0, zuchAcc: 0, bans: B.kapcie, topB: f.top || 0, crown: B.korona ? f.top || 0 : 0 }; f.el.classList.add('ball'); showMult(0, false);
     document.body.classList.add('playing'); getSelection()?.removeAllRanges(); const pie = document.getElementById('pie'); if (pie) pie.hidden = true; f.vx = 0; f.vy = 0;
     hit(f, e);
   }
@@ -307,7 +308,7 @@
     brawurowy: ['p', 'Brawurowy', 0.15, 0.25, 0.01, ['Brawurowy', 'Brawurowa', 'Brawurowe'], (v) => `+${v.toFixed(2)}x mnożnika za każde kolejne podbicie z rzędu tuż nad dołem ekranu`],
     zuchwaly: ['p', 'Zuchwały', 0.02, 0.04, 0.01, ['Zuchwały', 'Zuchwała', 'Zuchwałe'], (v) => `+${v.toFixed(2)}x mnożnika na stałe za każde podbicie tuż nad dołem ekranu (od 2. poziomu)`],
     rozpedzony: ['p', 'Rozpędzony', 10, 20, 1, ['Rozpędzony', 'Rozpędzona', 'Rozpędzone'], (v) => `Rozpocznij z mnożnikiem ogólnym zwiększonym o ${v}%`],
-    wytrwalosci: ['s', 'Wytrwałości', 9, 10, 1, 'Wytrwałości', (v) => `Nowy poziom co ${v} podbić`],
+    wytrwalosci: ['s', 'Wytrwałości', 5, 15, 1, 'Wytrwałości', (v) => `Piłeczka przyspiesza o ${v}% wolniej`],
     olbrzyma: ['s', 'Olbrzyma', 5, 10, 1, 'Olbrzyma', (v) => `Większa piłeczka o ${v}%`],
     lowcy: ['s', 'Łowcy', 0.2, 0.5, 0.1, 'Łowcy', (v) => `+${v.toFixed(1)} do mnożnika piłeczki`],
     echa: ['s', 'Echa', 10, 20, 1, 'Echa', (v) => `+${v}% szansy na podwójne punkty za podbicie`],
@@ -339,7 +340,7 @@
     if (b.echa) L.push(`+${pct(b.echa)}% szansy na podwójne punkty za podbicie`);
     if (b.lowcy) L.push(`+${b.lowcy.toFixed(1)} do mnożnika piłeczki`);
     if (b.rozp) L.push(`Rozpocznij z mnożnikiem ogólnym zwiększonym o ${pct(b.rozp)}%`);
-    if (b.wytrw) L.push(`Nowy poziom co ${b.wytrw} podbić`);
+    if (b.wytrw) L.push(`Piłeczka przyspiesza o ${Math.round(b.wytrw * 100)}% wolniej`);
     if (b.stlum) L.push(`Niższe podbicie o ${pct(b.stlum)}%`);
     if (b.ciezki) L.push(`Grawitacja słabsza o ${pct(b.ciezki)}%`);
     if (b.zreczny) L.push(`Odbicie w bok mniejsze o ${pct(b.zreczny)}%`);
@@ -572,7 +573,7 @@
     acc += dt; if (acc > 1.75) { acc = 0; spawn(); } // o 25% częściej niż dawniej (2.2 s)
     for (const f of flakes) {
       if (game && game.f === f) {
-        const sd = dt * speedOf(game.lvl) * (game.slow > t ? .45 : 1); // po odbiciu od dołu chwilowe spowolnienie
+        const sd = dt * speedOf(game.lvl, game.B.wytrw) * (game.slow > t ? .45 : 1); // po odbiciu od dołu chwilowe spowolnienie
         f.vy += G * (1 - game.B.ciezki) * game.k * sd; f.x += f.vx * sd; f.y += f.vy * sd; f.rot += f.vr * sd;
         const A = TOUCH ? { l: 0, r: W } : arena();
         // mocne odbicie od boków i sufitu (z minimalną prędkością), żeby nie dało się trzymać piłeczki w rogu
