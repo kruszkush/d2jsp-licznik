@@ -33,7 +33,10 @@
   #over .ch b{font-size:17px}#over .ch i{font-style:normal;font-size:10.5px;opacity:.8}
   #over .ch.tot{border-color:var(--acc);color:var(--acc)}
   #over .op{color:var(--mute);font-weight:700;font-size:16px}
-  #over .mf{font-size:12px;color:var(--mute);margin:-6px 0 12px;line-height:1.5}
+  #over .mf{font-size:12.5px;color:var(--mute);margin:-6px auto 12px;line-height:1.45;max-width:260px}
+  #over .mfh{font-weight:600;color:var(--ink);margin-bottom:3px}
+  #over .mfr{display:flex;justify-content:center;gap:6px}#over .mfr span{min-width:70px;text-align:right;font-weight:700}#over .mfr i{font-style:normal;opacity:.6}#over .mfr b{min-width:40px;text-align:left;color:var(--ink)}
+  #over .mft{margin-top:6px;color:var(--ink)}#over .mft span{color:var(--mute);font-size:11.5px}#over .mfs{font-size:11.5px}
   #over input{width:100%;margin-bottom:10px;text-align:center}
   #over .row{display:flex;gap:8px;justify-content:center}
   #over button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
@@ -311,8 +314,13 @@
   }
   function chancesHtml(score) {
     if (score < 15) return `<div class="mf">Przedmiot wypada od 15 pkt — im więcej punktów, tym większa szansa na rzadszy.</div>`;
-    const c = chances(score, B.lucky || 0), p = (v) => v < 10 ? v.toFixed(1) : Math.round(v);
-    return `<div class="mf">Szanse przy ${score} pkt${B.lucky ? ` (+${B.lucky}% z przedmiotów)` : ''}: <b style="color:${COL.n}">N ${p(c.n)}%</b> · <b style="color:${COL.m}">M ${p(c.m)}%</b> · <b style="color:${COL.r}">R ${p(c.r)}%</b>${c.u ? ` · <b style="color:${COL.u}">U ${c.u}%</b>` : ''}<br>Magic find: <b>+${c.mf}%</b> (więcej punktów = rzadsze przedmioty, rośnie płynnie aż do 1000 pkt)</div>`;
+    const c = chances(score, B.lucky || 0), c0 = chances(score, 0), p = (v) => v < 10 ? v.toFixed(1) : Math.round(v);
+    const better = c.m + c.r + c.u, mfPts = c0.mf, mfAll = c.mf;
+    const row = (k, name, v) => `<div class="mfr"><span style="color:${COL[k]}">${name}</span><i>·</i><b>${p(v)}%</b></div>`;
+    return `<div class="mf"><div class="mfh">Szansa na przedmiot przy ${score} pkt</div>
+      ${row('n', 'Normalny', c.n)}${row('m', 'Magiczny', c.m)}${row('r', 'Rzadki', c.r)}${c.u ? row('u', 'Unikat', c.u) : ''}
+      <div class="mft">Magic find: <b>+${mfAll}%</b>${B.lucky ? ` <span>(z punktów +${mfPts}%, z przedmiotów +${mfAll - mfPts}%)</span>` : ''}</div>
+      <div class="mfs">= ${p(better)}% szansy na magiczny lub lepszy (przy minimalnych 15 pkt: 15%)</div></div>`;
   }
   const rndHex = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
   const getKey = () => { let k = ls.get('eqKey'); if (!/^[0-9a-f]{32}$/.test(k || '')) { k = rndHex(); ls.set('eqKey', k); } return k; };
