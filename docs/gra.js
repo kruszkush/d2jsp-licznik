@@ -132,7 +132,13 @@
   const hideMult = () => { multEl.classList.remove('on', 'pulse'); edgeEl.style.opacity = '0'; };
   const flashEl = document.createElement('div'); flashEl.id = 'lvlup'; document.body.appendChild(flashEl);
   function flash(t) { flashEl.textContent = t; flashEl.classList.remove('go'); void flashEl.offsetWidth; flashEl.classList.add('go'); }
+  // Na komputerze gra tylko w dużym oknie — w małym/wąskim oknie jest dużo łatwiej (mało miejsca na ucieczkę piłeczki)
+  const MIN_W = 1000, MIN_H = 650;
   function startGame(f, e) {
+    if (!TOUCH && (innerWidth < MIN_W || innerHeight < MIN_H)) {
+      flash(`Powiększ okno, żeby zagrać (min. ${MIN_W}×${MIN_H})`);
+      return;
+    }
     for (const o of flakes) if (o !== f) o.el.remove();
     flakes.clear(); flakes.add(f);
     game = { f, score: 0, hits: 0, lvl: 0, k: scaleK(), base: f.base || 1 }; f.el.classList.add('ball'); showMult(0, false);
@@ -195,6 +201,7 @@
         if (f.x < 0) { f.x = 0; f.vx = Math.abs(f.vx) * .8; }
         if (f.x > W - f.size) { f.x = W - f.size; f.vx = -Math.abs(f.vx) * .8; }
         if (f.y < 0) { f.y = 0; f.vy = Math.abs(f.vy) * .3; }
+        if (!TOUCH && (W < MIN_W || H < MIN_H)) { game = null; document.body.classList.remove('playing'); hideMult(); hud.hidden = true; f.el.remove(); flakes.clear(); flash('Okno za małe — gra przerwana'); break; }
         if (f.y > H + 10) { endGame(); break; }
       } else {
         f.ph += dt; f.y += f.vy * dt; f.rot += f.vr * dt;
