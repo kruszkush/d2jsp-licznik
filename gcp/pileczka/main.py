@@ -59,9 +59,6 @@ def pileczka(req):
                 doc.update(score=score, hits=hits, ball=ball, ballUid=ball_uid, dev=dev)
             tx.set(ref, doc, merge=True)
         save(db.transaction())
-        # jeden wpis na adres: inne nicki zapisane z tego adresu usuwamy
-        for d in COL.where("ip", "==", key).stream():
-            if d.id != ref.id:
-                d.reference.delete()
+        # (bez kasowania wpisów „z tego samego adresu”: telefony w sieci komórkowej dzielą jeden adres między wielu ludzi)
         return cors(req, {"top": top()})
     return cors(req, {"error": "metoda"}, 405)
