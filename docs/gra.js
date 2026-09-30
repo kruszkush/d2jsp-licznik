@@ -114,7 +114,9 @@
     const kind = pickKind(), size = Math.round(80 * kind.p * scaleK() * (TOUCH ? 1.2 : 1) * (1 + B.olb)); // na telefonie o 20% większe
     const f = { u, size, x: (TOUCH ? 0 : arena().l) + Math.random() * ((TOUCH ? W : arena().r - arena().l) - size), y: -size - 10, vy: (28 + Math.random() * 30) * scaleK(), sway: 20 + Math.random() * 30, ph: Math.random() * 6.28, rot: 0, vr: (Math.random() - .5) * 40 };
     f.el = makeEl(u, size); f.base = kind.m;
-    if (kind.m > 1) { const b = document.createElement('span'); b.className = 'badge ' + kind.cls; b.textContent = 'x' + kind.m; f.el.appendChild(b); }
+    // z Koroną Króla Forum plakietka pokazuje mnożnik piłeczki już z premią za miejsce właściciela awatara w top 10 z 24 h
+    const cr = B.korona && window.crownOf ? window.crownOf(u) : 0, bm = Math.round((kind.m + cr) * 10) / 10;
+    if (bm > 1) { const b = document.createElement('span'); b.className = 'badge ' + (kind.m > 1 ? kind.cls : ''); b.textContent = 'x' + bm + (cr ? ' 👑' : ''); f.el.appendChild(b); }
     f.el.addEventListener('pointerdown', (e) => { e.preventDefault(); game ? hit(f, e) : startGame(f, e); });
     flakes.add(f);
   }
