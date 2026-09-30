@@ -56,6 +56,7 @@
   .pil .pn small{color:var(--mute);font-size:11.5px;display:flex;align-items:center;gap:4px}
   .pil .pn small i{width:14px;height:14px;border-radius:50%;background:center/cover;flex:none}
   .pil .dev{font-size:12px;margin-right:5px;opacity:.8;font-weight:400}
+  .pil .plays{display:block;font-size:10.5px;color:var(--mute);font-weight:400;text-align:right}
   .pil li:last-child{border:0}.pil{margin:0;padding:0}.pil .me{color:var(--acc);font-weight:700}`;
   document.head.appendChild(css);
 
@@ -75,7 +76,7 @@
   function showRank(top) {
     card.hidden = false;
     const me = (ls.get('pilNick') || '').toLowerCase();
-    document.getElementById('pil').innerHTML = top.length ? top.map((r, i) => `<li class="${r.nick.toLowerCase() === me ? 'me' : ''}${TEST && r.eq ? ' clk' : ''}"${TEST && r.eq ? ` data-eq="${esc(r.eq)}" data-nick="${esc(r.nick)}" title="Zobacz ekwipunek"` : ''}><span style="width:22px;color:var(--mute)">${i + 1}.</span><span class="pn"><span>${esc(r.nick)}</span>${r.hits ? `<small>${ballAv(r)}${r.hits}× ${esc(r.ball || '')}</small>` : ''}</span><b>${r.dev ? `<span class="dev" title="${r.dev === 'm' ? 'telefon' : 'komputer'}">${r.dev === 'm' ? '📱' : '🖥️'}</span>` : ''}${r.score}</b></li>`).join('') : '<li class="empty">Jeszcze nikt nie zagrał.</li>';
+    document.getElementById('pil').innerHTML = top.length ? top.map((r, i) => `<li class="${r.nick.toLowerCase() === me ? 'me' : ''}${TEST && r.eq ? ' clk' : ''}"${TEST && r.eq ? ` data-eq="${esc(r.eq)}" data-nick="${esc(r.nick)}" title="Zobacz ekwipunek"` : ''}><span style="width:22px;color:var(--mute)">${i + 1}.</span><span class="pn"><span>${esc(r.nick)}</span>${r.hits ? `<small>${ballAv(r)}${r.hits}× ${esc(r.ball || '')}</small>` : ''}</span><b>${r.dev ? `<span class="dev" title="${r.dev === 'm' ? 'telefon' : 'komputer'}">${r.dev === 'm' ? '📱' : '🖥️'}</span>` : ''}${r.score}${TEST && r.plays ? `<small class="plays">${r.plays} ${r.plays === 1 ? 'gra' : r.plays % 10 >= 2 && r.plays % 10 <= 4 && (r.plays % 100 < 12 || r.plays % 100 > 14) ? 'gry' : 'gier'}</small>` : ''}</b></li>`).join('') : '<li class="empty">Jeszcze nikt nie zagrał.</li>';
   }
   const loadRank = (n = 0) => fetch(API).then((r) => { if (!r.ok) throw 0; return r.json(); }).then((j) => showRank(j.top || []))
     .catch(() => { card.hidden = false; document.getElementById('pil').innerHTML = '<li class="empty">Ranking chwilowo niedostępny, ponawiam…</li>'; if (n < 5) setTimeout(() => loadRank(n + 1), 15000); });
@@ -220,18 +221,28 @@
         .then((r) => { if (r.ok && r.j.drop) { ov.querySelector('.box').classList.add('wide'); showDrop(ov.querySelector('#pilDrop'), r.j, (o) => { dropOpen = o; }); } }).catch(() => {});
     }
     ov.querySelector('#pilClose').onclick = close;
-    const save = () => {
+    const save = (auto) => {
       const nick = ov.querySelector('#pilNick').value.trim();
       if (!nick) { ov.querySelector('#pilMsg').textContent = 'Wpisz nick.'; return; }
       ls.set('pilNick', nick); ls.set('pilGral', '1');
       ov.querySelector('#pilMsg').textContent = 'Zapisuję…';
       fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nick, score, dev: TOUCH ? 'm' : 'd', hits: gHits, ball: D.users[f.u] || '', ballUid: /^\d+$/.test(f.u) ? f.u : '', ...(TEST ? { key: getKey() } : {}) }) })
-        .then((r) => r.json()).then((j) => { if (j.top) { showRank(j.top); if (dropOpen) ov.querySelector('#pilMsg').textContent = 'Wynik zapisany. Rozstrzygnij przedmiot poniżej.'; else { close(); card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } } else ov.querySelector('#pilMsg').textContent = j.error || 'Błąd zapisu.'; })
+        .then((r) => r.json()).then((j) => { if (j.top) { showRank(j.top); const m = j.me; if (TEST && m) { ov.querySelector('#pilMsg').innerHTML = m.record ? `✔ Zapisano — <b>nowy rekord!</b> · gier: ${m.plays}` : `✔ Zapisano (rekord: ${m.best}, ten wynik niższy) · gier: ${m.plays}`; return; } if (dropOpen) ov.querySelector('#pilMsg').textContent = 'Wynik zapisany. Rozstrzygnij przedmiot poniżej.'; else { close(); card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } } else ov.querySelector('#pilMsg').textContent = j.error || 'Błąd zapisu.'; })
         .catch(() => { ov.querySelector('#pilMsg').textContent = 'Nie udało się zapisać, spróbuj jeszcze raz.'; });
     };
     ov.querySelector('#pilSave').onclick = save;
     ov.querySelector('#pilNick').addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
-    setTimeout(() => ov.querySelector('#pilNick').focus(), 50);
+    // Wersja testowa: zapamiętany nick → zapis automatyczny (serwer i tak trzyma najlepszy wynik), z opcją zmiany nicku
+    const saved = ls.get('pilNick');
+    if (TEST && saved) {
+      const nickEl = ov.querySelector('#pilNick'), btn = ov.querySelector('#pilSave');
+      nickEl.style.display = 'none'; btn.style.display = 'none';
+      const who2 = document.createElement('div'); who2.className = 'txt';
+      who2.innerHTML = `Gracz: <b>${esc(saved)}</b> · <a href="#" data-a="chg">Zmień nick</a>`;
+      nickEl.before(who2);
+      who2.querySelector('[data-a="chg"]').onclick = (e) => { e.preventDefault(); who2.remove(); nickEl.style.display = ''; btn.style.display = ''; btn.textContent = 'Zapisz pod nowym nickiem'; nickEl.value = ''; nickEl.focus(); };
+      save(true);
+    } else setTimeout(() => ov.querySelector('#pilNick').focus(), 50);
   }
 
   // --- ekwipunek (tylko wersja testowa: /test/) ---
@@ -244,7 +255,7 @@
     stlumiony: ['p', 'Stłumiony', 5, 15, 1, ['Stłumiony', 'Stłumiona', 'Stłumione'], (v) => `Podbicie niższe o ${v}%`],
     ciezki: ['p', 'Ciężki', 5, 10, 1, ['Ciężki', 'Ciężka', 'Ciężkie'], (v) => `Grawitacja słabsza o ${v}%`],
     zreczny: ['p', 'Zręczny', 10, 30, 1, ['Zręczny', 'Zręczna', 'Zręczne'], (v) => `Odbicie w bok mniejsze o ${v}%`],
-    szczesliwy: ['p', 'Szczęśliwy', 3, 10, 1, ['Szczęśliwy', 'Szczęśliwa', 'Szczęśliwe'], (v) => `+${v} pkt proc. szansy na rzadszy przedmiot`],
+    szczesliwy: ['p', 'Szczęśliwy', 3, 10, 1, ['Szczęśliwy', 'Szczęśliwa', 'Szczęśliwe'], (v) => `+${v}% szansy na rzadszy przedmiot`],
     rozpedzony: ['p', 'Rozpędzony', 10, 20, 1, ['Rozpędzony', 'Rozpędzona', 'Rozpędzone'], (v) => `Start gry od +${v}% increased`],
     wytrwalosci: ['s', 'Wytrwałości', 9, 10, 1, 'Wytrwałości', (v) => `Poziom co ${v} podbić (zamiast 8)`],
     olbrzyma: ['s', 'Olbrzyma', 5, 10, 1, 'Olbrzyma', (v) => `Piłeczka większa o ${v}%`],
@@ -274,7 +285,7 @@
     if (b.zreczny) L.push(`Odbicie w bok mniejsze o ${pct(b.zreczny)}%`);
     if (b.olb) L.push(`Piłeczka większa o ${pct(b.olb)}%`);
     if (b.mrozu) L.push(`Po wzroście poziomu spowolnienie ${b.mrozu.toFixed(1)} s`);
-    if (b.lucky) L.push(`+${b.lucky} pkt proc. szansy na rzadszy przedmiot`);
+    if (b.lucky) L.push(`+${b.lucky}% szansy na rzadszy przedmiot`);
     if (b.guardian) L.push(`Anioł Stróż: ${b.guardian}× ratunek na grę`);
     return `<div class="eqsum"><h4>Łączne bonusy</h4>${L.length ? L.map((x) => `<div>${esc(x)}</div>`).join('') : '<div class="mute">brak</div>'}</div>`;
   };
@@ -307,7 +318,8 @@
   // Sekcja dropu w oknie końca gry; setOpen(true) dopóki czeka na decyzję (okno się wtedy nie zamyka po zapisie wyniku)
   function showDrop(host, j, setOpen) {
     const it = j.drop;
-    host.innerHTML = `<div class="eqdrop"><div>Wypadł przedmiot! <b style="color:${COL[it.rarity]}">${RAR[it.rarity]}</b></div><div class="eqbody"></div></div>`;
+    host.innerHTML = `<div class="eqdrop"><div>Wypadł przedmiot! <b style="color:${COL[it.rarity]}">${RAR[it.rarity]}</b></div><div class="eqbody"></div><div class="row" style="margin-top:8px"><button data-a="seeinv">Zobacz ekwipunek</button></div></div>`;
+    host.querySelector('[data-a="seeinv"]').onclick = () => openInv();
     const body = host.querySelector('.eqbody');
     if (j.equipped) { body.innerHTML = `<div class="eqres">${itemEl(it)}<span>Założono: ${coloured(it)}</span></div>`; setOpen(false); return; }
     setOpen(true);
