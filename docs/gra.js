@@ -76,7 +76,8 @@
   // Karta rankingu pod galerią sław: widoczna dopiero dla kogoś, kto już zagrał
   const fameCard = document.getElementById('fame')?.closest('.card');
   const card = document.createElement('div'); card.className = 'card'; card.hidden = true;
-  card.innerHTML = '<h3>Piłeczka · ranking</h3><ul class="pil" id="pil"><li class="empty">Ładowanie…</li></ul>';
+  card.innerHTML = `<h3 style="display:flex;justify-content:space-between;align-items:center">Piłeczka · ranking${TEST ? '<a href="#" id="pilLeg" style="font-size:11px;letter-spacing:0;text-transform:none;color:var(--acc)">Legenda</a>' : ''}</h3><ul class="pil" id="pil"><li class="empty">Ładowanie…</li></ul>`;
+  if (TEST) card.querySelector('#pilLeg').onclick = (e) => { e.preventDefault(); openLegend(); };
   fameCard?.after(card);
   const ballAv = (r) => { const a = r.ballUid && D?.avatars?.[r.ballUid]; return a ? `<i style="background-image:url('${esc(a)}')"></i>` : ''; };
   function showRank(top) {
@@ -375,6 +376,21 @@
     eqPost('/view', { eq }).then((r) => { if (!r.ok) throw 0; ov.querySelector('.eqmain').innerHTML = invPanel(r.j, 'Ekwipunek: ' + nick); })
       .catch(() => { ov.querySelector('.eqmain').textContent = 'Nie udało się pobrać ekwipunku.'; });
   }
+  // Legenda gry: rzadkości przedmiotów i klas afiksów (bez listy samych afiksów)
+  function openLegend() {
+    const ov = document.createElement('div'); ov.className = 'eqo';
+    const r = (c, n, d) => `<div class="lgr"><b style="color:${c}">${n}</b><span>${d}</span></div>`;
+    ov.innerHTML = `<div class="eqbox" style="width:min(380px,calc(100vw - 32px))"><h3 style="margin:0 0 10px">Legenda · przedmioty</h3>
+      <h4>Rzadkość przedmiotów</h4>
+      ${r(COL.n, 'Normalny', '+0.1x mnożnika')}${r(COL.m, 'Magiczny', '+0.1x mnożnika i 1 afiks')}${r(COL.r, 'Rzadki', '+0.1x mnożnika i 2 afiksy')}${r(COL.u, 'Unikat', '+0.1x mnożnika, 1 afiks i raz na grę odbicie od dołu')}
+      <h4>Klasy afiksów</h4>
+      <div class="lgr"><b class="t-slaby">słaby</b><span>najczęstszy</span></div><div class="lgr"><b class="t-dobry">dobry</b><span>częsty</span></div><div class="lgr"><b class="t-znakomity">znakomity</b><span>rzadki</span></div><div class="lgr"><b class="t-boski">boski</b><span>bardzo rzadki</span></div>
+      <h4>Zestaw</h4><div class="lgr"><b style="color:#3fd13f">2 / 3 / 4</b><span>przedmioty z awatarem tej samej osoby: +0.2x / +0.5x / +0.5x i odbicie od dołu</span></div>
+      <p class="mute" style="font-size:12px;margin:10px 0 0">Przedmiot wypada po grze od 15 pkt — im więcej punktów, tym większa szansa na rzadszy.</p>
+      <div class="row" style="margin-top:12px"><button data-a="close">Zamknij</button></div></div>`;
+    document.body.appendChild(ov);
+    ov.onclick = (e) => { if (e.target === ov || e.target.dataset?.a === 'close') ov.remove(); };
+  }
   const fmtKey = (k) => k.match(/.{4}/g).join('-');
   function openInv() {
     const ov = document.createElement('div'); ov.className = 'eqo';
@@ -453,6 +469,7 @@
     .eqcode .warn{font-size:12px;color:#e0764f}
     .eqinv{position:relative;width:420px;height:400px;border-radius:6px;background:radial-gradient(ellipse at 30% 20%,rgba(255,255,255,.05),transparent 60%),repeating-linear-gradient(115deg,rgba(255,255,255,.015) 0 2px,transparent 2px 7px),linear-gradient(#3a3835,#2a2826);border:3px solid #56514a;box-shadow:inset 0 0 0 2px #1b1a18,inset 0 0 40px rgba(0,0,0,.6);box-sizing:border-box;color:#ecebe6}
     .eqinv h3{margin:0;padding:12px 0 6px;text-align:center;font:600 20px Georgia,'Times New Roman',serif;letter-spacing:.28em;color:#c9b98f;text-shadow:0 1px 0 #000}
+    .lgr{display:flex;gap:10px;align-items:baseline;padding:3px 0;font-size:13px}.lgr b{min-width:80px}.lgr span{color:var(--mute)}.eqbox h4{margin:12px 0 4px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
     .tier{display:block;font-size:10px;opacity:.85;margin:-1px 0 3px}.t-slaby{color:#9a9892}.t-dobry{color:#8fb3ff}.t-znakomity{color:#c38bff;text-shadow:0 0 6px rgba(160,90,255,.9)}.t-boski{color:#ff5a4a;text-shadow:0 0 7px rgba(255,40,30,.95)}
     .eqslot.setg{outline:2px solid #3fd13f;outline-offset:2px;box-shadow:inset 0 0 0 2px #000,0 0 14px rgba(63,209,63,.7)!important}
     .eqslot{position:absolute;box-sizing:border-box;background:#0d0d0c;border:2px solid #4a463f;box-shadow:inset 0 0 0 2px #000,inset 0 0 18px rgba(0,0,0,.9);display:grid;place-items:center}

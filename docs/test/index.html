@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Licznik postów d2jsp 3.7-test</title>
+<title>Licznik postów d2jsp 3.8-test</title>
 <style>
 :root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e4e2dc;--acc:#b4441f;--bar:#d9825f;
  --gold:#c9961a;--gold2:#f3d46b;--goldbg:#fff8e3;--goldline:#efd89a;--silver:#9aa0a6;--bronze:#b3713f}
@@ -183,7 +183,7 @@ aside{position:sticky;top:16px}
 </svg>
 <div class="wrap">
 <main>
-<h1>Licznik postów — d2jsp Polska <span class="ver">3.7-test</span></h1>
+<h1>Licznik postów — d2jsp Polska <span class="ver">3.8-test</span></h1>
 <p class="sub" id="sub">Ładowanie danych…</p>
 
 <div class="ranges" id="ranges">
@@ -408,6 +408,19 @@ document.addEventListener('scroll', () => { $('pie').hidden = true; }, { passive
   })(performance.now());
 })();
 
+// Legenda na dole strony (ikony te same co w rankingu)
+document.getElementById('legendSlot').outerHTML = `<footer class="legend">
+  <h2>Legenda</h2>
+  <div class="lg">
+    <div><span class="ic">@Y@</span><p><b>Puchar roku</b><span>najwięcej postów w całym roku</span></p></div>
+    <div><span class="ic"><span class="ystar" style="margin:0">★</span></span><p><b>Błękitna gwiazdka</b><span>przy nicku na zawsze, za każdy tytuł mistrza roku</span></p></div>
+    <div><span class="ic">@F@</span><p><b>Płonący puchar</b><span>każdy tytuł mistrza miesiąca zamienia jeden złoty puchar w płonący</span></p></div>
+    <div><span class="ic">@M@</span><p><b>Puchar miesiąca</b><span>najwięcej postów w miesiącu</span></p></div>
+    <div><span class="ic"><span class="reign">Nick</span></span><p><b>Fioletowy nick</b><span>panujący mistrz miesiąca, do czasu kolejnego mistrza</span></p></div>
+    <div><span class="ic">@W@</span><p><b>Puchar tygodnia</b><span>najwięcej postów od niedzieli 21:00 do niedzieli 21:00</span></p></div>
+  </div>
+</footer>`.replace('@Y@', cupSvg('y')).replace('@M@', cupSvg('m')).replace('@F@', FIRE).replace('@W@', cupSvg('w'));
+
 fetch('../data.json?' + Date.now()).then((r) => r.json()).then((d) => {
   D = d;
   // Wszystko liczymy od startu pucharów (21.09, poniedziałek 00:00); starsze posty zostają w pliku, ale ich nie pokazujemy.
@@ -469,6 +482,6 @@ function render() {
       <span class="d">${show ? `${dt.getDate()}.${String(dt.getMonth() + 1).padStart(2, '0')}${many ? '' : `<i>${WD[dt.getDay()]}</i>`}` : '&nbsp;'}</span></div>`; }).join('');
 }
 </script>
-<script src="../gra.js?v=1790778215"></script>
+<script src="../gra.js?v=1790778745"></script>
 </body>
 </html>

@@ -182,7 +182,7 @@ aside{position:sticky;top:16px}
 </svg>
 <div class="wrap">
 <main>
-<h1>Licznik postów — d2jsp Polska <span class="ver">3.1</span></h1>
+<h1>Licznik postów — d2jsp Polska <span class="ver">3.2</span></h1>
 <p class="sub" id="sub">Ładowanie danych…</p>
 
 <div class="ranges" id="ranges">
@@ -406,6 +406,19 @@ document.addEventListener('scroll', () => { $('pie').hidden = true; }, { passive
     requestAnimationFrame(loop);
   })(performance.now());
 })();
+
+// Legenda na dole strony (ikony te same co w rankingu)
+document.getElementById('legendSlot').outerHTML = `<footer class="legend">
+  <h2>Legenda</h2>
+  <div class="lg">
+    <div><span class="ic">@Y@</span><p><b>Puchar roku</b><span>najwięcej postów w całym roku</span></p></div>
+    <div><span class="ic"><span class="ystar" style="margin:0">★</span></span><p><b>Błękitna gwiazdka</b><span>przy nicku na zawsze, za każdy tytuł mistrza roku</span></p></div>
+    <div><span class="ic">@F@</span><p><b>Płonący puchar</b><span>każdy tytuł mistrza miesiąca zamienia jeden złoty puchar w płonący</span></p></div>
+    <div><span class="ic">@M@</span><p><b>Puchar miesiąca</b><span>najwięcej postów w miesiącu</span></p></div>
+    <div><span class="ic"><span class="reign">Nick</span></span><p><b>Fioletowy nick</b><span>panujący mistrz miesiąca, do czasu kolejnego mistrza</span></p></div>
+    <div><span class="ic">@W@</span><p><b>Puchar tygodnia</b><span>najwięcej postów od niedzieli 21:00 do niedzieli 21:00</span></p></div>
+  </div>
+</footer>`.replace('@Y@', cupSvg('y')).replace('@M@', cupSvg('m')).replace('@F@', FIRE).replace('@W@', cupSvg('w'));
 
 fetch('data.json?' + Date.now()).then((r) => r.json()).then((d) => {
   D = d;
