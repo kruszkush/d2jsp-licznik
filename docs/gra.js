@@ -354,12 +354,12 @@
     const r0 = cv([[15, .25], [100, 1.25], [300, 3], [600, 5], [1000, 12.5]]), m0 = cv([[15, 14], [100, 25], [300, 35], [600, 42], [1000, 45]]);
     const n0 = Math.max(5, 100 - m0 - r0), s = Math.min(luck, n0);
     const n = n0 - s + .225 * s, m = m0 + .7 * s, r = r0 + .075 * s, u = score < 50 ? 0 : .3 + .5 * Math.min(1, (score - 50) / 100), k = (100 - u) / (n + m + r);
-    return { n: n * k, m: m * k, r: r * k, u, mf: Math.round(((m + r) / 15 - 1) * 100) };
+    return { n: n * k, m: m * k, r: r * k, u, mf: Math.round(((m + r) / 14.25 - 1) * 100) };
   }
   function chancesHtml(score) {
     if (score < 15) return `<div class="mf">Przedmiot wypada od 15 pkt — im więcej punktów, tym większa szansa na rzadszy.</div>`;
     const c = chances(score, B.lucky || 0), c0 = chances(score, 0), p = (v) => v < 10 ? v.toFixed(1) : Math.round(v);
-    const mfPts = Math.round(c0.m + c0.r - 15), mfIt = B.lucky || 0; // magic find: zwykła suma — z punktów + z przedmiotów
+    const mfPts = Math.round(c0.m + c0.r - 14.25), mfIt = B.lucky || 0; // magic find: zwykła suma — z punktów + z przedmiotów
     const row = (k, name, v) => `<div class="mfr"><span style="color:${COL[k]}">${name}</span><i>·</i><b>${p(v)}%</b></div>`;
     return `<details class="mf"><summary>Magic find <b>+${mfPts + mfIt}%</b> ▾</summary>
       <div class="mfr"><span>Szansa na drop</span><i>·</i><b>${Math.round(Math.min(1, score / 80) * 100)}%</b></div>
