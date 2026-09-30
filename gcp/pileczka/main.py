@@ -123,8 +123,12 @@ def roll_item(score, uid, nick, luck=0):
 def eq_ref(key):
     return EQ.document(hashlib.sha256(key.encode()).hexdigest()[:40])
 
+PENDING_TTL = 600  # nierozstrzygnięty przedmiot przepada po 10 min (decyzja tylko w oknie końca gry)
 def eq_state(d):
-    return {"slots": {s: (d.get("slots") or {}).get(s) for s in SLOTS}, "pending": d.get("pending")}
+    p = d.get("pending")
+    if p and time.time() - d.get("pendingTs", 0) > PENDING_TTL:
+        p = None
+    return {"slots": {s: (d.get("slots") or {}).get(s) for s in SLOTS}, "pending": p}
 
 def eq_key(j):
     k = j.get("key")
@@ -162,7 +166,7 @@ def eq_drop(req, j):
             d["pending"] = None
             out = {"drop": item, "equipped": True, "slots": d["slots"]}
         else:
-            d["pending"] = item
+            d["pending"], d["pendingTs"] = item, now
             out = {"drop": item, "current": d["slots"][item["slot"]], "slots": d["slots"]}
         tx.set(ref, d)
         return out
