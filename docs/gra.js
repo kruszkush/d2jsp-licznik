@@ -118,7 +118,7 @@
   const totalMult = () => game ? Math.round(game.base * multOf(game.lvl) * 10) / 10 : 1;
   // liczone od wysokości okna: na telefonie (wąski, wysoki ekran) awatary nie są malutkie, a wysokość podbicia jest proporcjonalna
   const scaleK = () => Math.max(.5, Math.min(1.4, innerHeight / 950));
-  const G = 1500, JUMP = 720, PER_LEVEL = 8;
+  const G = 1500, JUMP = 610, PER_LEVEL = 8;
   const TOUCH = matchMedia('(pointer: coarse)').matches; // na dotyku gra się łatwiej (kciuk, cały ekran w zasięgu) — +20% prędkości
   const speedOf = (lvl) => (1 + lvl * 0.07) * (TOUCH ? 1.2 : 1), multOf = (lvl) => Math.round((1 + lvl * 0.1) * 10) / 10;
   const hud = document.createElement('div'); hud.id = 'hud'; hud.hidden = true; document.body.appendChild(hud);

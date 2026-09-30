@@ -182,7 +182,7 @@ aside{position:sticky;top:16px}
 </svg>
 <div class="wrap">
 <main>
-<h1>Licznik postów — d2jsp Polska <span class="ver">2.8</span></h1>
+<h1>Licznik postów — d2jsp Polska <span class="ver">2.9</span></h1>
 <p class="sub" id="sub">Ładowanie danych…</p>
 
 <div class="ranges" id="ranges">
@@ -228,7 +228,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 const nick = (u) => D.users[u] || u;
 const link = (u) => /^\d+$/.test(u) ? `<a href="https://forums.d2jsp.org/user.php?i=${u}" target="_blank" rel="noopener">${esc(nick(u))}</a>` : esc(nick(u));
 
-// --- Tygodnie: poniedziałek 00:00 – niedziela 23:59:59 czasu polskiego ---
+// --- Tygodnie: niedziela 21:00 – niedziela 21:00 czasu polskiego (tydzień 21–27.09 jeszcze pn 00:00 – nd 23:59) ---
 const PL = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Warsaw', year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short', timeZoneName: 'longOffset' });
 function plInfo(ms) { const p = Object.fromEntries(PL.formatToParts(ms).map((x) => [x.type, x.value])); return { date: `${p.year}-${p.month}-${p.day}`, wd: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].indexOf(p.weekday), off: p.timeZoneName.replace('GMT', '') || '+00:00' }; }
 function plMidnight(dateStr) { // chwila 00:00 czasu polskiego danego dnia
@@ -236,7 +236,12 @@ function plMidnight(dateStr) { // chwila 00:00 czasu polskiego danego dnia
   return new Date(`${dateStr}T00:00:00${plInfo(guess).off}`).getTime();
 }
 const addDays = (dateStr, n) => { const d = new Date(dateStr + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
-function weekOf(ms) { const i = plInfo(ms); const mon = addDays(i.date, -i.wd); return { mon, start: plMidnight(mon), end: plMidnight(addDays(mon, 7)) }; }
+// Od tygodnia 28.09 okresy kończą się o 21:00 (godzina codziennej aktualizacji): granica = północ danego dnia − 3 h.
+// Między 21:00 a północą nie ma zmiany czasu, więc to zawsze dokładnie 21:00 czasu polskiego. Wcześniejsze okresy bez zmian.
+const CUT_DAY = '2026-09-28', H3 = 3 * 3600e3;
+const edge = (dateStr) => plMidnight(dateStr) - (dateStr > CUT_DAY ? H3 : 0);
+const shift = (ms) => ms >= plMidnight(CUT_DAY) ? ms + H3 : ms;
+function weekOf(ms) { const i = plInfo(shift(ms)); const mon = addDays(i.date, -i.wd); return { mon, start: edge(mon), end: edge(addDays(mon, 7)) }; }
 const dm = (s) => { const [, m, d] = s.split('-'); return `${+d}.${m}`; };
 const weekLabel = (w) => `${dm(w.mon)}–${dm(addDays(w.mon, 6))}`;
 const MIES = ['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec','Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'];
@@ -254,9 +259,9 @@ const MONTHS = ['styczeń','luty','marzec','kwiecień','maj','czerwiec','lipiec'
 const nextMonth = (ym) => { let [y, m] = ym.split('-').map(Number); m++; if (m > 12) { m = 1; y++; } return `${y}-${String(m).padStart(2, '0')}`; };
 const P = {
   w: { of(ms) { const w = weekOf(ms); return { key: w.mon, start: w.start, end: w.end, label: weekLabel(w), nice: weekNice(w) }; }, ok: (p) => p.key >= START },
-  m: { of(ms) { const k = plInfo(ms).date.slice(0, 7), [y, m] = k.split('-'); return { key: k, start: plMidnight(k + '-01'), end: plMidnight(nextMonth(k) + '-01'), label: `${MONTHS[m - 1]} ${y}` }; }, ok: (p) => p.key >= FIRST_MONTH },
-  y: { of(ms) { const y = plInfo(ms).date.slice(0, 4); const s = y === START.slice(0, 4) ? START : y + '-01-01';
-         return { key: y, start: plMidnight(s), end: plMidnight(`${+y + 1}-01-01`), label: s === START ? `${y} (od ${dm(START)})` : y }; }, ok: (p) => p.key >= START.slice(0, 4) },
+  m: { of(ms) { const k = plInfo(shift(ms)).date.slice(0, 7), [y, m] = k.split('-'); return { key: k, start: edge(k + '-01'), end: edge(nextMonth(k) + '-01'), label: `${MONTHS[m - 1]} ${y}` }; }, ok: (p) => p.key >= FIRST_MONTH },
+  y: { of(ms) { const y = plInfo(shift(ms)).date.slice(0, 4); const s = y === START.slice(0, 4) ? START : y + '-01-01';
+         return { key: y, start: edge(s), end: edge(`${+y + 1}-01-01`), label: s === START ? `${y} (od ${dm(START)})` : y }; }, ok: (p) => p.key >= START.slice(0, 4) },
 };
 const TYPE = { w: { name: 'tygodnia', sym: 'cup' }, m: { name: 'miesiąca', sym: 'cupM' }, y: { name: 'roku', sym: 'cupY' } };
 const cupSvg = (t = 'w', cls = 'cup') => `<svg class="${cls}"><use href="#${TYPE[t].sym}"/></svg>`;
@@ -328,7 +333,7 @@ function renderCups(R) {
     <div class="grow"><div class="nm">${link(u)}</div><div class="track"><i style="width:${n / lead * 100}%"></i></div></div><span class="num">${fmt(n)}</span></li>`).join('')
     || '<li class="empty">Jeszcze nikt nie pisał w tym tygodniu.</li>';
   const up = new Date(D.updated), today = ymd(Date.now()) === ymd(up), yest = ymd(Date.now() - day) === ymd(up);
-  $('raceNote').innerHTML = `Koniec: niedziela 23:59 (za ${until(c.p.end)})<br><b>Ostatnia aktualizacja:</b> ${today ? 'dziś' : yest ? 'wczoraj' : up.toLocaleDateString('pl-PL')} ${up.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })} · kolejna codziennie o 21:00`;
+  $('raceNote').innerHTML = `Koniec: niedziela 21:00 (za ${until(c.p.end)})<br><b>Ostatnia aktualizacja:</b> ${today ? 'dziś' : yest ? 'wczoraj' : up.toLocaleDateString('pl-PL')} ${up.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })} · kolejna codziennie o 21:00`;
 
   const hist = [...R.y.past.map((x) => ['y', x]), ...R.m.past.map((x) => ['m', x]), ...R.w.past.map((x) => ['w', x])].sort((a, b) => b[1].p.end - a[1].p.end || 'ymw'.indexOf(a[0]) - 'ymw'.indexOf(b[0]));
   $('hist').innerHTML = hist.map(([t, x]) => `<li><span class="dt" title="${x.p.label}">${t === 'w' ? x.p.nice.replace(' · ', '<br>') : x.p.label}</span>${cupSvg(t)}<div class="grow"><div class="nm">${x.winners.map(link).join(' & ')}</div></div><span class="num">${fmt(x.rank[0][1])}</span></li>`).join('')
@@ -463,6 +468,6 @@ function render() {
       <span class="d">${show ? `${dt.getDate()}.${String(dt.getMonth() + 1).padStart(2, '0')}${many ? '' : `<i>${WD[dt.getDay()]}</i>`}` : '&nbsp;'}</span></div>`; }).join('');
 }
 </script>
-<script src="gra.js?v=1790765823"></script>
+<script src="gra.js?v=1790766796"></script>
 </body>
 </html>

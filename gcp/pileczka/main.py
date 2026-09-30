@@ -46,7 +46,8 @@ def pileczka(req):
         ball_uid = str(j.get("ballUid", ""))[:12] if str(j.get("ballUid", "")).isdigit() else None
         dev = j.get("dev") if j.get("dev") in ("m", "d") else None
         key = ip_key(req)
-        nl = nick.lower()
+        # ten sam gracz mimo emotek/spacji/znaków: porównujemy tylko litery i cyfry
+        nl = re.sub(r"[^0-9a-ząćęłńóśźż]", "", nick.lower()) or nick.lower()
         ref = COL.document(hashlib.sha256(("nick:" + nl).encode()).hexdigest()[:32])  # jeden wpis na nick
 
         @firestore.transactional

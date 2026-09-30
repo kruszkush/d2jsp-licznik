@@ -54,8 +54,9 @@ async function open(path) {
 }
 async function list(o) {
   await open(`forum.php?f=${F}&o=${o}`);
-  const rows = await page.evaluate((F) => [...document.querySelectorAll('tr')].filter((tr) => tr.querySelector('a.ta')).map((tr) => {
-    const a = tr.querySelector('a.ta'), td = tr.querySelectorAll('td');
+  // główny link tematu: topic.php?t=N&f=F bez dodatków (klasa "ta" oznacza tylko nieprzeczytane, więc na niej nie polegamy)
+  const rows = await page.evaluate((F) => [...document.querySelectorAll('tr')].map((tr) => [tr, [...tr.querySelectorAll('a[href*="topic.php?t="]')].find((l) => new RegExp(`^topic\\.php\\?t=\\d+&f=${F}$`).test(l.getAttribute('href')))]).filter(([, a]) => a).map(([tr, a]) => {
+    const td = tr.querySelectorAll('td');
     const t = (a.getAttribute('href').match(/t=(\d+)/) || [])[1];
     let maxO = 0; for (const l of tr.querySelectorAll('a[href*="topic.php?t="]')) { const m = l.getAttribute('href').match(new RegExp(`t=${t}&f=${F}&o=(\\d+)`)); if (m) maxO = Math.max(maxO, +m[1]); }
     const r = td[3] ? td[3].textContent.replace(/\D/g, '') : '';
