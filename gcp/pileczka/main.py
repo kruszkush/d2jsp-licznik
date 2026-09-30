@@ -165,6 +165,9 @@ def eq_drop(req, j):
             d["slots"][item["slot"]] = item
             d["pending"] = None
             out = {"drop": item, "equipped": True, "slots": d["slots"]}
+        elif item["rarity"] == "n" and d["slots"][item["slot"]].get("rarity") != "n":
+            # normalny przy założonym magicznym/rzadkim/unikacie jest zawsze gorszy (bez afiksów, nie liczy się do zestawu) — odrzucamy bez pytania
+            out = {"drop": item, "autoDiscard": True, "current": d["slots"][item["slot"]], "slots": d["slots"]}
         else:
             d["pending"], d["pendingTs"] = item, now
             out = {"drop": item, "current": d["slots"][item["slot"]], "slots": d["slots"]}

@@ -251,7 +251,7 @@
     let dropOpen = false; // nierozstrzygnięty przedmiot: okno zamyka się tylko przyciskiem
     if (TEST && score >= 15) { // drop idzie od razu, niezależnie od zapisu wyniku
       eqPost('/drop', { key: getKey(), gameId: rndHex().slice(0, 16), score, ballUid: /^\d+$/.test(f.u) ? f.u : '', ballNick: D.users[f.u] || '' })
-        .then((r) => { if (r.ok && r.j.reason === 'pech') ov.querySelector('#pilDrop').innerHTML = `<div class="msg">Tym razem nic nie wypadło (szansa ${r.j.chance}%).</div>`; if (r.ok && r.j.drop) { pendId = r.j.drop.id; ov.querySelector('.box').classList.add('wide'); showDrop(ov.querySelector('#pilDrop'), r.j, (o) => { dropOpen = o; }); } }).catch(() => {});
+        .then((r) => { if (r.ok && r.j.reason === 'pech') ov.querySelector('#pilDrop').innerHTML = `<div class="msg">Tym razem nic nie wypadło (szansa ${r.j.chance}%).</div>`; if (r.ok && r.j.drop) { pendId = r.j.autoDiscard ? null : r.j.drop.id; ov.querySelector('.box').classList.add('wide'); showDrop(ov.querySelector('#pilDrop'), r.j, (o) => { dropOpen = o; }); } }).catch(() => {});
     }
     ov.querySelector('#pilClose').onclick = close;
     const save = (auto) => {
@@ -375,9 +375,10 @@
   // Sekcja dropu w oknie końca gry; setOpen(true) dopóki czeka na decyzję (okno się wtedy nie zamyka po zapisie wyniku)
   function showDrop(host, j, setOpen) {
     const it = j.drop;
-    host.innerHTML = `<div class="eqdrop">${j.equipped ? '' : `<div>Wypadł przedmiot! <b style="color:${COL[it.rarity]}">${RAR[it.rarity]}</b></div>`}<div class="eqbody"></div><a href="#" data-a="seeinv" class="seeinv">Ekwipunek ›</a></div>`;
+    host.innerHTML = `<div class="eqdrop">${j.equipped || j.autoDiscard ? '' : `<div>Wypadł przedmiot! <b style="color:${COL[it.rarity]}">${RAR[it.rarity]}</b></div>`}<div class="eqbody"></div><a href="#" data-a="seeinv" class="seeinv">Ekwipunek ›</a></div>`;
     host.querySelector('[data-a="seeinv"]').onclick = (e) => { e.preventDefault(); openInv(); };
     const body = host.querySelector('.eqbody');
+    if (j.autoDiscard) { body.innerHTML = `<div class="eqres">${itemEl(it)}<span>Wypadł ${coloured(it)} (normalny)<br><small style="color:var(--mute)">gorszy od założonego — odrzucony</small></span></div>`; setOpen(false); return; }
     if (j.equipped) { body.innerHTML = `<div class="eqres">${itemEl(it)}<span>Nowy przedmiot: ${coloured(it)}<br><small style="color:var(--mute)">założony</small></span></div>`; setOpen(false); return; }
     setOpen(true);
     decideUI(body, it, j.current, () => setOpen(false));
