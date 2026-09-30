@@ -109,6 +109,7 @@ def roll_item(score, uid, nick, luck=0):
     slot = random.choice(SLOTS)
     if random.random() < unique_chance(score):
         rarity = "u"  # unikat losowany przed tabelą rzadkości
+        slot = random.choice(("helm", "boots"))  # na razie unikaty tylko: Korona Króla Forum i Kapcie Moderatora
     else:
         rarity = pick_rarity(score, luck)
     # afiksy losowane wg klasy (słaby > dobry > znakomity > boski); mogą się powtarzać na jednym przedmiocie
