@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Licznik postów d2jsp</title>
+<title>Licznik postów d2jsp 3.9</title>
 <style>
 :root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e4e2dc;--acc:#b4441f;--bar:#d9825f;
  --gold:#c9961a;--gold2:#f3d46b;--goldbg:#fff8e3;--goldline:#efd89a;--silver:#9aa0a6;--bronze:#b3713f}
@@ -182,7 +182,7 @@ aside{position:sticky;top:16px}
 </svg>
 <div class="wrap">
 <main>
-<h1>Licznik postów — d2jsp Polska <span class="ver">3.8</span></h1>
+<h1>Licznik postów — d2jsp Polska <span class="ver">3.9</span></h1>
 <p class="sub" id="sub">Ładowanie danych…</p>
 
 <div class="ranges" id="ranges">
@@ -450,6 +450,17 @@ for (const id of ['from', 'to']) $(id).addEventListener('change', () => {
 });
 $('q').addEventListener('input', render);
 
+// Hełm Weterana (gra): premia do piłeczki wg miejsca w rankingu ostatnich 24 h — 1.: +1.0x, 2–3: +0.6x, 4–10: +0.3x
+function crownTable() {
+  const f = Date.now() / 1000 - 86400, m = new Map();
+  for (const p of D.posts) if (p[3] >= f) m.set(p[2], (m.get(p[2]) || 0) + 1);
+  const r = new Map();
+  [...m].sort((a, b) => b[1] - a[1]).slice(0, 10).forEach(([u], i) => r.set(u, i === 0 ? 1 : i < 3 ? .6 : .3));
+  return r;
+}
+// lider ostatnich 24 h: w grze jego piłeczka wypada w 15% przypadków i ma złotą ramkę z koroną
+window.dayLeader = (() => { let at = 0, v = null; return () => { if (!at || Date.now() - at > 6e4) { v = [...crownTable()].find(([, b]) => b === 1)?.[0] || null; at = Date.now(); } return v; }; })();
+
 function render() {
   const f = from / 1000, t = to / 1000;
   const posts = D.posts.filter((p) => p[3] >= f && p[3] <= t);
@@ -481,6 +492,6 @@ function render() {
       <span class="d">${show ? `${dt.getDate()}.${String(dt.getMonth() + 1).padStart(2, '0')}${many ? '' : `<i>${WD[dt.getDay()]}</i>`}` : '&nbsp;'}</span></div>`; }).join('');
 }
 </script>
-<script src="gra.js?v=1790782890"></script>
+<script src="gra.js?v=1790789407"></script>
 </body>
 </html>

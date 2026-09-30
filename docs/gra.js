@@ -10,10 +10,11 @@
   const css = document.createElement('style');
   css.textContent = `
   #snow{position:fixed;inset:0;pointer-events:none;z-index:40;overflow:hidden}
-  .flake.leader{border:3px solid #f2c94c;box-shadow:0 0 14px rgba(242,201,76,.8)}.flake .lcrown{position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-size:20px;pointer-events:none}
+  .flake .badge.b3{left:calc(100% - 18px)}.flake .badge .icr{display:inline-block;margin-left:2px;filter:hue-rotate(235deg) saturate(2.2) brightness(1.1)}
+  .flake.leader{border:3px solid #f2c94c;box-shadow:0 0 14px rgba(242,201,76,.8)}.flake .lcrown{position:absolute;top:-27px;left:50%;transform:translateX(-50%);font-size:25px;pointer-events:none}
   .flake{position:absolute;top:0;left:0;border-radius:50%;background:var(--card) center/cover no-repeat;border:2px solid;display:grid;place-items:center;font-weight:700;color:var(--ink);pointer-events:auto;cursor:pointer;user-select:none;opacity:.85;will-change:transform;contain:layout}
   .flake:hover{opacity:1}
-  .flake .badge{position:absolute;right:-6px;top:-6px;background:#e0a526;color:#141413;font-weight:800;border-radius:999px;padding:1px 6px;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,.4);border:2px solid #141413;line-height:1.3;pointer-events:none}
+  .flake .badge{position:absolute;left:calc(100% - 30px);white-space:nowrap;top:-6px;background:#e0a526;color:#141413;font-weight:800;border-radius:999px;padding:1px 6px;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,.4);border:2px solid #141413;line-height:1.3;pointer-events:none}
   .flake .b2{background:#ff8a3d}.flake .b3{background:#ff5a3d;color:#fff}.flake .b4{background:#d9264a;color:#fff}
   .flake.ball .badge{display:none}
   .flake.ball{opacity:1;z-index:2}
@@ -123,7 +124,7 @@
     if (window.dayLeader?.() === u) { f.el.classList.add('leader'); const c = document.createElement('span'); c.className = 'lcrown'; c.textContent = '👑'; f.el.appendChild(c); }
     // z Koroną Króla Forum plakietka pokazuje mnożnik piłeczki już z premią za miejsce właściciela awatara w top 10 z 24 h
     const cr = B.korona && window.crownOf ? window.crownOf(u) : 0, bm = Math.round((kind.m + cr) * 10) / 10;
-    if (bm > 1) { const b = document.createElement('span'); b.className = 'badge ' + (kind.m > 1 ? kind.cls : ''); b.textContent = 'x' + bm; if (cr) b.title = `z Koroną: +${cr}x`; f.el.appendChild(b); }
+    if (bm > 1) { const b = document.createElement('span'); b.className = 'badge ' + (kind.m > 1 ? kind.cls : ''); b.innerHTML = 'x' + bm + (cr ? '<span class="icr">👑</span>' : ''); if (cr) b.title = `z Hełmem Weterana: +${cr}x`; f.el.appendChild(b); }
     f.el.addEventListener('pointerdown', (e) => { e.preventDefault(); game ? hit(f, e) : startGame(f, e); });
     flakes.add(f);
   }
@@ -133,7 +134,7 @@
   // Co 8 podbić poziom w górę: awatar leci szybciej (cały ruch przyspiesza), a mnożnik punktów rośnie o 0,1
   // Rozmiar i fizyka liczone względem wielkości okna — przybliżenie strony (Ctrl +) nie ułatwia gry
   // Rozmiary piłeczek: mniejsza = trudniej, ale większy mnożnik bazowy (mnoży się z mnożnikiem poziomu)
-  const KINDS = [{ p: 1, m: 1, w: 25 }, { p: .8, m: 1.3, w: 25, cls: 'b2' }, { p: .65, m: 1.7, w: 25, cls: 'b3' }, { p: .5, m: 2.2, w: 25, cls: 'b4' }];
+  const KINDS = [{ p: 1.15, m: 1, w: 34 }, { p: 1, m: 1.3, w: 33, cls: 'b2' }, { p: .8, m: 1.7, w: 33, cls: 'b3' }];
   const pickKind = () => { let r = Math.random() * 100; for (const k of KINDS) { if ((r -= k.w) < 0) return k; } return KINDS[0]; };
   const BADGE = { 1.3: '#ff8a3d', 1.7: '#ff5a3d', 2.2: '#d9264a' }; // kolory jak plakietki na piłeczkach
   // Bonusy z założonych przedmiotów (tylko TEST; bez przedmiotów wszystko jest zerem i gra liczy jak dotąd)
@@ -145,7 +146,7 @@
     for (const it of Object.values(slots || {})) {
       if (!it) continue;
       b.impl += it.implicit?.mult || 0;
-      if (it.rarity === 'u' && it.slot === 'helm') b.korona = 1; // Korona Króla Forum
+      if (it.rarity === 'u' && it.slot === 'helm') b.korona = 1; // Hełm Weterana
       if (it.rarity === 'u' && it.slot === 'boots') b.kapcie = 1; // Kapcie Moderatora
       for (const a of it.affixes || []) {
         const v = a.v || 0;
@@ -294,7 +295,7 @@
   // --- ekwipunek (tylko wersja testowa: /test/) ---
   const COL = { n: '#c8c8c8', m: '#6c8cff', r: '#f2d24b', u: '#c7864a' }, RAR = { n: 'Normalny', m: 'Magiczny', r: 'Rzadki', u: 'Unikat' };
   const SLOT = { helm: ['Hełm', 0, 'hełm'], armor: ['Zbroja', 1, 'zbroja'], gloves: ['Rękawice', 2, 'rękawice'], boots: ['Buty', 2, 'buty'] }; // nazwa, rodzaj (m/ż/lm), etykieta pustego slotu
-  const UNIQ = { helm: 'Korona Króla Forum', armor: 'Zbroja Anioła Stróża', gloves: 'Rękawice Anioła Stróża', boots: 'Kapcie Moderatora' };
+  const UNIQ = { helm: 'Hełm Weterana', armor: 'Zbroja Anioła Stróża', gloves: 'Rękawice Anioła Stróża', boots: 'Kapcie Moderatora' };
   // afiksy: [typ p/s, nazwa, min, max, krok, przymiotnik m/ż/lm albo dopełniacz, opis(v)]
   const AFF = {
     ostry: ['p', 'Ostry', 0.4, 1.0, 0.1, ['Ostry', 'Ostra', 'Ostre'], (v) => `+${v.toFixed(1)}x mnożnika`],
@@ -342,7 +343,7 @@
     if (b.olb) L.push(`Większa piłeczka o ${pct(b.olb)}%`);
     if (b.lucky) L.push(`+${b.lucky}% szansy na rzadszy przedmiot`);
     if (b.kapcie) L.push('Kapcie Moderatora: raz na grę kliknięcie w dowolne miejsce ekranu liczy się jako podbicie');
-    if (b.korona) L.push('Korona: piłeczka z awatarem kogoś z top 10 ostatnich 24 h dostaje +1.0x (1. miejsce), +0.6x (2–3), +0.3x (4–10)');
+    if (b.korona) L.push('Hełm Weterana: piłeczka z awatarem kogoś z top 10 ostatnich 24 h dostaje +1.0x (1. miejsce), +0.6x (2–3), +0.3x (4–10)');
     if (b.guardian) L.push(`Anioł Stróż: ${b.guardian}× ratunek na grę`);
     return `<div class="eqsum"><h4>Łączne bonusy</h4>${L.length ? L.map((x) => `<div>${esc(x)}</div>`).join('') : '<div class="mute">brak</div>'}</div>`;
   };
@@ -422,7 +423,7 @@
     const r = (c, n, d) => `<div class="lgr"><b style="color:${c}">${n}</b><span>${d}</span></div>`;
     ov.innerHTML = `<div class="eqbox" style="width:min(380px,calc(100vw - 32px))"><h3 style="margin:0 0 10px">Legenda · przedmioty</h3>
       <h4>Rzadkość przedmiotów</h4>
-      ${r(COL.n, 'Normalny', '+0.1x mnożnika')}${r(COL.m, 'Magiczny', '+0.1x mnożnika i 1 afiks')}${r(COL.r, 'Rzadki', '+0.1x mnożnika i 2 afiksy')}${r(COL.u, 'Unikat', '+0.3x mnożnika, 3 losowe afiksy (w tym gwarantowany boski) i unikatowa cecha')}${r(COL.u, 'Korona Króla Forum', 'unikatowy hełm: piłeczka z awatarem kogoś z top 10 ostatnich 24 h dostaje +1.0x (1. miejsce), +0.6x (2–3), +0.3x (4–10)')}${r(COL.u, 'Kapcie Moderatora', 'unikatowe buty: raz na grę kliknięcie w dowolne miejsce ekranu liczy się jako podbicie')}
+      ${r(COL.n, 'Normalny', '+0.1x mnożnika')}${r(COL.m, 'Magiczny', '+0.1x mnożnika i 1 afiks')}${r(COL.r, 'Rzadki', '+0.1x mnożnika i 2 afiksy')}${r(COL.u, 'Unikat', '+0.3x mnożnika, 3 losowe afiksy (w tym gwarantowany boski) i unikatowa cecha')}${r(COL.u, 'Hełm Weterana', 'unikatowy hełm: piłeczka z awatarem kogoś z top 10 ostatnich 24 h dostaje +1.0x (1. miejsce), +0.6x (2–3), +0.3x (4–10)')}${r(COL.u, 'Kapcie Moderatora', 'unikatowe buty: raz na grę kliknięcie w dowolne miejsce ekranu liczy się jako podbicie')}
       <h4>Klasy afiksów</h4>
       <div class="lgr"><b class="t-slaby">słaby</b><span>55%</span></div><div class="lgr"><b class="t-dobry">dobry</b><span>35%</span></div><div class="lgr"><b class="t-znakomity">znakomity</b><span>7%</span></div><div class="lgr"><b class="t-boski">boski</b><span>3%</span></div>
       <h4>Zestaw</h4><div class="lgr"><b style="color:#3fd13f">2 / 3 / 4</b><span>rzadkie lub unikaty z awatarem tej samej osoby: +0.2x / +0.5x / +0.5x</span></div>

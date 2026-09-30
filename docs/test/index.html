@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Licznik postów d2jsp 5.3-test</title>
+<title>Licznik postów d2jsp 5.4-test</title>
 <style>
 :root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e4e2dc;--acc:#b4441f;--bar:#d9825f;
  --gold:#c9961a;--gold2:#f3d46b;--goldbg:#fff8e3;--goldline:#efd89a;--silver:#9aa0a6;--bronze:#b3713f}
@@ -184,7 +184,7 @@ aside{position:sticky;top:16px}
 </svg>
 <div class="wrap">
 <main>
-<h1>Licznik postów — d2jsp Polska <span class="ver">5.3-test</span></h1>
+<h1>Licznik postów — d2jsp Polska <span class="ver">5.4-test</span></h1>
 <p class="sub" id="sub">Ładowanie danych…</p>
 
 <div class="ranges" id="ranges">
@@ -452,7 +452,7 @@ for (const id of ['from', 'to']) $(id).addEventListener('change', () => {
 });
 $('q').addEventListener('input', render);
 
-// Korona Króla Forum (gra): premia do piłeczki wg miejsca w rankingu ostatnich 24 h — 1.: +1.0x, 2–3: +0.6x, 4–10: +0.3x
+// Hełm Weterana (gra): premia do piłeczki wg miejsca w rankingu ostatnich 24 h — 1.: +1.0x, 2–3: +0.6x, 4–10: +0.3x
 function crownTable() {
   const f = Date.now() / 1000 - 86400, m = new Map();
   for (const p of D.posts) if (p[3] >= f) m.set(p[2], (m.get(p[2]) || 0) + 1);
@@ -465,7 +465,6 @@ window.crownOf = (u) => crownTable().get(String(u)) || 0;
 window.dayLeader = (() => { let at = 0, v = null; return () => { if (!at || Date.now() - at > 6e4) { v = [...crownTable()].find(([, b]) => b === 1)?.[0] || null; at = Date.now(); } return v; }; })();
 
 function render() {
-  const crown = crownTable();
   const f = from / 1000, t = to / 1000;
   const posts = D.posts.filter((p) => p[3] >= f && p[3] <= t);
   const users = new Map(), topics = new Set(), days = new Map(); dayUsers = new Map();
@@ -484,7 +483,7 @@ function render() {
   $('rows').innerHTML = rank.map((x, i) => ({ x, i }))
     .filter(({ x }) => !q || nick(x.u).toLowerCase().includes(q))
     .map(({ x, i }) => { const c = cups.get(x.u);
-      return `<tr><td>${i+1}</td><td>${nickBadges(x.u)}${crown.has(x.u) ? `<small class="crownb" title="Korona Króla Forum: premia do piłeczki z tym awatarem (miejsce w ostatnich 24 h)">+${crown.get(x.u).toFixed(1)}x do piłeczki</small>` : ''}</td><td class="n">${fmt(x.n)}</td><td class="n">${x.t.size}</td><td class="w"><div class="share" style="width:${x.n/top*100}%" title="${(x.n/posts.length*100).toFixed(1)}%"></div></td></tr>`; }).join('')
+      return `<tr><td>${i+1}</td><td>${nickBadges(x.u)}</td><td class="n">${fmt(x.n)}</td><td class="n">${x.t.size}</td><td class="w"><div class="share" style="width:${x.n/top*100}%" title="${(x.n/posts.length*100).toFixed(1)}%"></div></td></tr>`; }).join('')
     || '<tr><td colspan="5" style="color:var(--mute)">Brak postów w tym zakresie.</td></tr>';
 
   // zakres do 2 dni: słupki co godzinę (dzienne dałyby tylko 1–2 słupki)
@@ -509,6 +508,6 @@ function render() {
       <span class="d">${show ? `${dt.getDate()}.${String(dt.getMonth() + 1).padStart(2, '0')}${many ? '' : `<i>${WD[dt.getDay()]}</i>`}` : '&nbsp;'}</span></div>`; }).join('');
 }
 </script>
-<script src="../gra.js?v=1790788638"></script>
+<script src="../gra.js?v=1790789399"></script>
 </body>
 </html>
