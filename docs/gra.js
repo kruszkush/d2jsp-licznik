@@ -261,15 +261,15 @@
       <div class="row"><button class="pri" id="pilSave">Zapisz wynik</button></div><div class="msg" id="pilMsg"></div><div id="pilDrop"></div><button id="pilClose" class="closebig">Zamknij</button></div>`;
     document.body.appendChild(ov);
     // decyzja o przedmiocie tylko tutaj: zamknięcie okna bez wyboru = przedmiot przepada (nie da się odłożyć i porównać później)
-    let pendId = null;
+    let pendId = null, pendN = false; // pendN: normalny przedmiot — zamknięcie bez pytania
     const close = () => {
-      if (dropOpen && pendId) { if (!confirm('Nie wybrałeś — nowy przedmiot przepadnie. Zamknąć?')) return; eqPost('/equip', { key: getKey(), id: pendId, action: 'discard' }); }
+      if (dropOpen && pendId) { if (!pendN && !confirm('Nie wybrałeś — nowy przedmiot przepadnie. Zamknąć?')) return; eqPost('/equip', { key: getKey(), id: pendId, action: 'discard' }); }
       ov.remove();
     };
     let dropOpen = false; // nierozstrzygnięty przedmiot: okno zamyka się tylko przyciskiem
     if (EQON && score >= 15) { // drop idzie od razu, niezależnie od zapisu wyniku
       eqPost('/drop', { key: getKey(), gameId: rndHex().slice(0, 16), score, ballUid: /^\d+$/.test(f.u) ? f.u : '', ballNick: D.users[f.u] || '' })
-        .then((r) => { if (r.ok && r.j.reason === 'pech') ov.querySelector('#pilDrop').innerHTML = `<div class="msg">Tym razem nic nie wypadło (szansa ${r.j.chance}%).</div>`; if (r.ok && r.j.drop) { pendId = r.j.autoDiscard ? null : r.j.drop.id; ov.querySelector('.box').classList.add('wide'); showDrop(ov.querySelector('#pilDrop'), r.j, (o) => { dropOpen = o; }); } }).catch(() => {});
+        .then((r) => { if (r.ok && r.j.reason === 'pech') ov.querySelector('#pilDrop').innerHTML = `<div class="msg">Tym razem nic nie wypadło (szansa ${r.j.chance}%).</div>`; if (r.ok && r.j.drop) { pendId = r.j.autoDiscard ? null : r.j.drop.id; pendN = r.j.drop.rarity === 'n'; ov.querySelector('.box').classList.add('wide'); showDrop(ov.querySelector('#pilDrop'), r.j, (o) => { dropOpen = o; }); } }).catch(() => {});
     }
     ov.querySelector('#pilClose').onclick = close;
     const save = (auto) => {
