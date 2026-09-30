@@ -182,7 +182,7 @@ aside{position:sticky;top:16px}
 </svg>
 <div class="wrap">
 <main>
-<h1>Licznik postów — d2jsp Polska <span class="ver">2.9</span></h1>
+<h1>Licznik postów — d2jsp Polska <span class="ver">3.0</span></h1>
 <p class="sub" id="sub">Ładowanie danych…</p>
 
 <div class="ranges" id="ranges">
@@ -333,7 +333,7 @@ function renderCups(R) {
     <div class="grow"><div class="nm">${link(u)}</div><div class="track"><i style="width:${n / lead * 100}%"></i></div></div><span class="num">${fmt(n)}</span></li>`).join('')
     || '<li class="empty">Jeszcze nikt nie pisał w tym tygodniu.</li>';
   const up = new Date(D.updated), today = ymd(Date.now()) === ymd(up), yest = ymd(Date.now() - day) === ymd(up);
-  $('raceNote').innerHTML = `Koniec: niedziela 21:00 (za ${until(c.p.end)})<br><b>Ostatnia aktualizacja:</b> ${today ? 'dziś' : yest ? 'wczoraj' : up.toLocaleDateString('pl-PL')} ${up.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })} · kolejna codziennie o 21:00`;
+  $('raceNote').innerHTML = `Koniec: niedziela 21:00 (za ${until(c.p.end)})<br><b>Ostatnia aktualizacja:</b> ${today ? 'dziś' : yest ? 'wczoraj' : up.toLocaleDateString('pl-PL')} ${up.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })} · kolejna za ok. 2 h`;
 
   const hist = [...R.y.past.map((x) => ['y', x]), ...R.m.past.map((x) => ['m', x]), ...R.w.past.map((x) => ['w', x])].sort((a, b) => b[1].p.end - a[1].p.end || 'ymw'.indexOf(a[0]) - 'ymw'.indexOf(b[0]));
   $('hist').innerHTML = hist.map(([t, x]) => `<li><span class="dt" title="${x.p.label}">${t === 'w' ? x.p.nice.replace(' · ', '<br>') : x.p.label}</span>${cupSvg(t)}<div class="grow"><div class="nm">${x.winners.map(link).join(' & ')}</div></div><span class="num">${fmt(x.rank[0][1])}</span></li>`).join('')
