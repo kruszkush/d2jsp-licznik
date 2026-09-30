@@ -301,9 +301,10 @@
     if (b.guardian) L.push(`Anioł Stróż: ${b.guardian}× ratunek na grę`);
     return `<div class="eqsum"><h4>Łączne bonusy</h4>${L.length ? L.map((x) => `<div>${esc(x)}</div>`).join('') : '<div class="mute">brak</div>'}</div>`;
   };
-  // Szanse na przedmiot (kopia wzoru z serwera): malejący przyrost do 1000 pkt; szczęśliwy przesuwa % z Normalnego (70% → M, 30% → R)
+  // Szanse na przedmiot (kopia wzoru z serwera): płynny wzrost do 1000 pkt; szczęśliwy przesuwa % z Normalnego (70% → M, 30% → R)
   function chances(score, luck = 0) {
-    const x = Math.max(0, Math.min(score, 1000) - 15), r0 = 1 + 49 * (1 - Math.exp(-x / 210)), m0 = 14 + 31 * (1 - Math.exp(-x / 140));
+    const cv = (P) => { const x = Math.max(P[0][0], Math.min(score, P[P.length - 1][0])); for (let i = 1; i < P.length; i++) if (x <= P[i][0]) return P[i - 1][1] + (P[i][1] - P[i - 1][1]) * (x - P[i - 1][0]) / (P[i][0] - P[i - 1][0]); return P[P.length - 1][1]; };
+    const r0 = cv([[15, 1], [100, 5], [300, 12], [600, 20], [1000, 50]]), m0 = cv([[15, 14], [100, 25], [300, 35], [600, 42], [1000, 45]]);
     const n0 = Math.max(5, 100 - m0 - r0), s = Math.min(luck, n0);
     const n = n0 - s, m = m0 + .7 * s, r = r0 + .3 * s, u = score >= 50 ? 1 : 0, k = (100 - u) / (n + m + r);
     return { n: n * k, m: m * k, r: r * k, u, mf: Math.round(((m + r) / 15 - 1) * 100) };
@@ -311,7 +312,7 @@
   function chancesHtml(score) {
     if (score < 15) return `<div class="mf">Przedmiot wypada od 15 pkt — im więcej punktów, tym większa szansa na rzadszy.</div>`;
     const c = chances(score, B.lucky || 0), p = (v) => v < 10 ? v.toFixed(1) : Math.round(v);
-    return `<div class="mf">Szanse przy ${score} pkt${B.lucky ? ` (+${B.lucky}% z przedmiotów)` : ''}: <b style="color:${COL.n}">N ${p(c.n)}%</b> · <b style="color:${COL.m}">M ${p(c.m)}%</b> · <b style="color:${COL.r}">R ${p(c.r)}%</b>${c.u ? ` · <b style="color:${COL.u}">U ${c.u}%</b>` : ''}<br>Magic find: <b>+${c.mf}%</b> (więcej punktów = rzadsze przedmioty, coraz wolniej aż do 1000 pkt)</div>`;
+    return `<div class="mf">Szanse przy ${score} pkt${B.lucky ? ` (+${B.lucky}% z przedmiotów)` : ''}: <b style="color:${COL.n}">N ${p(c.n)}%</b> · <b style="color:${COL.m}">M ${p(c.m)}%</b> · <b style="color:${COL.r}">R ${p(c.r)}%</b>${c.u ? ` · <b style="color:${COL.u}">U ${c.u}%</b>` : ''}<br>Magic find: <b>+${c.mf}%</b> (więcej punktów = rzadsze przedmioty, rośnie płynnie aż do 1000 pkt)</div>`;
   }
   const rndHex = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
   const getKey = () => { let k = ls.get('eqKey'); if (!/^[0-9a-f]{32}$/.test(k || '')) { k = rndHex(); ls.set('eqKey', k); } return k; };

@@ -46,11 +46,19 @@ KEY_RE = re.compile(r"^[0-9a-f]{32}$")
 EQID_RE = re.compile(r"^[0-9a-f]{40}$")
 DROP_MIN, DROP_GAP = 15, 15
 # punkty kontrolne: wynik -> (normalne, magiczne, rzadkie) w %; poniżej 30 i powyżej 150 stałe
-# Szanse rzadkości z malejącym przyrostem aż do 1000 pkt (dalej bez zmian): 15 pkt ≈ N85/M14/R1, 150 ≈ 43/33/24, 1000 ≈ 5/45/50
+# Szanse rzadkości rosną płynnie (liniowo między punktami, bez schodków) aż do 1000 pkt; dalej bez zmian.
+R_PTS = [(15, 1), (100, 5), (300, 12), (600, 20), (1000, 50)]
+M_PTS = [(15, 14), (100, 25), (300, 35), (600, 42), (1000, 45)]
+
+def _curve(pts, x):
+    x = max(pts[0][0], min(x, pts[-1][0]))
+    for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+        if x <= x1:
+            return y0 + (y1 - y0) * (x - x0) / (x1 - x0)
+    return pts[-1][1]
+
 def rarity_weights(score):
-    x = max(0, min(score, 1000) - 15)
-    r = 1 + 49 * (1 - math.exp(-x / 210))
-    m = 14 + 31 * (1 - math.exp(-x / 140))
+    r, m = _curve(R_PTS, score), _curve(M_PTS, score)
     return (max(5.0, 100 - m - r), m, r)
 
 def _num(x, step):
