@@ -229,7 +229,7 @@
       <div class="sc">${score}<small> pkt</small></div>
       <div class="eq">${P.b > 1 ? `<span class="ch" style="background:${BADGE[f.base] || '#d9264a'};color:#fff"><b>×${fm(P.b)}</b><i>piłeczka</i></span><span class="op">×</span>` : ''}<span class="ch"><b>×${fm(P.lv)}</b><i>poziom ${gLvlN}</i></span>${P.items ? `<span class="op">+</span><span class="ch"><b>+${fm(P.items)}</b><i>przedmioty</i></span>` : ''}<span class="op">=</span><span class="ch tot"><b>×${fm(P.total)}</b><i>na koniec</i></span></div>
       ${TEST ? chancesHtml(score) : ''}
-      <input id="pilNick" maxlength="20" placeholder="Twój nick" value="${esc(ls.get('pilNick') || '')}">
+      <input id="pilNick" maxlength="20" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Twój nick" value="${esc(ls.get('pilNick') || '')}">
       <div class="row"><button class="pri" id="pilSave">Zapisz wynik</button></div><div class="msg" id="pilMsg"></div><div id="pilDrop"></div><button id="pilClose" class="closebig">Zamknij</button></div>`;
     document.body.appendChild(ov);
     const close = () => ov.remove();
@@ -384,9 +384,9 @@
     const r = (c, n, d) => `<div class="lgr"><b style="color:${c}">${n}</b><span>${d}</span></div>`;
     ov.innerHTML = `<div class="eqbox" style="width:min(380px,calc(100vw - 32px))"><h3 style="margin:0 0 10px">Legenda · przedmioty</h3>
       <h4>Rzadkość przedmiotów</h4>
-      ${r(COL.n, 'Normalny', '+0.1x mnożnika')}${r(COL.m, 'Magiczny', '+0.1x mnożnika i 1 afiks')}${r(COL.r, 'Rzadki', '+0.1x mnożnika i 2 afiksy')}${r(COL.u, 'Unikat', '+0.1x mnożnika, 1 afiks i raz na grę odbicie od dołu')}
+      ${r(COL.n, 'Normalny', '+0.1x mnożnika')}${r(COL.m, 'Magiczny', '+0.1x mnożnika i 1 afiks')}${r(COL.r, 'Rzadki', '+0.1x mnożnika i 2 afiksy')}${r(COL.u, 'Unikat', '+0.1x mnożnika i 1 afiks')}
       <h4>Klasy afiksów</h4>
-      <div class="lgr"><b class="t-slaby">słaby</b><span>najczęstszy</span></div><div class="lgr"><b class="t-dobry">dobry</b><span>częsty</span></div><div class="lgr"><b class="t-znakomity">znakomity</b><span>rzadki</span></div><div class="lgr"><b class="t-boski">boski</b><span>bardzo rzadki</span></div>
+      <div class="lgr"><b class="t-slaby">słaby</b><span>55%</span></div><div class="lgr"><b class="t-dobry">dobry</b><span>35%</span></div><div class="lgr"><b class="t-znakomity">znakomity</b><span>7%</span></div><div class="lgr"><b class="t-boski">boski</b><span>3%</span></div>
       <h4>Zestaw</h4><div class="lgr"><b style="color:#3fd13f">2 / 3 / 4</b><span>rzadkie lub unikaty z awatarem tej samej osoby: +0.2x / +0.5x / +0.5x i odbicie od dołu</span></div>
       <h4>Magic find</h4><div class="lgr"><span>Zwiększa szansę na magiczne i rzadkie kosztem normalnych. Rośnie z wynikiem gry, a do tego dochodzi „szansa na rzadszy przedmiot” z przedmiotów (wartości się sumują).</span></div>
       <p class="mute" style="font-size:12px;margin:10px 0 0">Przedmiot może wypaść po grze od 15 pkt — im więcej punktów, tym częściej i tym rzadszy.</p>
@@ -403,7 +403,7 @@
       <div class="eqtool"><h4>Narzędzie testowe</h4></div>
       <div class="eqcode"><h4>Kod przenoszenia</h4><div class="kc"><code></code><button data-a="copy">Kopiuj</button></div>
       <div class="warn">Nie pokazuj nikomu — kto zna kod, ma Twój ekwipunek. Wyczyszczenie przeglądarki bez zapisanego kodu = utrata.</div>
-      <div class="kc"><input placeholder="Wklej kod z innego urządzenia" maxlength="60"><button data-a="load">Wczytaj</button></div><div class="msg"></div></div>
+      <div class="kc"><input autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Wklej kod z innego urządzenia" maxlength="60"><button data-a="load">Wczytaj</button></div><div class="msg"></div></div>
       <div class="row"><button data-a="close">Zamknij</button></div></div>`;
     document.body.appendChild(ov);
     const $q = (s) => ov.querySelector(s), msg = $q('.eqcode .msg'); let state = null;
