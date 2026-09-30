@@ -116,7 +116,7 @@
     snow.appendChild(el); return el;
   }
   function spawn() {
-    if (!on || game || document.hidden || flakes.size >= 7 || !D?.users) return;
+    if (!on || game || document.hidden || flakes.size >= 9 || !D?.users) return;
     const u = pickUser(); if (!u) return;
     const kind = pickKind(), size = Math.round(80 * kind.p * scaleK() * (TOUCH ? 1.2 : 1) * (1 + B.olb)); // na telefonie o 20% większe
     const f = { u, size, x: (TOUCH ? 0 : arena().l) + Math.random() * ((TOUCH ? W : arena().r - arena().l) - size), y: -size - 10, vy: (28 + Math.random() * 30) * scaleK(), sway: 20 + Math.random() * 30, ph: Math.random() * 6.28, rot: 0, vr: (Math.random() - .5) * 40 };
@@ -565,7 +565,7 @@
   let last = performance.now(), acc = 0;
   function loop(t) {
     const dt = Math.min(.05, (t - last) / 1000); last = t;
-    acc += dt; if (acc > 2.2) { acc = 0; spawn(); }
+    acc += dt; if (acc > 1.75) { acc = 0; spawn(); } // o 25% częściej niż dawniej (2.2 s)
     for (const f of flakes) {
       if (game && game.f === f) {
         const sd = dt * speedOf(game.lvl) * (game.slow > t ? .45 : 1); // po odbiciu od dołu chwilowe spowolnienie
