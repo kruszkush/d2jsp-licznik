@@ -38,6 +38,7 @@
   #mult.pulse{animation:mpulse .9s ease-out}
   @keyframes mpulse{0%{opacity:.13;transform:translate(-50%,-50%) scale(1)}25%{opacity:.4;transform:translate(-50%,-50%) scale(1.12)}100%{opacity:.13;transform:translate(-50%,-50%) scale(1)}}
   #edge{position:fixed;inset:0;z-index:38;pointer-events:none;opacity:0;transition:opacity .6s;will-change:opacity;background:radial-gradient(ellipse at center,transparent 55%,rgba(255,90,20,.45) 100%)}
+  #arenaEdges{display:none;position:fixed;top:0;bottom:0;z-index:38;pointer-events:none;border-left:2px dashed rgba(255,140,60,.25);border-right:2px dashed rgba(255,140,60,.25)}
   #lvlup{position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:60;font-weight:800;font-size:20px;color:#ff7a1a;text-shadow:0 0 10px rgba(255,120,30,.6);opacity:0;pointer-events:none}
   #lvlup.go{animation:lvl 1.1s ease-out}
   @keyframes lvl{0%{opacity:0;transform:translate(-50%,10px) scale(.8)}20%{opacity:1;transform:translate(-50%,0) scale(1.1)}100%{opacity:0;transform:translate(-50%,-18px) scale(1)}}
@@ -96,7 +97,7 @@
     if (!on || game || document.hidden || flakes.size >= 7 || !D?.users) return;
     const u = pickUser(); if (!u) return;
     const kind = pickKind(), size = Math.round(80 * kind.p * scaleK() * (TOUCH ? 1.2 : 1)); // na telefonie o 20% większe
-    const f = { u, size, x: Math.random() * (W - size), y: -size - 10, vy: (28 + Math.random() * 30) * scaleK(), sway: 20 + Math.random() * 30, ph: Math.random() * 6.28, rot: 0, vr: (Math.random() - .5) * 40 };
+    const f = { u, size, x: (TOUCH ? 0 : arena().l) + Math.random() * ((TOUCH ? W : arena().r - arena().l) - size), y: -size - 10, vy: (28 + Math.random() * 30) * scaleK(), sway: 20 + Math.random() * 30, ph: Math.random() * 6.28, rot: 0, vr: (Math.random() - .5) * 40 };
     f.el = makeEl(u, size); f.base = kind.m;
     if (kind.m > 1) { const b = document.createElement('span'); b.className = 'badge ' + kind.cls; b.textContent = 'x' + kind.m; f.el.appendChild(b); }
     f.el.addEventListener('pointerdown', (e) => { e.preventDefault(); game ? hit(f, e) : startGame(f, e); });
@@ -126,17 +127,21 @@
     const lv = multOf(lvl).toFixed(1), b = game ? game.base : 1;
     multEl.innerHTML = `<span class="lv">x${lv}</span>` + (b > 1 ? `<span class="bs" style="background:${BADGE[b]}">×${b}</span>` : '');
     multEl.style.color = `hsl(${45 - heat * 45}, 95%, ${60 - heat * 10}%)`;
+    if (!TOUCH) { const A = arena(); edgesEl.style.cssText = `display:block;left:${A.l}px;width:${A.r - A.l}px`; }
     multEl.classList.add('on'); edgeEl.style.opacity = String(heat * .9);
     if (pulse) { multEl.classList.remove('pulse'); void multEl.offsetWidth; multEl.classList.add('pulse'); }
   }
-  const hideMult = () => { multEl.classList.remove('on', 'pulse'); edgeEl.style.opacity = '0'; };
+  const edgesEl = document.createElement('div'); edgesEl.id = 'arenaEdges'; document.body.appendChild(edgesEl);
+  const hideMult = () => { edgesEl.style.display = 'none'; multEl.classList.remove('on', 'pulse'); edgeEl.style.opacity = '0'; };
   const flashEl = document.createElement('div'); flashEl.id = 'lvlup'; document.body.appendChild(flashEl);
   function flash(t) { flashEl.textContent = t; flashEl.classList.remove('go'); void flashEl.offsetWidth; flashEl.classList.add('go'); }
   // Na komputerze gra tylko w dużym oknie — w małym/wąskim oknie jest dużo łatwiej (mało miejsca na ucieczkę piłeczki)
-  const MIN_W = 1000, MIN_H = 650;
+  // Pole gry ma stałe proporcje (szerokość = 1,5 × wysokość, wyśrodkowane), więc na każdym monitorze jest tak samo trudno
+  const ASPECT = 1.5, MIN_H = 600;
+  const arena = () => { const aw = Math.min(W, H * ASPECT); return { l: (W - aw) / 2, r: (W + aw) / 2 }; };
   function startGame(f, e) {
-    if (!TOUCH && (innerWidth < MIN_W || innerHeight < MIN_H)) {
-      flash(`Powiększ okno, żeby zagrać (min. ${MIN_W}×${MIN_H})`);
+    if (!TOUCH && (innerHeight < MIN_H || innerWidth < innerHeight * ASPECT)) {
+      flash(`Powiększ lub poszerz okno, żeby zagrać`);
       return;
     }
     for (const o of flakes) if (o !== f) o.el.remove();
@@ -198,10 +203,11 @@
       if (game && game.f === f) {
         const sd = dt * speedOf(game.lvl);
         f.vy += G * game.k * sd; f.x += f.vx * sd; f.y += f.vy * sd; f.rot += f.vr * sd;
-        if (f.x < 0) { f.x = 0; f.vx = Math.abs(f.vx) * .8; }
-        if (f.x > W - f.size) { f.x = W - f.size; f.vx = -Math.abs(f.vx) * .8; }
+        const A = TOUCH ? { l: 0, r: W } : arena();
+        if (f.x < A.l) { f.x = A.l; f.vx = Math.abs(f.vx) * .8; }
+        if (f.x > A.r - f.size) { f.x = A.r - f.size; f.vx = -Math.abs(f.vx) * .8; }
         if (f.y < 0) { f.y = 0; f.vy = Math.abs(f.vy) * .3; }
-        if (!TOUCH && (W < MIN_W || H < MIN_H)) { game = null; document.body.classList.remove('playing'); hideMult(); hud.hidden = true; f.el.remove(); flakes.clear(); flash('Okno za małe — gra przerwana'); break; }
+        if (!TOUCH && (H < MIN_H || W < H * ASPECT)) { game = null; document.body.classList.remove('playing'); hideMult(); hud.hidden = true; f.el.remove(); flakes.clear(); flash('Okno za małe — gra przerwana'); break; }
         if (f.y > H + 10) { endGame(); break; }
       } else {
         f.ph += dt; f.y += f.vy * dt; f.rot += f.vr * dt;
