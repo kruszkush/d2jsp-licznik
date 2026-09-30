@@ -28,6 +28,9 @@ const FLOOR = (data.complete || data.from) - FLOOR_OVERLAP;
 // "26 minutes ago" / "3 hours ago" / "2 days ago" → przybliżona chwila ostatniego posta (null = nie wiadomo → traktuj jako świeży)
 const UNIT = { second: 1e3, minute: 6e4, hour: 36e5, day: 864e5, week: 6048e5, month: 2592e6, year: 31536e6 };
 const agoMs = (txt) => { const m = String(txt).match(/(\d+)\s*(second|minute|hour|day|week|month|year)s?\s+ago/i); if (m) return START - m[1] * UNIT[m[2].toLowerCase()]; const d = pd(txt); return isNaN(d) ? null : d; };
+// d2jsp pokazuje daty w strefie zależnej od profilu/ciasteczka — kalibrujemy przesunięcie z „x minutes ago” na liście
+let OFFSET = null; // ms do dodania do sparsowanej daty
+const ts = (s) => pd(s) + (OFFSET || 0);
 const pd = (s) => new Date(String(s).replace(/(am|pm)$/, ' $1')).getTime();
 
 let pages = 0, added = 0;
@@ -67,36 +70,45 @@ async function list(o) {
   if (!rows.length) throw new Blocked(`pusta lista tematów (o=${o})`);
   return rows;
 }
-async function topicPage(t, o) {
-  await open(`topic.php?t=${t}&f=${F}&o=${o}`);
-  return page.evaluate(() => ({
+async function topicPage(t, o) { // o === 'last' → ostatnia strona (link „Goto last post”)
+  await open(o === 'last' ? `topic.php?t=${t}&f=${F}&v=1` : `topic.php?t=${t}&f=${F}&o=${o}`);
+  return page.evaluate((t) => ({
+    pager: [...new Set([...document.querySelectorAll(`a[href*="topic.php?t=${t}&"]`)].map((a) => (a.getAttribute('href').match(/&o=(\d+)/) || [])[1]).filter(Boolean).map(Number))].sort((a, b) => a - b),
     title: (document.title || '').replace(/ - Topic - d2jsp$/, ''),
     posts: [...document.querySelectorAll('.ppc')].map((p) => {
       const u = p.querySelector('.pU a[href^="user.php"]');
       return { id: p.querySelector('.bts')?.id.slice(2), user: u?.textContent.trim(), uid: u?.getAttribute('href').split('=')[1], date: p.querySelector('[id^="td"]')?.textContent, av: p.querySelector('.pU img.av')?.getAttribute('src') || '' };
     }).filter((p) => p.id),
-  }));
+  }), t);
 }
 
 // Pobiera nowe posty tematu: od ostatniej strony w dół, dopóki na stronie są posty nowsze od granicy.
 async function doTopic(row) {
   const s = st.topics[row.t];
   const lastId = s ? s.last : (lastInData[row.t] || 0);
-  const isNew = (p) => lastId ? num(p.id) > lastId : pd(p.date) >= FLOOR;
+  const isNew = (p) => lastId ? num(p.id) > lastId : ts(p.date) >= FLOOR;
   const cap = s && row.r != null && s.r != null ? Math.ceil(Math.max(1, row.r - s.r) / 10) + 2 : 40;
   let maxId = lastId, title = row.title;
-  for (let o = row.maxO, n = 0; o >= 0 && n < cap; o -= 10, n++) {
+  // start od prawdziwej ostatniej strony; cofamy się o rozmiar strony wyliczony z odnośników stron (zwykle 20)
+  let o = 'last', step = 20;
+  for (let n = 0; n < cap; n++) {
     if (pages >= MAX_PAGES) return false;
     const r = await topicPage(row.t, o); title = r.title || title;
+    if (o === 'last') {
+      const ps = r.pager, diffs = ps.slice(1).map((x, i) => x - ps[i]).filter((d) => d > 0);
+      step = diffs.length ? Math.min(...diffs) : 20;
+      o = ps.length ? Math.max(...ps) + step : 0; // na ostatniej stronie odnośniki prowadzą tylko do wcześniejszych
+    }
     const fresh = r.posts.filter(isNew);
     for (const p of fresh) {
       if (p.uid) { data.users[p.uid] = p.user; if (p.av) (data.avatars ||= {})[p.uid] = p.av; }
       maxId = Math.max(maxId, num(p.id));
       if (known.has(p.id)) continue;
       known.add(p.id); added++;
-      data.posts.push([p.id, row.t, p.uid || p.user, Math.round(pd(p.date) / 1000)]);
+      data.posts.push([p.id, row.t, p.uid || p.user, Math.round(ts(p.date) / 1000)]);
     }
     if (fresh.length < r.posts.length || !r.posts.length) break; // doszliśmy do starszych postów
+    o -= step; if (o < 0) break;
   }
   if (!maxId) for (const [id, t] of data.posts) if (t === row.t) maxId = Math.max(maxId, num(id));
   data.topics[row.t] = title;
@@ -108,6 +120,14 @@ let complete = false, reason = '';
 try {
   for (let o = 0; o < 1000; o += 25) {
     const rows = await list(o);
+    if (OFFSET === null) { // kalibracja strefy: najświeższy temat „x minutes ago” vs godzina jego ostatniego posta
+      const c = rows.find((x) => /(second|minute)s? ago/i.test(x.ago));
+      if (c) {
+        const r = await topicPage(c.t, 'last'), last = r.posts[r.posts.length - 1];
+        OFFSET = st.offset = Math.round((agoMs(c.ago) - pd(last.date)) / 36e5) * 36e5;
+      } else OFFSET = st.offset || 0; // cisza na forum — bierzemy ostatnio zmierzone
+      console.log('przesunięcie stref:', OFFSET / 36e5, 'h');
+    }
     // temat bez stanu, którego ostatni post jest wyraźnie starszy niż granica → tylko zapamiętaj stan, nie otwieraj
     for (const x of rows) {
       const a = agoMs(x.ago);
