@@ -9,7 +9,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 const F = Number(process.argv[2] || 230);
 const FILE = 'docs/data.json', STATE = 'state.json';
 const B = 'https://forums.d2jsp.org/';
-const GAP = 2000;           // odstęp między podstronami
+const GAP = () => 5000 + Math.random() * 7000; // odstęp między podstronami: losowo 5–12 s, spokojne tempo
 const MAX_PAGES = 70;       // limit podstron na przebieg (reszta w następnym)
 const FLOOR_OVERLAP = 6 * 3600e3; // dla tematów bez stanu: posty od (ostatni pełny przebieg − 6 h)
 
@@ -41,11 +41,11 @@ const save = () => {
 process.on('SIGTERM', () => { console.log('SIGTERM — zapisuję'); save(); process.exit(1); });
 
 class Blocked extends Error {}
-const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: false, userDataDir: process.env.PROFILE || undefined, args: ['--no-sandbox', '--window-size=1280,900'] });
+const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: false, userDataDir: process.env.PROFILE || undefined, args: ['--no-sandbox', '--window-size=1280,900', ...(process.env.OFFSCREEN ? ['--window-position=-32000,-32000'] : [])] });
 const page = await browser.newPage();
 let lastAt = 0;
 async function open(path) {
-  const wait = lastAt + GAP - Date.now(); if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  const wait = lastAt + GAP() - Date.now(); if (wait > 0) await new Promise((r) => setTimeout(r, wait));
   lastAt = Date.now(); pages++;
   let res;
   try { res = await page.goto(B + path, { waitUntil: 'domcontentloaded', timeout: 60000 }); }
