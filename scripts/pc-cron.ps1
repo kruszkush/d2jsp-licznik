@@ -1,10 +1,12 @@
 # Pobieranie z domowego komputera (zaplanowane zadanie Windows „d2jsp-licznik”). Osobny klon repo w E:\Vibe coding\d2jsp-licznik-bot,
 # żeby reset do GitHuba nie ruszał roboczej kopii. Chrome startuje poza ekranem, więc nic nie wyskakuje.
 $ErrorActionPreference = 'Continue'
+$PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'  # log w UTF-8, nie UTF-16
 $dir = 'E:\Vibe coding\d2jsp-licznik-bot'
 $log = 'E:\Vibe coding\d2jsp-licznik-bot.log'
 if (-not (Test-Path $dir)) { git clone -q https://github.com/kruszkush/d2jsp-licznik.git $dir *>> $log }
 Set-Location $dir
+git config user.name 'kruszkush'; git config user.email 'kruszkush@users.noreply.github.com'
 git fetch -q origin *>> $log; git reset -q --hard origin/main *>> $log
 if (-not (Test-Path node_modules/puppeteer-core)) { npm install --silent --no-save puppeteer-core *>> $log }
 $env:CHROME_PATH = 'C:\Program Files\Google\Chrome\Application\chrome.exe'
