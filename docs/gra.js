@@ -33,6 +33,7 @@
   #over .ch b{font-size:17px}#over .ch i{font-style:normal;font-size:10.5px;opacity:.8}
   #over .ch.tot{border-color:var(--acc);color:var(--acc)}
   #over .op{color:var(--mute);font-weight:700;font-size:16px}
+  #over .mf{font-size:12px;color:var(--mute);margin:-6px 0 12px;line-height:1.5}
   #over input{width:100%;margin-bottom:10px;text-align:center}
   #over .row{display:flex;gap:8px;justify-content:center}
   #over button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
@@ -44,6 +45,8 @@
   @keyframes mpulse{0%{opacity:.13;transform:translate(-50%,-50%) scale(1)}25%{opacity:.4;transform:translate(-50%,-50%) scale(1.12)}100%{opacity:.13;transform:translate(-50%,-50%) scale(1)}}
   #edge{position:fixed;inset:0;z-index:38;pointer-events:none;opacity:0;transition:opacity .6s;will-change:opacity;background:radial-gradient(ellipse at center,transparent 55%,rgba(255,90,20,.45) 100%)}
   #arenaEdges{display:none;position:fixed;top:0;bottom:0;z-index:38;pointer-events:none;border-left:2px dashed rgba(255,140,60,.25);border-right:2px dashed rgba(255,140,60,.25)}
+  .savefx{position:fixed;left:0;right:0;bottom:0;height:40vh;z-index:61;pointer-events:none;background:linear-gradient(transparent,rgba(199,134,74,.55));animation:svf .9s ease-out forwards}
+  @keyframes svf{from{opacity:1}to{opacity:0}}
   #lvlup{position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:60;font-weight:800;font-size:20px;color:#ff7a1a;text-shadow:0 0 10px rgba(255,120,30,.6);opacity:0;pointer-events:none}
   #lvlup.go{animation:lvl 1.1s ease-out}
   @keyframes lvl{0%{opacity:0;transform:translate(-50%,10px) scale(.8)}20%{opacity:1;transform:translate(-50%,0) scale(1.1)}100%{opacity:0;transform:translate(-50%,-18px) scale(1)}}
@@ -119,7 +122,7 @@
   const pickKind = () => { let r = Math.random() * 100; for (const k of KINDS) { if ((r -= k.w) < 0) return k; } return KINDS[0]; };
   const BADGE = { 1.3: '#ff8a3d', 1.7: '#ff5a3d', 3: '#d9264a' }; // kolory jak plakietki na piłeczkach
   // Bonusy z założonych przedmiotów (tylko TEST; bez przedmiotów wszystko jest zerem i gra liczy jak dotąd)
-  const zeroB = () => ({ impl: 0, ostry: 0, stlum: 0, ciezki: 0, zreczny: 0, rozp: 0, wytrw: 0, olb: 0, mrozu: 0, lowcy: 0, serii: 0, guardian: 0, lucky: 0 });
+  const zeroB = () => ({ setN: 0, setUid: '', setMult: 0, impl: 0, ostry: 0, stlum: 0, ciezki: 0, zreczny: 0, rozp: 0, wytrw: 0, olb: 0, mrozu: 0, lowcy: 0, serii: 0, guardian: 0, lucky: 0 });
   let B = zeroB();
   const r3 = (x) => Math.round(x * 1000) / 1000;
   function calcB(slots) {
@@ -136,7 +139,12 @@
         else if (a.id === 'mrozu') b.mrozu += v; else if (a.id === 'lowcy') b.lowcy += v; else if (a.id === 'serii') b.serii += v;
       }
     }
-    for (const k of Object.keys(b)) b[k] = r3(b[k]);
+    // zestaw: przedmioty z awatarem tej samej osoby — 2 szt. +0.2x, 3 szt. +0.5x, 4 szt. +0.5x i jedno odbicie od dołu
+    const cnt = {}; for (const it of Object.values(slots || {})) if (it?.uid) cnt[it.uid] = (cnt[it.uid] || 0) + 1;
+    const top = Object.entries(cnt).sort((a, c) => c[1] - a[1])[0];
+    b.setN = top && top[1] >= 2 ? top[1] : 0; b.setUid = b.setN ? top[0] : '';
+    b.setMult = b.setN >= 3 ? .5 : b.setN === 2 ? .2 : 0; if (b.setN === 4) b.guardian++;
+    for (const k of Object.keys(b)) if (typeof b[k] === 'number') b[k] = r3(b[k]);
     for (const k of ['stlum', 'ciezki', 'zreczny']) b[k] = Math.min(.9, b[k]);
     return b;
   }
@@ -144,7 +152,7 @@
   const fm = (n) => { const r = Math.round(n * 100) / 100; return Math.abs(r * 10 - Math.round(r * 10)) < 1e-9 ? r.toFixed(1) : r.toFixed(2); };
   // (piłeczka + łowcy gdy mniejsza niż duża) × mnożnik poziomu (start 1 + rozpędzony) + przedmioty (implicit + ostry + seria × floor(podbicia/10))
   const partsOf = (g) => {
-    const b = g.base + (g.base > 1 ? g.B.lowcy : 0), lv = multOf(g.lvl, g.B), items = r3(g.B.impl + g.B.ostry + g.B.serii * Math.floor(g.hits / 10));
+    const b = g.base + (g.base > 1 ? g.B.lowcy : 0), lv = multOf(g.lvl, g.B), items = r3(g.B.impl + g.B.ostry + g.B.setMult + g.B.serii * Math.floor(g.hits / 10));
     return { b, lv, items, total: Math.round((b * lv + items) * RP) / RP };
   };
   const totalMult = () => game ? partsOf(game).total : 1;
@@ -168,6 +176,8 @@
   }
   const edgesEl = document.createElement('div'); edgesEl.id = 'arenaEdges'; document.body.appendChild(edgesEl);
   const hideMult = () => { edgesEl.style.display = 'none'; multEl.classList.remove('on', 'pulse'); edgeEl.style.opacity = '0'; };
+  // błysk przy zużyciu odbicia od dołu
+  function saveFx() { const e = document.createElement('div'); e.className = 'savefx'; document.body.appendChild(e); setTimeout(() => e.remove(), 900); }
   const flashEl = document.createElement('div'); flashEl.id = 'lvlup'; document.body.appendChild(flashEl);
   function flash(t) { flashEl.textContent = t; flashEl.classList.remove('go'); void flashEl.offsetWidth; flashEl.classList.add('go'); }
   // Na komputerze gra tylko w dużym oknie — w małym/wąskim oknie jest dużo łatwiej (mało miejsca na ucieczkę piłeczki)
@@ -198,7 +208,7 @@
     f.vx = Math.max(-420, Math.min(420, -off * 320 + (Math.random() - .5) * 120)) * game.k * (1 - game.B.zreczny);
     f.vr = -off * 360;
     const P = partsOf(game);
-    hud.hidden = false; hud.innerHTML = `${Math.round(game.score)}<small>pkt${TOUCH ? ` · x${fm(P.total)}` : ` · ${P.b > 1 ? `x${fm(P.b)} more · ` : ''}+${Math.round((P.lv - 1) * 100)}% increased${P.items ? ` + ${fm(P.items)} przedmioty` : ''} = x${fm(P.total)} · ${game.hits} podbić`}</small>`;
+    hud.hidden = false; hud.innerHTML = `${game.saves ? `<span title="odbicia od dołu" style="margin-right:8px">🛡${game.saves}</span>` : ''}${Math.round(game.score)}<small>pkt${TOUCH ? ` · x${fm(P.total)}` : ` · ${P.b > 1 ? `x${fm(P.b)} more · ` : ''}+${Math.round((P.lv - 1) * 100)}% increased${P.items ? ` + ${fm(P.items)} przedmioty` : ''} = x${fm(P.total)} · ${game.hits} podbić`}</small>`;
   }
   function endGame() {
     const gLvlN = game.lvl + 1, score = Math.round(game.score), f = game.f, gHits = game.hits, P = partsOf(game); game = null; document.body.classList.remove('playing'); hideMult();
@@ -211,6 +221,7 @@
       <div class="txt">Podrzuciłeś ${esc(who)} <b>${hits}</b> ${hits === 1 ? 'raz' : 'razy'}</div>
       <div class="sc">${score}<small> pkt</small></div>
       <div class="eq">${P.b > 1 ? `<span class="ch" style="background:${BADGE[f.base] || '#d9264a'};color:#fff"><b>×${fm(P.b)}</b><i>piłeczka</i></span><span class="op">×</span>` : ''}<span class="ch"><b>×${fm(P.lv)}</b><i>poziom ${gLvlN}</i></span>${P.items ? `<span class="op">+</span><span class="ch"><b>+${fm(P.items)}</b><i>przedmioty</i></span>` : ''}<span class="op">=</span><span class="ch tot"><b>×${fm(P.total)}</b><i>na koniec</i></span></div>
+      ${TEST ? chancesHtml(score) : ''}
       <input id="pilNick" maxlength="20" placeholder="Twój nick" value="${esc(ls.get('pilNick') || '')}">
       <div class="row"><button class="pri" id="pilSave">Zapisz wynik</button><button id="pilClose">Zamknij</button></div><div class="msg" id="pilMsg"></div><div id="pilDrop"></div></div>`;
     document.body.appendChild(ov);
@@ -276,6 +287,7 @@
   const sumHtml = (b) => {
     const L = [], pct = (x) => Math.round(x * 100);
     const mult = r3(b.impl + b.ostry); if (mult) L.push(`+${fm(mult)}x mnożnika`);
+    if (b.setN) L.push(`Zestaw ${D.users[b.setUid] || ''} (${b.setN}/4): +${fm(b.setMult)}x mnożnika${b.setN === 4 ? ' i odbicie od dołu' : ''}`);
     if (b.serii) L.push(`+${b.serii.toFixed(2)}x za każde 10 podbić`);
     if (b.lowcy) L.push(`+${b.lowcy.toFixed(1)} do mnożnika mniejszych piłeczek`);
     if (b.rozp) L.push(`Start od +${pct(b.rozp)}% increased`);
@@ -289,6 +301,18 @@
     if (b.guardian) L.push(`Anioł Stróż: ${b.guardian}× ratunek na grę`);
     return `<div class="eqsum"><h4>Łączne bonusy</h4>${L.length ? L.map((x) => `<div>${esc(x)}</div>`).join('') : '<div class="mute">brak</div>'}</div>`;
   };
+  // Szanse na przedmiot (kopia wzoru z serwera): malejący przyrost do 1000 pkt; szczęśliwy przesuwa % z Normalnego (70% → M, 30% → R)
+  function chances(score, luck = 0) {
+    const x = Math.max(0, Math.min(score, 1000) - 15), r0 = 1 + 49 * (1 - Math.exp(-x / 210)), m0 = 14 + 31 * (1 - Math.exp(-x / 140));
+    const n0 = Math.max(5, 100 - m0 - r0), s = Math.min(luck, n0);
+    const n = n0 - s, m = m0 + .7 * s, r = r0 + .3 * s, u = score >= 50 ? 1 : 0, k = (100 - u) / (n + m + r);
+    return { n: n * k, m: m * k, r: r * k, u, mf: Math.round(((m + r) / 15 - 1) * 100) };
+  }
+  function chancesHtml(score) {
+    if (score < 15) return `<div class="mf">Przedmiot wypada od 15 pkt — im więcej punktów, tym większa szansa na rzadszy.</div>`;
+    const c = chances(score, B.lucky || 0), p = (v) => v < 10 ? v.toFixed(1) : Math.round(v);
+    return `<div class="mf">Szanse przy ${score} pkt${B.lucky ? ` (+${B.lucky}% z przedmiotów)` : ''}: <b style="color:${COL.n}">N ${p(c.n)}%</b> · <b style="color:${COL.m}">M ${p(c.m)}%</b> · <b style="color:${COL.r}">R ${p(c.r)}%</b>${c.u ? ` · <b style="color:${COL.u}">U ${c.u}%</b>` : ''}<br>Magic find: <b>+${c.mf}%</b> (więcej punktów = rzadsze przedmioty, coraz wolniej aż do 1000 pkt)</div>`;
+  }
   const rndHex = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
   const getKey = () => { let k = ls.get('eqKey'); if (!/^[0-9a-f]{32}$/.test(k || '')) { k = rndHex(); ls.set('eqKey', k); } return k; };
   const eqPost = (path, body) => fetch(API + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -327,7 +351,8 @@
   }
   const SLOT_POS = { helm: 'left:160px;top:46px;width:100px;height:100px', armor: 'left:150px;top:186px;width:120px;height:150px', gloves: 'left:22px;top:252px;width:100px;height:100px', boots: 'left:298px;top:252px;width:100px;height:100px' };
   function invPanel(st, title = 'EKWIPUNEK') {
-    return `<div class="eqinv"><h3>${esc(title)}</h3>${Object.keys(SLOT).map((s) => { const it = st.slots?.[s]; return `<div class="eqslot ${it ? 'q-' + it.rarity : 'empty'}" data-l="${SLOT[s][2]}" style="${SLOT_POS[s]}">${it ? `${itemEl(it)}<div class="eqname" data-tid="${esc(it.id)}" style="color:${COL[it.rarity]}">${esc(itemName(it))}</div>` : ''}</div>`; }).join('')}</div>${sumHtml(calcB(st.slots))}`;
+    const bb = calcB(st.slots);
+    return `<div class="eqinv"><h3>${esc(title)}</h3>${Object.keys(SLOT).map((s) => { const it = st.slots?.[s]; return `<div class="eqslot ${it ? 'q-' + it.rarity : 'empty'}${it && bb.setN && it.uid === bb.setUid ? ' setg' : ''}" data-l="${SLOT[s][2]}" style="${SLOT_POS[s]}">${it ? `${itemEl(it)}<div class="eqname" data-tid="${esc(it.id)}" style="color:${COL[it.rarity]}">${esc(itemName(it))}</div>` : ''}</div>`; }).join('')}</div>${sumHtml(calcB(st.slots))}`;
   }
   // Podgląd cudzego ekwipunku (z rankingu): tylko do oglądania
   function openView(eq, nick) {
@@ -417,6 +442,7 @@
     .eqcode .warn{font-size:12px;color:#e0764f}
     .eqinv{position:relative;width:420px;height:400px;border-radius:6px;background:radial-gradient(ellipse at 30% 20%,rgba(255,255,255,.05),transparent 60%),repeating-linear-gradient(115deg,rgba(255,255,255,.015) 0 2px,transparent 2px 7px),linear-gradient(#3a3835,#2a2826);border:3px solid #56514a;box-shadow:inset 0 0 0 2px #1b1a18,inset 0 0 40px rgba(0,0,0,.6);box-sizing:border-box;color:#ecebe6}
     .eqinv h3{margin:0;padding:12px 0 6px;text-align:center;font:600 20px Georgia,'Times New Roman',serif;letter-spacing:.28em;color:#c9b98f;text-shadow:0 1px 0 #000}
+    .eqslot.setg{outline:2px solid #3fd13f;outline-offset:2px;box-shadow:inset 0 0 0 2px #000,0 0 14px rgba(63,209,63,.7)!important}
     .eqslot{position:absolute;box-sizing:border-box;background:#0d0d0c;border:2px solid #4a463f;box-shadow:inset 0 0 0 2px #000,inset 0 0 18px rgba(0,0,0,.9);display:grid;place-items:center}
     .eqslot .eqit{width:86px;height:86px}
     .eqslot .eqname{position:absolute;top:100%;margin-top:3px;left:50%;transform:translateX(-50%);width:130px;text-shadow:0 1px 2px #000}
@@ -478,7 +504,7 @@
         if (f.y < 0) { f.y = 0; f.vy = Math.abs(f.vy) * .3; }
         if (!TOUCH && (H < MIN_H || W < H * ASPECT)) { game = null; document.body.classList.remove('playing'); hideMult(); hud.hidden = true; f.el.remove(); flakes.clear(); flash('Okno za małe — gra przerwana'); break; }
         if (f.y > H + 10) {
-          if (game.saves > 0) { game.saves--; f.vy = -JUMP * game.k; f.y = H - f.size; flash('Anioł Stróż!'); }
+          if (game.saves > 0) { game.saves--; f.vy = -JUMP * game.k; f.y = H - f.size; flash(`🛡 Odbicie od dołu zużyte! Zostało w tej grze: ${game.saves}`); saveFx(); }
           else { endGame(); break; }
         }
       } else {

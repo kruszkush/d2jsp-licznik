@@ -1,6 +1,6 @@
 # Ranking gry "piłeczka": GET -> top 20, POST {nick, score} -> jeden wpis na adres IP (najlepszy wynik, ostatni nick).
 # IP nie jest zapisywane wprost — tylko jego skrót (sha256 z solą).
-import hashlib, ipaddress, os, random, re, secrets, time
+import hashlib, math, ipaddress, os, random, re, secrets, time
 import functions_framework
 from google.cloud import firestore
 
@@ -46,17 +46,12 @@ KEY_RE = re.compile(r"^[0-9a-f]{32}$")
 EQID_RE = re.compile(r"^[0-9a-f]{40}$")
 DROP_MIN, DROP_GAP = 15, 15
 # punkty kontrolne: wynik -> (normalne, magiczne, rzadkie) w %; poniżej 30 i powyżej 150 stałe
-CHECK = [(30, (85, 14, 1)), (60, (65, 30, 5)), (100, (45, 42, 13)), (150, (30, 45, 25))]
-
+# Szanse rzadkości z malejącym przyrostem aż do 1000 pkt (dalej bez zmian): 15 pkt ≈ N85/M14/R1, 150 ≈ 43/33/24, 1000 ≈ 5/45/50
 def rarity_weights(score):
-    if score <= CHECK[0][0]:
-        return CHECK[0][1]
-    if score >= CHECK[-1][0]:
-        return CHECK[-1][1]
-    for (s0, w0), (s1, w1) in zip(CHECK, CHECK[1:]):
-        if s0 <= score <= s1:
-            t = (score - s0) / (s1 - s0)
-            return tuple(a + (b - a) * t for a, b in zip(w0, w1))
+    x = max(0, min(score, 1000) - 15)
+    r = 1 + 49 * (1 - math.exp(-x / 210))
+    m = 14 + 31 * (1 - math.exp(-x / 140))
+    return (max(5.0, 100 - m - r), m, r)
 
 def _num(x, step):
     x = round(x, 2)
