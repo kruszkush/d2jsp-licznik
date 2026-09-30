@@ -285,8 +285,11 @@
   const coloured = (it) => `<b style="color:${COL[it.rarity]}">${esc(itemName(it))}</b>`;
   // Dymek w stylu D2 (najechanie; na telefonie dotknięcie pokazuje/ukrywa)
   const ITEMS = {};
+  // klasa afiksu (jak na serwerze): im wyższa, tym rzadsza
+  const TIER = { stlumiony: 'slaby', zreczny: 'slaby', olbrzyma: 'slaby', lowcy: 'dobry', mrozu: 'dobry', ciezki: 'dobry', wytrwalosci: 'znakomity', rozpedzony: 'znakomity', szczesliwy: 'znakomity', ostry: 'boski', serii: 'boski' };
+  const TIERN = { slaby: 'słaby', dobry: 'dobry', znakomity: 'znakomity', boski: 'boski' };
   const tipHtml = (it) => `<div class="tn" style="color:${COL[it.rarity]}">${esc(itemName(it))}</div><div class="ts">${SLOT[it.slot][0]} · ${RAR[it.rarity]}</div><div class="ts">Poziom przedmiotu: ${it.ilvl ?? 0}</div>
-    <div class="tg">+${(it.implicit?.mult ?? 0.1).toFixed(1)}x mnożnika</div>${(it.affixes || []).filter((a) => AFF[a.id]).map((a) => `<div class="tb">${esc(AFF[a.id][6](a.v))}</div>`).join('')}${it.rarity === 'u' ? '<div class="tb">Raz na grę: odbicie od dołu zamiast końca gry</div>' : ''}`;
+    <div class="tg">+${(it.implicit?.mult ?? 0.1).toFixed(1)}x mnożnika</div>${(it.affixes || []).filter((a) => AFF[a.id]).map((a) => `<div class="tb">${esc(AFF[a.id][6](a.v))}<small class="tier t-${TIER[a.id]}">(${TIERN[TIER[a.id]]})</small></div>`).join('')}${it.rarity === 'u' ? '<div class="tb">Raz na grę: odbicie od dołu zamiast końca gry</div>' : ''}`;
   const sumHtml = (b) => {
     const L = [], pct = (x) => Math.round(x * 100);
     const mult = r3(b.impl + b.ostry); if (mult) L.push(`+${fm(mult)}x mnożnika`);
@@ -315,12 +318,11 @@
   function chancesHtml(score) {
     if (score < 15) return `<div class="mf">Przedmiot wypada od 15 pkt — im więcej punktów, tym większa szansa na rzadszy.</div>`;
     const c = chances(score, B.lucky || 0), c0 = chances(score, 0), p = (v) => v < 10 ? v.toFixed(1) : Math.round(v);
-    const better = c.m + c.r + c.u, mfPts = c0.mf, mfAll = c.mf;
+    const mfPts = Math.round(c0.m + c0.r - 15), mfIt = B.lucky || 0; // magic find: zwykła suma — z punktów + z przedmiotów
     const row = (k, name, v) => `<div class="mfr"><span style="color:${COL[k]}">${name}</span><i>·</i><b>${p(v)}%</b></div>`;
     return `<div class="mf"><div class="mfh">Szansa na przedmiot przy ${score} pkt</div>
       ${row('n', 'Normalny', c.n)}${row('m', 'Magiczny', c.m)}${row('r', 'Rzadki', c.r)}${c.u ? row('u', 'Unikat', c.u) : ''}
-      <div class="mft">Magic find: <b>+${mfAll}%</b>${B.lucky ? ` <span>(z punktów +${mfPts}%, z przedmiotów +${mfAll - mfPts}%)</span>` : ''}</div>
-      <div class="mfs">= ${p(better)}% szansy na magiczny lub lepszy (przy minimalnych 15 pkt: 15%)</div></div>`;
+      <div class="mft">Magic find: <b>+${mfPts + mfIt}%</b>${mfIt ? ` <span>(z punktów +${mfPts}%, z przedmiotów +${mfIt}%)</span>` : ''}</div></div>`;
   }
   const rndHex = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
   const getKey = () => { let k = ls.get('eqKey'); if (!/^[0-9a-f]{32}$/.test(k || '')) { k = rndHex(); ls.set('eqKey', k); } return k; };
@@ -388,7 +390,7 @@
     const $q = (s) => ov.querySelector(s), msg = $q('.eqcode .msg'); let state = null;
     const show = (st) => {
       state = st; $q('.eqmain').innerHTML = invPanel(st);
-      $q('.eqcode code').textContent = fmtKey(getKey());
+      { const k = fmtKey(getKey()), h = Math.ceil(k.length / 2); $q('.eqcode code').textContent = k.slice(0, h) + k.slice(h).replace(/[0-9a-f]/g, '•'); } // druga połowa ukryta; „Kopiuj” kopiuje całość
       const p = st.pending, pe = $q('.eqpend');
       if (p) { pe.innerHTML = '<div class="eqdrop"><div>Czeka na decyzję:</div><div class="eqbody"></div></div>'; decideUI(pe.querySelector('.eqbody'), p, st.slots?.[p.slot], (s2) => { if (s2) show(s2); else load(); }); } else pe.innerHTML = '';
     };
@@ -451,6 +453,7 @@
     .eqcode .warn{font-size:12px;color:#e0764f}
     .eqinv{position:relative;width:420px;height:400px;border-radius:6px;background:radial-gradient(ellipse at 30% 20%,rgba(255,255,255,.05),transparent 60%),repeating-linear-gradient(115deg,rgba(255,255,255,.015) 0 2px,transparent 2px 7px),linear-gradient(#3a3835,#2a2826);border:3px solid #56514a;box-shadow:inset 0 0 0 2px #1b1a18,inset 0 0 40px rgba(0,0,0,.6);box-sizing:border-box;color:#ecebe6}
     .eqinv h3{margin:0;padding:12px 0 6px;text-align:center;font:600 20px Georgia,'Times New Roman',serif;letter-spacing:.28em;color:#c9b98f;text-shadow:0 1px 0 #000}
+    .tier{display:block;font-size:10px;opacity:.85;margin:-1px 0 3px}.t-slaby{color:#9a9892}.t-dobry{color:#8fb3ff}.t-znakomity{color:#c38bff;text-shadow:0 0 6px rgba(160,90,255,.9)}.t-boski{color:#ff5a4a;text-shadow:0 0 7px rgba(255,40,30,.95)}
     .eqslot.setg{outline:2px solid #3fd13f;outline-offset:2px;box-shadow:inset 0 0 0 2px #000,0 0 14px rgba(63,209,63,.7)!important}
     .eqslot{position:absolute;box-sizing:border-box;background:#0d0d0c;border:2px solid #4a463f;box-shadow:inset 0 0 0 2px #000,inset 0 0 18px rgba(0,0,0,.9);display:grid;place-items:center}
     .eqslot .eqit{width:86px;height:86px}
