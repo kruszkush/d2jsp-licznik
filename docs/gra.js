@@ -208,7 +208,7 @@
     game.hits++;
     const up = game.hits % game.per === 0 && game.hits > 0;
     game.score += totalMult();
-    if (up) { game.lvl++; if (game.B.mrozu > 0) game.slow = performance.now() + game.B.mrozu * 1000; flash(`Szybciej! x${fm(totalMult())}`); showMult(game.lvl, true); }
+    if (up) { game.lvl++; flash(`Szybciej! x${fm(totalMult())}`); showMult(game.lvl, true); }
     const r = f.el.getBoundingClientRect(), off = ((e.clientX - (r.left + r.width / 2)) / (r.width / 2)) || 0;
     // podbicie nie wyrzuca ponad górną krawędź: siła ograniczona tak, żeby szczyt lotu był ok. 12 px pod górą ekranu
     const room = Math.max(0, f.y - 12), vMax = Math.sqrt(2 * G * (1 - game.B.ciezki) * game.k * room), jump = JUMP * (1 - game.B.stlum);
@@ -275,7 +275,6 @@
     rozpedzony: ['p', 'Rozpędzony', 10, 20, 1, ['Rozpędzony', 'Rozpędzona', 'Rozpędzone'], (v) => `Rozpocznij z mnożnikiem ogólnym zwiększonym o ${v}%`],
     wytrwalosci: ['s', 'Wytrwałości', 9, 10, 1, 'Wytrwałości', (v) => `Nowy poziom co ${v} podbić`],
     olbrzyma: ['s', 'Olbrzyma', 5, 10, 1, 'Olbrzyma', (v) => `Większa piłeczka o ${v}%`],
-    mrozu: ['s', 'Mrozu', 1.5, 3.0, 0.1, 'Mrozu', (v) => `Po wzroście poziomu spowolnienie ${v.toFixed(1)} s`],
     lowcy: ['s', 'Łowcy', 0.2, 0.5, 0.1, 'Łowcy', (v) => `+${v.toFixed(1)} do mnożnika piłeczki`],
     serii: ['s', 'Serii', 0.10, 0.25, 0.01, 'Serii', (v) => `+${v.toFixed(2)}x mnożnika za każde 10 podbić`],
   };
@@ -288,7 +287,7 @@
   // Dymek w stylu D2 (najechanie; na telefonie dotknięcie pokazuje/ukrywa)
   const ITEMS = {};
   // klasa afiksu (jak na serwerze): im wyższa, tym rzadsza
-  const TIER = { stlumiony: 'slaby', zreczny: 'slaby', olbrzyma: 'slaby', lowcy: 'dobry', mrozu: 'dobry', ciezki: 'dobry', wytrwalosci: 'znakomity', rozpedzony: 'znakomity', szczesliwy: 'znakomity', ostry: 'boski', serii: 'boski' };
+  const TIER = { stlumiony: 'slaby', zreczny: 'slaby', olbrzyma: 'slaby', lowcy: 'dobry', ciezki: 'dobry', wytrwalosci: 'znakomity', rozpedzony: 'znakomity', szczesliwy: 'znakomity', ostry: 'boski', serii: 'boski' };
   const TIERN = { slaby: 'słaby', dobry: 'dobry', znakomity: 'znakomity', boski: 'boski' };
   const tipHtml = (it) => `<div class="tn" style="color:${COL[it.rarity]}">${esc(itemName(it))}</div><div class="ts">${SLOT[it.slot][0]} · ${RAR[it.rarity]}</div><div class="ts">Poziom przedmiotu: ${it.ilvl ?? 0}</div>
     <div class="tg">+${(it.implicit?.mult ?? 0.1).toFixed(1)}x mnożnika</div>${(it.affixes || []).filter((a) => AFF[a.id]).map((a) => `<div class="tb">${esc(AFF[a.id][6](a.v))}<small class="tier t-${TIER[a.id]}">(${TIERN[TIER[a.id]]})</small></div>`).join('')}${it.rarity === 'u' ? '<div class="tb">Raz na grę: odbicie od dołu zamiast końca gry</div>' : ''}`;
@@ -304,7 +303,6 @@
     if (b.ciezki) L.push(`Grawitacja słabsza o ${pct(b.ciezki)}%`);
     if (b.zreczny) L.push(`Odbicie w bok mniejsze o ${pct(b.zreczny)}%`);
     if (b.olb) L.push(`Większa piłeczka o ${pct(b.olb)}%`);
-    if (b.mrozu) L.push(`Po wzroście poziomu spowolnienie ${b.mrozu.toFixed(1)} s`);
     if (b.lucky) L.push(`+${b.lucky}% szansy na rzadszy przedmiot`);
     if (b.guardian) L.push(`Anioł Stróż: ${b.guardian}× ratunek na grę`);
     return `<div class="eqsum"><h4>Łączne bonusy</h4>${L.length ? L.map((x) => `<div>${esc(x)}</div>`).join('') : '<div class="mute">brak</div>'}</div>`;
@@ -529,7 +527,7 @@
     acc += dt; if (acc > 2.2) { acc = 0; spawn(); }
     for (const f of flakes) {
       if (game && game.f === f) {
-        const sd = dt * speedOf(game.lvl) * (game.slow > t ? .5 : 1);
+        const sd = dt * speedOf(game.lvl);
         f.vy += G * (1 - game.B.ciezki) * game.k * sd; f.x += f.vx * sd; f.y += f.vy * sd; f.rot += f.vr * sd;
         const A = TOUCH ? { l: 0, r: W } : arena();
         if (f.x < A.l) { f.x = A.l; f.vx = Math.abs(f.vx) * .8; }
