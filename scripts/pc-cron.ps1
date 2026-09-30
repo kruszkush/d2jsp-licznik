@@ -1,8 +1,8 @@
-# Pobieranie z domowego komputera (zaplanowane zadanie Windows „d2jsp-licznik”). Osobny klon repo w E:Vibe codingd2jsp-licznik-bot,
+# Pobieranie z domowego komputera (zaplanowane zadanie Windows „d2jsp-licznik”). Osobny klon repo w E:\Vibe coding\d2jsp-licznik-bot,
 # żeby reset do GitHuba nie ruszał roboczej kopii. Chrome startuje poza ekranem, więc nic nie wyskakuje.
 $ErrorActionPreference = 'Continue'
-$dir = 'E:Vibe codingd2jsp-licznik-bot'
-$log = 'E:Vibe codingd2jsp-licznik-bot.log'
+$dir = 'E:\Vibe coding\d2jsp-licznik-bot'
+$log = 'E:\Vibe coding\d2jsp-licznik-bot.log'
 if (-not (Test-Path $dir)) { git clone -q https://github.com/kruszkush/d2jsp-licznik.git $dir *>> $log }
 Set-Location $dir
 git fetch -q origin *>> $log; git reset -q --hard origin/main *>> $log
