@@ -573,9 +573,10 @@
         const sd = dt * speedOf(game.lvl) * (game.slow > t ? .45 : 1); // po odbiciu od dołu chwilowe spowolnienie
         f.vy += G * (1 - game.B.ciezki) * game.k * sd; f.x += f.vx * sd; f.y += f.vy * sd; f.rot += f.vr * sd;
         const A = TOUCH ? { l: 0, r: W } : arena();
-        if (f.x < A.l) { f.x = A.l; f.vx = Math.abs(f.vx) * .8; }
-        if (f.x > A.r - f.size) { f.x = A.r - f.size; f.vx = -Math.abs(f.vx) * .8; }
-        if (f.y < 0) { f.y = 0; f.vy = Math.abs(f.vy) * .3; }
+        // mocne odbicie od boków i sufitu (z minimalną prędkością), żeby nie dało się trzymać piłeczki w rogu
+        if (f.x < A.l) { f.x = A.l; f.vx = Math.max(Math.abs(f.vx), 180 * game.k); }
+        if (f.x > A.r - f.size) { f.x = A.r - f.size; f.vx = -Math.max(Math.abs(f.vx), 180 * game.k); }
+        if (f.y < 0) { f.y = 0; f.vy = Math.max(Math.abs(f.vy) * .8, 260 * game.k); }
         if (!TOUCH && (H < MIN_H || W < H * ASPECT)) { game = null; document.body.classList.remove('playing'); hideMult(); hud.hidden = true; f.el.remove(); flakes.clear(); flash('Okno za małe — gra przerwana'); break; }
         if (f.y > H + 10) {
           if (game.saves > 0) { game.saves--; f.y = H - f.size; f.vx = 0; f.vy = -Math.sqrt(2 * G * (1 - game.B.ciezki) * game.k * H * .55); game.slow = t + 1600; // wysoko, prosto w górę i wolniej — łatwo kliknąć
