@@ -325,7 +325,7 @@
   const TIER = { stlumiony: 'slaby', zreczny: 'slaby', olbrzyma: 'slaby', lowcy: 'dobry',  ciezki: 'dobry', wytrwalosci: 'dobry', rozpedzony: 'znakomity', szczesliwy: 'dobry', brawurowy: 'znakomity', zuchwaly: 'znakomity', echa: 'znakomity', ostry: 'boski', serii: 'boski', stroza: 'boski' };
   const TIERN = { slaby: 'słaby', dobry: 'dobry', znakomity: 'znakomity', boski: 'boski' };
   const tipHtml = (it) => `<div class="tn" style="color:${COL[it.rarity]}">${esc(itemName(it))}</div><div class="ts">${SLOT[it.slot][0]} · ${RAR[it.rarity]}</div><div class="ts">Poziom przedmiotu: ${it.ilvl ?? 0}</div>
-    <div class="tg">+${(it.implicit?.mult ?? 0.1).toFixed(1)}x mnożnika</div>${(it.affixes || []).filter((a) => AFF[a.id]).map((a) => `<div class="tb">${esc(AFF[a.id][6](a.v))}<small class="tier t-${TIER[a.id]}">(${TIERN[TIER[a.id]]})</small></div>`).join('')}${it.rarity === 'u' && it.slot === 'boots' ? '<div class="tb">Raz na grę: kliknięcie w dowolne miejsce ekranu liczy się jako podbicie</div>' : ''}${it.rarity === 'u' && it.slot === 'helm' ? '<div class="tb">Podwaja premię piłeczek osób z top 10 ostatnich 24 h (1.: +0.6x, 2.: +0.4x, 3.: +0.3x, 4.–10.: +0.1x)</div>' : ''}`;
+    <div class="tg">+${(it.implicit?.mult ?? 0.1).toFixed(1)}x mnożnika</div>${(it.affixes || []).filter((a) => AFF[a.id]).map((a) => `<div class="tb">${esc(AFF[a.id][6](a.v))}<small class="tier t-${TIER[a.id]}">(${TIERN[TIER[a.id]]})</small></div>`).join('')}${it.rarity === 'u' && it.slot === 'boots' ? '<div class="tb">Raz na grę: kliknięcie w dowolne miejsce ekranu liczy się jako podbicie</div>' : ''}${it.rarity === 'u' && it.slot === 'helm' ? '<div class="tb">Podwaja premię piłeczek osób, którymi grasz, z top 10 z ostatnich 24 godzin</div>' : ''}`;
   const sumHtml = (b) => {
     const L = [], pct = (x) => Math.round(x * 100);
     const mult = r3(b.impl + b.ostry); if (mult) L.push(`+${fm(mult)}x mnożnika`);
@@ -343,7 +343,7 @@
     if (b.olb) L.push(`Większa piłeczka o ${pct(b.olb)}%`);
     if (b.lucky) L.push(`+${b.lucky}% szansy na rzadszy przedmiot`);
     if (b.kapcie) L.push('Kapcie Moderatora: raz na grę kliknięcie w dowolne miejsce ekranu liczy się jako podbicie');
-    if (b.korona) L.push('Hełm Weterana: podwaja premię piłeczek osób z top 10 ostatnich 24 h (1.: +0.6x, 2.: +0.4x, 3.: +0.3x, 4.–10.: +0.1x)');
+    if (b.korona) L.push('Hełm Weterana: podwaja premię piłeczek osób, którymi grasz, z top 10 z ostatnich 24 godzin');
     if (b.guardian) L.push(`Anioł Stróż: ${b.guardian}× ratunek na grę`);
     return `<div class="eqsum"><h4>Łączne bonusy</h4>${L.length ? L.map((x) => `<div>${esc(x)}</div>`).join('') : '<div class="mute">brak</div>'}</div>`;
   };
@@ -423,7 +423,7 @@
     const r = (c, n, d) => `<div class="lgr"><b style="color:${c}">${n}</b><span>${d}</span></div>`;
     ov.innerHTML = `<div class="eqbox" style="width:min(380px,calc(100vw - 32px))"><h3 style="margin:0 0 10px">Legenda · przedmioty</h3>
       <h4>Rzadkość przedmiotów</h4>
-      ${r(COL.n, 'Normalny', '+0.1x mnożnika')}${r(COL.m, 'Magiczny', '+0.1x mnożnika i 1 afiks')}${r(COL.r, 'Rzadki', '+0.1x mnożnika i 2 afiksy')}${r(COL.u, 'Unikat', '+0.3x mnożnika, 3 losowe afiksy (w tym gwarantowany boski) i unikatowa cecha')}${r(COL.u, 'Hełm Weterana', 'unikatowy hełm: podwaja premię piłeczek osób z top 10 ostatnich 24 h (1.: +0.6x, 2.: +0.4x, 3.: +0.3x, 4.–10.: +0.1x)')}${r(COL.u, 'Kapcie Moderatora', 'unikatowe buty: raz na grę kliknięcie w dowolne miejsce ekranu liczy się jako podbicie')}
+      ${r(COL.n, 'Normalny', '+0.1x mnożnika')}${r(COL.m, 'Magiczny', '+0.1x mnożnika i 1 afiks')}${r(COL.r, 'Rzadki', '+0.1x mnożnika i 2 afiksy')}${r(COL.u, 'Unikat', '+0.3x mnożnika, 3 losowe afiksy (w tym gwarantowany boski) i unikatowa cecha')}${r(COL.u, 'Hełm Weterana', 'unikatowy hełm: podwaja premię piłeczek osób, którymi grasz, z top 10 z ostatnich 24 godzin')}${r(COL.u, 'Kapcie Moderatora', 'unikatowe buty: raz na grę kliknięcie w dowolne miejsce ekranu liczy się jako podbicie')}
       <h4>Klasy afiksów</h4>
       <div class="lgr"><b class="t-slaby">słaby</b><span>55%</span></div><div class="lgr"><b class="t-dobry">dobry</b><span>35%</span></div><div class="lgr"><b class="t-znakomity">znakomity</b><span>7%</span></div><div class="lgr"><b class="t-boski">boski</b><span>3%</span></div>
       <h4>Zestaw</h4><div class="lgr"><b style="color:#3fd13f">2 / 3 / 4</b><span>rzadkie lub unikaty z awatarem tej samej osoby: +0.2x / +0.5x / +0.5x</span></div>
