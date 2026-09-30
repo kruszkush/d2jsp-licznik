@@ -1,6 +1,8 @@
 // Spadające awatary + gra w podbijanie awatara. Ranking wspólny (funkcja w Google Cloud).
 (() => {
-  const API = 'https://pileczka-i3odn44x6q-ue.a.run.app';
+  // Wersja testowa (/test/): osobna funkcja i kolekcje; ekwipunek włączony tylko tam
+  const TEST = location.pathname.includes('/test/');
+  const API = TEST ? 'https://pileczka-test-i3odn44x6q-ue.a.run.app' : 'https://pileczka-i3odn44x6q-ue.a.run.app';
   const COLORS = ['#e0a526', '#5b8def', '#d9667a', '#4fb286', '#9b5de5', '#e07a3f'];
   const ls = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -179,9 +181,14 @@
       <div class="sc">${score}<small> pkt</small></div>
       <div class="eq">${gBase > 1 ? `<span class="ch" style="background:${BADGE[gBase]};color:#fff"><b>×${gBase}</b><i>piłeczka</i></span><span class="op">×</span>` : ''}<span class="ch"><b>×${multOf(gLvl).toFixed(1)}</b><i>poziom ${gLvl + 1}</i></span><span class="op">=</span><span class="ch tot"><b>×${gMult.toFixed(1)}</b><i>na koniec</i></span></div>
       <input id="pilNick" maxlength="20" placeholder="Twój nick" value="${esc(ls.get('pilNick') || '')}">
-      <div class="row"><button class="pri" id="pilSave">Zapisz wynik</button><button id="pilClose">Zamknij</button></div><div class="msg" id="pilMsg"></div></div>`;
+      <div class="row"><button class="pri" id="pilSave">Zapisz wynik</button><button id="pilClose">Zamknij</button></div><div class="msg" id="pilMsg"></div><div id="pilDrop"></div></div>`;
     document.body.appendChild(ov);
     const close = () => ov.remove();
+    let dropOpen = false; // nierozstrzygnięty przedmiot: okno zamyka się tylko przyciskiem
+    if (TEST && score >= 15) { // drop idzie od razu, niezależnie od zapisu wyniku
+      eqPost('/drop', { key: getKey(), gameId: rndHex().slice(0, 16), score, ballUid: /^\d+$/.test(f.u) ? f.u : '', ballNick: D.users[f.u] || '' })
+        .then((r) => { if (r.ok && r.j.drop) { ov.querySelector('.box').classList.add('wide'); showDrop(ov.querySelector('#pilDrop'), r.j, (o) => { dropOpen = o; }); } }).catch(() => {});
+    }
     ov.querySelector('#pilClose').onclick = close;
     const save = () => {
       const nick = ov.querySelector('#pilNick').value.trim();
@@ -189,12 +196,137 @@
       ls.set('pilNick', nick); ls.set('pilGral', '1');
       ov.querySelector('#pilMsg').textContent = 'Zapisuję…';
       fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nick, score, dev: TOUCH ? 'm' : 'd', hits: gHits, ball: D.users[f.u] || '', ballUid: /^\d+$/.test(f.u) ? f.u : '' }) })
-        .then((r) => r.json()).then((j) => { if (j.top) { showRank(j.top); close(); card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } else ov.querySelector('#pilMsg').textContent = j.error || 'Błąd zapisu.'; })
+        .then((r) => r.json()).then((j) => { if (j.top) { showRank(j.top); if (dropOpen) ov.querySelector('#pilMsg').textContent = 'Wynik zapisany. Rozstrzygnij przedmiot poniżej.'; else { close(); card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } } else ov.querySelector('#pilMsg').textContent = j.error || 'Błąd zapisu.'; })
         .catch(() => { ov.querySelector('#pilMsg').textContent = 'Nie udało się zapisać, spróbuj jeszcze raz.'; });
     };
     ov.querySelector('#pilSave').onclick = save;
     ov.querySelector('#pilNick').addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
     setTimeout(() => ov.querySelector('#pilNick').focus(), 50);
+  }
+
+  // --- ekwipunek (tylko wersja testowa: /test/) ---
+  const COL = { n: '#c8c8c8', m: '#6c8cff', r: '#f2d24b' }, RAR = { n: 'Normalny', m: 'Magiczny', r: 'Rzadki' };
+  const SLOT = { helm: ['Hełm', 0, 'hełm'], armor: ['Zbroja', 1, 'zbroja'], gloves: ['Rękawice', 2, 'rękawice'], boots: ['Buty', 2, 'buty'] }; // nazwa, rodzaj (m/ż/lm), etykieta pustego slotu
+  const ADJ = { iron: ['Żelazny', 'Żelazna', 'Żelazne'], gold: ['Złoty', 'Złota', 'Złote'], crown: ['Koronowany', 'Koronowana', 'Koronowane'], shadow: ['Mroczny', 'Mroczna', 'Mroczne'], storm: ['Burzowy', 'Burzowa', 'Burzowe'] };
+  const GEN = { bear: 'Niedźwiedzia', fox: 'Lisa', tiger: 'Tygrysa', wolf: 'Wilka', eagle: 'Orła', snake: 'Węża', speed: 'Szybkości' };
+  const itemName = (it) => { const s = SLOT[it.slot]; return [ADJ[it.prefix]?.[s[1]], s[0], GEN[it.suffix]].filter(Boolean).join(' '); };
+  const coloured = (it) => `<b style="color:${COL[it.rarity]}">${esc(itemName(it))}</b>`;
+  const rndHex = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
+  const getKey = () => { let k = ls.get('eqKey'); if (!/^[0-9a-f]{32}$/.test(k || '')) { k = rndHex(); ls.set('eqKey', k); } return k; };
+  const eqPost = (path, body) => fetch(API + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    .then((r) => r.json().then((j) => ({ ok: r.ok, status: r.status, j })));
+  // Przedmiot = awatar podbitej osoby + nakładka slotu w kolorze rzadkości
+  function itemEl(it) {
+    const av = it.uid && D?.avatars?.[it.uid];
+    return `<div class="eqit q-${it.rarity}"><div class="eqav" style="${av ? `background-image:url('${esc(av)}')` : ''}">${av ? '' : esc((it.unick || '?')[0].toUpperCase())}</div><svg class="eqov" style="color:${COL[it.rarity]}"><use href="#eq-${it.slot}"/></svg></div>`;
+  }
+  // Porównanie „założone → nowy” z przyciskami; done(stan) po rozstrzygnięciu (albo done(null) gdy przedmiot już przepadł)
+  function decideUI(host, item, cur, done) {
+    host.innerHTML = `<div class="eqcmp">${cur ? `<div class="eqc q-${cur.rarity}"><span class="tag">założone</span>${itemEl(cur)}<div class="eqname" style="color:${COL[cur.rarity]}">${esc(itemName(cur))}</div></div><div class="arr">→</div>` : ''}<div class="eqc q-${item.rarity}"><span class="tag">nowy</span>${itemEl(item)}<div class="eqname" style="color:${COL[item.rarity]}">${esc(itemName(item))}</div></div></div>
+      <div class="row"><button class="pri" data-a="equip">Załóż nowy</button><button data-a="discard">Zostaw stary</button></div><div class="msg"></div>`;
+    const msg = host.querySelector('.msg');
+    host.querySelectorAll('button').forEach((b) => b.onclick = () => {
+      const a = b.dataset.a;
+      if (a === 'equip' && cur && !confirm(`Po zamianie ${itemName(cur)} przepadnie na zawsze. Na pewno?`)) return;
+      host.querySelectorAll('button').forEach((x) => x.disabled = true);
+      eqPost('/equip', { key: getKey(), id: item.id, action: a }).then((r) => {
+        if (r.status === 409) { host.innerHTML = '<div class="msg">Ten przedmiot już przepadł.</div>'; done(null); }
+        else if (r.ok) { host.innerHTML = `<div class="eqres">${a === 'equip' ? 'Założono' : cur ? 'Zostawiono stary' : 'Odrzucono'}: ${coloured(a === 'equip' || !cur ? item : cur)}</div>`; done(r.j); }
+        else throw 0;
+      }).catch(() => { msg.textContent = 'Błąd sieci, spróbuj jeszcze raz.'; host.querySelectorAll('button').forEach((x) => x.disabled = false); });
+    });
+  }
+  // Sekcja dropu w oknie końca gry; setOpen(true) dopóki czeka na decyzję (okno się wtedy nie zamyka po zapisie wyniku)
+  function showDrop(host, j, setOpen) {
+    const it = j.drop;
+    host.innerHTML = `<div class="eqdrop"><div>Wypadł przedmiot! <b style="color:${COL[it.rarity]}">${RAR[it.rarity]}</b></div><div class="eqbody"></div></div>`;
+    const body = host.querySelector('.eqbody');
+    if (j.equipped) { body.innerHTML = `<div class="eqres">${itemEl(it)}<span>Założono: ${coloured(it)}</span></div>`; setOpen(false); return; }
+    setOpen(true);
+    decideUI(body, it, j.current, () => setOpen(false));
+  }
+  const SLOT_POS = { helm: 'left:160px;top:46px;width:100px;height:100px', armor: 'left:150px;top:186px;width:120px;height:150px', gloves: 'left:22px;top:252px;width:100px;height:100px', boots: 'left:298px;top:252px;width:100px;height:100px' };
+  function invPanel(st) {
+    return `<div class="eqinv"><h3>EKWIPUNEK</h3>${Object.keys(SLOT).map((s) => { const it = st.slots?.[s]; return `<div class="eqslot ${it ? 'q-' + it.rarity : 'empty'}" data-l="${SLOT[s][2]}" style="${SLOT_POS[s]}">${it ? `${itemEl(it)}<div class="eqname" style="color:${COL[it.rarity]}">${esc(itemName(it))}</div>` : ''}</div>`; }).join('')}</div>`;
+  }
+  const fmtKey = (k) => k.match(/.{4}/g).join('-');
+  function openInv() {
+    const ov = document.createElement('div'); ov.className = 'eqo';
+    const z = Math.min(1, (innerWidth - 48) / 420);
+    ov.innerHTML = `<div class="eqbox" style="width:${Math.round(420 * z)}px"><div class="eqz" style="zoom:${z}"><div class="eqmain">Ładowanie…</div></div>
+      <div class="eqpend"></div>
+      <div class="eqcode"><h4>Kod przenoszenia</h4><div class="kc"><code></code><button data-a="copy">Kopiuj</button></div>
+      <div class="warn">Nie pokazuj nikomu — kto zna kod, ma Twój ekwipunek. Wyczyszczenie przeglądarki bez zapisanego kodu = utrata.</div>
+      <div class="kc"><input placeholder="Wklej kod z innego urządzenia" maxlength="60"><button data-a="load">Wczytaj</button></div><div class="msg"></div></div>
+      <div class="row"><button data-a="close">Zamknij</button></div></div>`;
+    document.body.appendChild(ov);
+    const $q = (s) => ov.querySelector(s), msg = $q('.eqcode .msg'); let state = null;
+    const show = (st) => {
+      state = st; $q('.eqmain').innerHTML = invPanel(st);
+      $q('.eqcode code').textContent = fmtKey(getKey());
+      const p = st.pending, pe = $q('.eqpend');
+      if (p) { pe.innerHTML = '<div class="eqdrop"><div>Czeka na decyzję:</div><div class="eqbody"></div></div>'; decideUI(pe.querySelector('.eqbody'), p, st.slots?.[p.slot], (s2) => { if (s2) show(s2); else load(); }); } else pe.innerHTML = '';
+    };
+    const load = () => eqPost('/inv', { key: getKey() }).then((r) => { if (!r.ok) throw 0; show(r.j); }).catch(() => { $q('.eqmain').textContent = 'Nie udało się pobrać ekwipunku.'; });
+    load();
+    ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+    ov.querySelectorAll('button[data-a]').forEach((b) => b.addEventListener('click', () => {
+      if (b.dataset.a === 'close') ov.remove();
+      else if (b.dataset.a === 'copy') { navigator.clipboard?.writeText(fmtKey(getKey())).then(() => msg.textContent = 'Skopiowano.', () => msg.textContent = 'Nie udało się skopiować — zaznacz kod ręcznie.'); }
+      else if (b.dataset.a === 'load') {
+        const k = $q('.eqcode input').value.toLowerCase().replace(/[\s-]/g, '');
+        if (!/^[0-9a-f]{32}$/.test(k)) { msg.textContent = 'Zły kod (32 znaki 0-9, a-f).'; return; }
+        if (k === getKey()) { msg.textContent = 'To już ten sam kod.'; return; }
+        if (state && (state.pending || Object.values(state.slots || {}).some(Boolean)) && !confirm('Ten ekwipunek ma przedmioty — po wczytaniu kodu przepadną (chyba że masz zapisany jego kod). Na pewno?')) return;
+        ls.set('eqKey', k); $q('.eqcode input').value = ''; msg.textContent = 'Wczytano.'; $q('.eqmain').textContent = 'Ładowanie…'; load();
+      }
+    }));
+  }
+  if (TEST) {
+    const eqCss = document.createElement('style');
+    eqCss.textContent = `
+    #over .box.wide{width:min(380px,calc(100vw - 32px));max-height:calc(100vh - 16px);overflow:auto}
+    .eqdrop{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:14px}.eqdrop .eqbody{margin-top:6px}
+    .eqres{display:flex;align-items:center;justify-content:center;gap:8px;margin:6px 0;font-size:14px}.eqres .eqit{width:54px;height:54px}
+    .eqit{position:relative;width:78px;height:78px}
+    .eqav{position:absolute;inset:8%;border-radius:50%;background:#222 center/cover;border:3px solid;display:grid;place-items:center;font-weight:800;color:#ecebe6}
+    .eqit .eqav{border-color:#c8c8c8}.eqit.q-m .eqav{border-color:#6c8cff;box-shadow:0 0 10px rgba(108,140,255,.6)}.eqit.q-r .eqav{border-color:#f2d24b;box-shadow:0 0 12px rgba(242,210,75,.7)}
+    .eqov{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+    .eqname{font-size:11.5px;font-weight:700;text-align:center;line-height:1.2}
+    .eqcmp{display:flex;gap:10px;align-items:center;justify-content:center;margin:8px 0 12px}.eqcmp .arr{font-size:22px;color:var(--mute)}
+    .eqc{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:8px;display:flex;flex-direction:column;align-items:center;width:120px}
+    .eqc .tag{font-size:10.5px;color:var(--mute);margin-bottom:4px}
+    .eqdrop .row,.eqbox>.row{display:flex;gap:8px;justify-content:center}
+    .eqdrop .pri{background:var(--acc);border-color:var(--acc);color:#fff}
+    .eqdrop .msg,.eqcode .msg{font-size:12px;color:var(--mute);min-height:16px;margin-top:6px;text-align:center}
+    .eqo{position:fixed;inset:0;z-index:71;display:grid;place-items:center;background:rgba(0,0,0,.45);overflow:auto}
+    .eqbox{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;max-width:calc(100vw - 34px);max-height:calc(100vh - 34px);overflow:auto;box-sizing:content-box}
+    .eqbox .eqpend{margin-bottom:6px}
+    .eqcode{margin:14px 0 12px;font-size:13px}.eqcode h4{margin:0 0 6px;font-size:13px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em}
+    .eqcode .kc{display:flex;gap:6px;align-items:center;margin:6px 0}.eqcode code{flex:1;min-width:0;font-size:13px;user-select:all;word-break:break-all;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:5px 8px}
+    .eqcode input{flex:1;min-width:0}
+    .eqcode .warn{font-size:12px;color:#e0764f}
+    .eqinv{position:relative;width:420px;height:400px;border-radius:6px;background:radial-gradient(ellipse at 30% 20%,rgba(255,255,255,.05),transparent 60%),repeating-linear-gradient(115deg,rgba(255,255,255,.015) 0 2px,transparent 2px 7px),linear-gradient(#3a3835,#2a2826);border:3px solid #56514a;box-shadow:inset 0 0 0 2px #1b1a18,inset 0 0 40px rgba(0,0,0,.6);box-sizing:border-box;color:#ecebe6}
+    .eqinv h3{margin:0;padding:12px 0 6px;text-align:center;font:600 20px Georgia,'Times New Roman',serif;letter-spacing:.28em;color:#c9b98f;text-shadow:0 1px 0 #000}
+    .eqslot{position:absolute;box-sizing:border-box;background:#0d0d0c;border:2px solid #4a463f;box-shadow:inset 0 0 0 2px #000,inset 0 0 18px rgba(0,0,0,.9);display:grid;place-items:center}
+    .eqslot .eqit{width:86px;height:86px}
+    .eqslot .eqname{position:absolute;top:100%;margin-top:3px;left:50%;transform:translateX(-50%);width:130px;text-shadow:0 1px 2px #000}
+    .eqslot.empty::after{content:attr(data-l);color:#5a564f;font:12px Georgia,serif;letter-spacing:.1em}
+    .eqslot.q-n{border-color:#6d6a64}.eqslot.q-m{border-color:#4a5fb8;box-shadow:inset 0 0 0 2px #000,inset 0 0 22px rgba(80,110,255,.25)}.eqslot.q-r{border-color:#b89a2c;box-shadow:inset 0 0 0 2px #000,inset 0 0 22px rgba(242,210,75,.22)}`;
+    document.head.appendChild(eqCss);
+    const defs = document.createElement('div');
+    defs.innerHTML = `<svg width="0" height="0" style="position:absolute"><defs>
+      <symbol id="eq-helm" viewBox="0 0 78 78"><path d="M8 38 C8 12 70 12 70 38 L70 34 C64 30 14 30 8 34Z" fill="currentColor"/><path d="M6 36 C6 8 72 8 72 36 L64 36 C62 18 16 18 14 36Z" fill="currentColor"/><rect x="36" y="14" width="6" height="30" rx="2" fill="currentColor"/><path d="M14 36 C16 18 62 18 64 36" fill="none" stroke="#000" stroke-opacity=".35" stroke-width="2"/></symbol>
+      <symbol id="eq-armor" viewBox="0 0 78 78"><path d="M2 30 Q10 20 20 26 L20 40 Q8 42 2 30Z M76 30 Q68 20 58 26 L58 40 Q70 42 76 30Z" fill="currentColor"/><path d="M14 50 Q39 66 64 50 L62 76 L16 76Z" fill="currentColor"/><path d="M26 58 L39 72 L52 58" fill="none" stroke="#000" stroke-opacity=".35" stroke-width="2"/></symbol>
+      <symbol id="eq-gloves" viewBox="0 0 78 78"><g fill="currentColor"><path d="M0 44 q0-10 6-12 l1-10 q2-3 4 0 l1 8 1-10 q2-3 4 0 l0 10 1-8 q2-3 4 0 l0 12 q2 10-6 18 l-12 0z"/><path d="M78 44 q0-10-6-12 l-1-10 q-2-3-4 0 l-1 8-1-10 q-2-3-4 0 l0 10-1-8 q-2-3-4 0 l0 12 q-2 10 6 18 l12 0z"/></g></symbol>
+      <symbol id="eq-boots" viewBox="0 0 78 78"><g fill="currentColor"><path d="M14 56 h14 v10 q0 4 4 5 l4 1 v5 h-24 q-2 0-2-3z"/><path d="M50 56 h14 v19 q0 3-2 3 h-24 v-5 l4-1 q4-1 4-5z"/></g><path d="M14 66 h14 M50 66 h14" stroke="#000" stroke-opacity=".35" stroke-width="2"/></symbol>
+    </defs></svg>`;
+    document.body.appendChild(defs.firstChild);
+    // Przycisk pod kartą rankingu (karta rankingu pojawia się dopiero po pierwszej grze, przycisk jest zawsze)
+    const eqCard = document.createElement('div'); eqCard.className = 'card';
+    eqCard.innerHTML = '<button id="eqBtn" style="width:100%">Ekwipunek</button>';
+    card.after(eqCard);
+    eqCard.querySelector('#eqBtn').onclick = openInv;
   }
 
   // --- pętla ---

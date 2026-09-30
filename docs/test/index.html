@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Licznik postów d2jsp 3.1-test</title>
+<style>
+:root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e4e2dc;--acc:#b4441f;--bar:#d9825f;
+ --gold:#c9961a;--gold2:#f3d46b;--goldbg:#fff8e3;--goldline:#efd89a;--silver:#9aa0a6;--bronze:#b3713f}
+@media (prefers-color-scheme:dark){:root{--bg:#141413;--card:#1e1e1c;--ink:#ecebe6;--mute:#9a9892;--line:#33322f;--acc:#e0764f;--bar:#a9573a;
+ --gold:#e6b93a;--gold2:#ffe38a;--goldbg:#2a2415;--goldline:#5a4a1f;--silver:#b8bdc2;--bronze:#cf8a55}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1200px;margin:0 auto;padding:24px 16px 48px;display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:20px;align-items:start}
+@media (max-width:900px){.wrap{grid-template-columns:1fr}aside{order:-1}}
+h1{font-size:24px;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 20px;font-size:13px}
+.ranges{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:16px}
+button{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:6px 12px;border-radius:999px;cursor:pointer}
+button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+input{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:5px 8px;border-radius:8px;max-width:100%}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.tile b{display:block;font-size:24px;font-variant-numeric:tabular-nums}
+.tile span{color:var(--mute);font-size:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:16px}
+.card h2{font-size:15px;margin:0 0 10px}
+.bars{display:flex;align-items:flex-end;gap:4px;height:170px}
+.bars .col{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
+.bars .v{font-size:11px;color:var(--mute);font-variant-numeric:tabular-nums;margin-bottom:3px}
+.bars .b{width:100%;max-width:46px;background:var(--bar);border-radius:4px 4px 0 0;min-height:2px}
+.bars .d{font-size:11px;color:var(--mute);margin-top:5px;white-space:nowrap;line-height:1.2;text-align:center}
+.bars .d i{font-style:normal;display:block;font-size:10px;opacity:.8}
+.bars .col.today .b{opacity:.55}
+.wk{font-size:13px;color:var(--mute);margin-top:2px}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:6px 4px;border-bottom:1px solid var(--line)}
+th{color:var(--mute);font-weight:500;font-size:12px}
+td.n,th.n{text-align:right}
+a{color:var(--ink);text-decoration:none}a:hover{color:var(--acc)}
+.share{height:6px;background:var(--bar);border-radius:3px;min-width:2px}
+.w{width:26%}
+@media (max-width:560px){.w{display:none}}
+.head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.head h2{margin:0}
+/* puchary */
+aside{position:sticky;top:16px}
+@media (max-width:900px){aside{position:static}}
+.cup{width:1em;height:1em;vertical-align:-.12em;display:inline-block}
+.mini .cup+.cup{margin-left:2px}
+.mini{margin-left:6px;font-size:13px;color:var(--gold);font-weight:600;white-space:nowrap;cursor:default}
+.champ{position:relative;overflow:hidden;background:linear-gradient(160deg,var(--goldbg),var(--card) 70%);border:1px solid var(--goldline);border-radius:16px;padding:18px 16px 16px;text-align:center;margin-bottom:14px}
+.champ .big{width:84px;height:84px;filter:drop-shadow(0 6px 10px rgba(201,150,26,.35));animation:float 3.5s ease-in-out infinite;will-change:transform}
+@keyframes float{50%{transform:translateY(-4px) rotate(-2deg)}}
+@media (prefers-reduced-motion:reduce){.champ .big{animation:none}}
+.champ .lab{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-top:6px}
+.champ .who{font-size:22px;font-weight:700;margin:2px 0;word-break:break-word}
+.champ .who a{color:var(--ink);text-decoration:none}
+.champ .meta{color:var(--mute);font-size:13px}
+.champ::before{content:"";position:absolute;inset:-40% -20% auto;height:120%;background:radial-gradient(closest-side,rgba(243,212,107,.35),transparent);pointer-events:none}
+.side h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:0 0 8px;font-weight:600}
+.race li,.hist li,.fame li{list-style:none;display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px}
+.race,.hist,.fame{margin:0;padding:0}
+.race li:last-child,.hist li:last-child,.fame li:last-child{border:0}
+.pos{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;color:#fff;flex:none}
+.p1{background:var(--gold)}.p2{background:var(--silver)}.p3{background:var(--bronze)}
+.grow{flex:1;min-width:0}
+.grow .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.track{height:4px;border-radius:2px;background:var(--line);margin-top:3px}
+.track i{display:block;height:100%;border-radius:2px;background:var(--gold)}
+.num{font-variant-numeric:tabular-nums;color:var(--mute);font-size:13px;white-space:nowrap}
+.hist .dt{color:var(--mute);font-size:12px;width:92px;flex:none;line-height:1.25}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.duo.stack{grid-template-columns:1fr}
+.duo.stack .champ2{display:grid;grid-template-columns:56px 1fr;column-gap:12px;text-align:left;align-items:center;padding:12px 14px}
+.duo.stack .champ2 .mid{grid-row:span 9;width:52px;height:52px;align-self:start}
+.duo.stack .champ2 .lab2{margin-top:0}
+.champ2{border-radius:14px;padding:12px 10px;text-align:center;border:1px solid var(--line);background:var(--card);min-width:0}
+.champ2.cm{background:linear-gradient(160deg,rgba(155,93,229,.14),var(--card) 75%);border-color:rgba(155,93,229,.35)}
+.champ2.cy{background:linear-gradient(160deg,rgba(63,170,210,.16),var(--card) 75%);border-color:rgba(63,170,210,.4)}
+.champ2 .mid{width:44px;height:44px}
+.lab2{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-top:4px}
+.lab2.lm{color:#9b5de5}.lab2.ly{color:#2f9ec7}
+.who2{font-weight:700;font-size:15px;margin:2px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.who2.tbd{color:var(--mute);font-weight:500;font-style:italic;font-size:14px}
+.champ2 .meta{color:var(--mute);font-size:12px}
+.champ2 .lead{font-size:12px;margin-top:6px;padding-top:6px;border-top:1px dashed var(--line)}
+.fame .mini{margin-left:8px}
+.empty{color:var(--mute);font-size:13px}
+.note{color:var(--mute);font-size:12px;margin:8px 0 0}
+.pie{position:fixed;z-index:50;width:340px;max-width:calc(100vw - 16px);background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:0 12px 32px rgba(0,0,0,.25);pointer-events:none}
+.pie[hidden]{display:none}
+.pie h4{margin:0 0 8px;font-size:13px;font-weight:600;text-align:center}
+.pie .ring{position:relative;width:280px;height:280px;max-width:100%;aspect-ratio:1;margin:0 auto}
+.pie .ring svg{width:100%;height:100%;display:block}
+.pie .av{position:absolute;width:44px;height:44px;border-radius:50%;transform:translate(-50%,-50%);border:3px solid;background:var(--card) center/cover no-repeat;display:grid;place-items:center;font-weight:700;font-size:15px;color:var(--ink)}
+.pie .mid{position:absolute;inset:0;display:grid;place-items:center;text-align:center;font-size:12px;color:var(--mute);pointer-events:none}
+.pie .mid b{display:block;font-size:30px;color:var(--ink)}
+.pie ul{list-style:none;margin:10px 0 0;padding:0;font-size:13px}
+.pie li{display:flex;align-items:center;gap:6px;padding:2px 0}
+.pie li i{width:10px;height:10px;border-radius:3px;flex:none}
+.pie li span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pie li em{font-style:normal;color:var(--mute);font-variant-numeric:tabular-nums}
+.bars .col{cursor:pointer}.bars .col:hover .b{filter:brightness(1.15)}
+.champ2 .ld{display:flex;justify-content:space-between;gap:6px;text-align:left;margin-top:2px}
+.champ2 .ldn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.champ2 .ldv{font-variant-numeric:tabular-nums;white-space:nowrap}
+.champ2 .ldv em{font-style:normal;color:var(--mute);margin-left:4px;font-size:11px}
+.champ.cm{background:linear-gradient(160deg,rgba(155,93,229,.16),var(--card) 70%);border-color:rgba(155,93,229,.4)}
+.champ.cm::before{background:radial-gradient(closest-side,rgba(190,140,255,.28),transparent)}
+.champ.cm .lab{color:#a46ff0}.champ.cm .big{filter:drop-shadow(0 6px 10px rgba(123,63,209,.35))}
+.champ.cy{background:linear-gradient(160deg,rgba(63,170,210,.18),var(--card) 70%);border-color:rgba(63,170,210,.45)}
+.champ.cy::before{background:radial-gradient(closest-side,rgba(127,217,240,.3),transparent)}
+.champ.cy .lab{color:#3fb0d8}.champ.cy .big{filter:drop-shadow(0 6px 10px rgba(42,143,184,.35))}
+.champ .who.tbd{color:var(--mute);font-weight:500;font-style:italic;font-size:18px}
+.champ .lead{font-size:13px;margin-top:10px;padding-top:8px;border-top:1px dashed var(--line);position:relative}
+.champ .lead>span{color:var(--mute);font-size:12px}
+.champ .ld{display:flex;justify-content:space-between;gap:6px;text-align:left;margin-top:3px}
+.champ .ldn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.champ .ldv{font-variant-numeric:tabular-nums;white-space:nowrap}
+.ystar{color:#3fb0d8;margin-left:4px;text-shadow:0 0 6px rgba(63,176,216,.6);cursor:default}
+.reign a,.reign{color:#b98cff!important;font-weight:700;text-shadow:0 0 8px rgba(155,93,229,.75)}
+.cup.fire{width:1em;height:1.22em;vertical-align:-.2em;overflow:visible}
+.cup.fire .fl{transform-origin:32px 12px;animation:flick .45s ease-in-out infinite alternate}
+@keyframes flick{from{transform:scale(.92,.86)}to{transform:scale(1.05,1.08)}}
+@media (prefers-reduced-motion:reduce){.cup.fire .fl{animation:none}}
+.firew{position:relative;display:inline-block}
+.cup.fire{}
+.cup.fire .fl{animation:flick .4s ease-in-out infinite alternate}
+@keyframes flick{from{transform:scale(.9,.84) skewX(-3deg)}to{transform:scale(1.06,1.1) skewX(3deg)}}
+.lavadrop{position:fixed;left:0;top:0;width:2.5px;height:2.5px;border-radius:50%;background:#ff4a1a;box-shadow:0 0 3px 1px rgba(255,60,10,.7);pointer-events:none;z-index:39}
+.legend{max-width:1200px;margin:0 auto;padding:8px 16px 48px}
+.legend h2{font-size:15px;margin:0 0 10px}
+.lg{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.lg>div{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.lg .ic{flex:none;width:28px;font-size:22px;text-align:center}
+.lg .ic .reign{font-size:12px}
+.lg p{margin:0;display:flex;flex-direction:column;gap:1px;line-height:1.3}
+.lg b{font-size:14px}.lg p span{color:var(--mute);font-size:12.5px}
+.ver{font-size:12px;font-weight:600;color:var(--mute);border:1px solid var(--line);border-radius:999px;padding:1px 8px;vertical-align:middle}
+</style>
+</head>
+<body>
+<div style="background:#b4441f;color:#fff;text-align:center;font:700 12px system-ui;letter-spacing:.12em;padding:3px">WERSJA TESTOWA</div>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="gg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--gold2)"/><stop offset="1" stop-color="var(--gold)"/></linearGradient>
+    <symbol id="cup" viewBox="0 0 64 64">
+      <path d="M18 8h28v14c0 9-6 16-14 16S18 31 18 22z" fill="url(#gg)"/>
+      <path d="M18 12H9c0 10 5 15 11 16M46 12h9c0 10-5 15-11 16" fill="none" stroke="var(--gold)" stroke-width="4" stroke-linecap="round"/>
+      <path d="M28 37h8l2 10H26z" fill="var(--gold)"/>
+      <rect x="20" y="47" width="24" height="8" rx="2" fill="url(#gg)"/>
+      <path d="M25 13c0 6 1 11 4 15" stroke="#fff" stroke-opacity=".55" stroke-width="3" fill="none" stroke-linecap="round"/>
+    </symbol>
+    <linearGradient id="gm" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9b8ff"/><stop offset="1" stop-color="#7b3fd1"/></linearGradient>
+    <linearGradient id="gy" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e6fbff"/><stop offset=".5" stop-color="#7fd9f0"/><stop offset="1" stop-color="#2a8fb8"/></linearGradient>
+    <symbol id="cupM" viewBox="0 0 64 64">
+      <path d="M17 6h30v15c0 10-7 17-15 17S17 31 17 21z" fill="url(#gm)"/>
+      <path d="M17 10H8c0 11 5 16 11 17M47 10h9c0 11-5 16-11 17" fill="none" stroke="#7b3fd1" stroke-width="4" stroke-linecap="round"/>
+      <path d="M28 37h8l2 9H26z" fill="#7b3fd1"/>
+      <path d="M18 46h28l3 10H15z" fill="url(#gm)"/>
+      <path d="M32 13l2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4-3.9-3.8 5.4-.8z" fill="#fff" fill-opacity=".9"/>
+    </symbol>
+    <symbol id="cupY" viewBox="0 0 64 64">
+      <path d="M20 2l4 6 8-6 8 6 4-6 2 9H18z" fill="#f3c93a"/>
+      <path d="M16 11h32v12c0 10-7 16-16 16S16 33 16 23z" fill="url(#gy)"/>
+      <path d="M16 14H7c0 11 5 16 11 17M48 14h9c0 11-5 16-11 17" fill="none" stroke="#2a8fb8" stroke-width="4" stroke-linecap="round"/>
+      <path d="M28 38h8l2 8H26z" fill="#2a8fb8"/>
+      <path d="M17 46h30l3 11H14z" fill="url(#gy)"/>
+      <path d="M32 16l6 7-6 9-6-9z" fill="#fff" fill-opacity=".85"/>
+    </symbol>
+    <linearGradient id="gred" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7a4d"/><stop offset=".55" stop-color="#e3261b"/><stop offset="1" stop-color="#7d0a06"/></linearGradient>
+    <linearGradient id="glava" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd23f"/><stop offset=".35" stop-color="#ff6a1a"/><stop offset="1" stop-color="#c41808"/></linearGradient>
+    <symbol id="cupR" viewBox="0 0 64 64">
+      <path d="M18 8h28v14c0 9-6 16-14 16S18 31 18 22z" fill="url(#gred)"/>
+      <path d="M18 12H9c0 10 5 15 11 16M46 12h9c0 10-5 15-11 16" fill="none" stroke="#b3140c" stroke-width="4" stroke-linecap="round"/>
+      <path d="M28 37h8l2 10H26z" fill="#b3140c"/><rect x="20" y="47" width="24" height="8" rx="2" fill="url(#gred)"/>
+      <path d="M25 13c0 6 1 11 4 15" stroke="#fff" stroke-opacity=".4" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M17 8h30c0 3-2 4-4 4H21c-2 0-4-1-4-4z" fill="url(#glava)"/>
+      <path d="M21 10c-2 0-3 2-3 5v8c0 2 1 3 2 3s2-1 2-3v-8z" fill="url(#glava)"/>
+    </symbol>
+  </defs>
+</svg>
+<div class="wrap">
+<main>
+<h1>Licznik postów — d2jsp Polska <span class="ver">3.1-test</span></h1>
+<p class="sub" id="sub">Ładowanie danych…</p>
+
+<div class="ranges" id="ranges">
+  <button data-d="1">24 h</button><button data-d="7">7 dni</button><button data-d="30" class="on">30 dni</button>
+  <button data-d="90">90 dni</button><button data-d="0">Całość</button>
+  <span style="margin-left:6px;color:var(--mute);font-size:13px">lub od</span><input type="date" id="from">
+  <span style="color:var(--mute);font-size:13px">do</span><input type="date" id="to">
+</div>
+
+<div class="tiles">
+  <div class="tile"><b id="tPosts">–</b><span>postów</span></div>
+  <div class="tile"><b id="tUsers">–</b><span>piszących</span></div>
+  <div class="tile"><b id="tTopics">–</b><span>tematów</span></div>
+  <div class="tile"><b id="tAvg">–</b><span>postów dziennie</span></div>
+</div>
+
+<div class="card"><h2>Posty dziennie</h2><p class="note" style="margin:-6px 0 10px">Ile postów napisano na forum każdego dnia w wybranym zakresie.</p><div id="chart" class="bars"></div></div>
+
+<div class="card">
+  <div class="head"><h2>Ranking</h2><input id="q" placeholder="Szukaj nicku…"></div>
+  <table><thead><tr><th>#</th><th>Użytkownik</th><th class="n">Posty</th><th class="n">Tematy</th><th class="w">Udział</th></tr></thead><tbody id="rows"></tbody></table>
+</div>
+</main>
+
+<aside class="side">
+  <div class="champ cy" id="champY"></div>
+  <div class="champ cm" id="champM"></div>
+  <div class="champ" id="champ"><div class="empty">Ładowanie pucharów…</div></div>
+  <div class="card"><h3 id="raceH">Wyścig o puchar</h3><ul class="race" id="race"></ul><p class="note" id="raceNote"></p></div>
+  <div class="card"><h3>Poprzednie tygodnie</h3><ul class="hist" id="hist"></ul></div>
+  <div class="card"><h3>Galeria sław</h3><ul class="fame" id="fame"></ul></div>
+</aside>
+<div id="pie" class="pie" hidden></div>
+</div>
+<div id="legendSlot"></div>
+<script>
+const $ = (id) => document.getElementById(id);
+let D, from, to, reign = new Set(), cups = new Map(); // uid -> [{t: 'w'|'m'|'y', label}]
+const day = 864e5;
+const fmt = (n) => n.toLocaleString('pl-PL');
+const ymd = (t) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const nick = (u) => D.users[u] || u;
+const link = (u) => /^\d+$/.test(u) ? `<a href="https://forums.d2jsp.org/user.php?i=${u}" target="_blank" rel="noopener">${esc(nick(u))}</a>` : esc(nick(u));
+
+// --- Tygodnie: niedziela 21:00 – niedziela 21:00 czasu polskiego (tydzień 21–27.09 jeszcze pn 00:00 – nd 23:59) ---
+const PL = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Warsaw', year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short', timeZoneName: 'longOffset' });
+function plInfo(ms) { const p = Object.fromEntries(PL.formatToParts(ms).map((x) => [x.type, x.value])); return { date: `${p.year}-${p.month}-${p.day}`, wd: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].indexOf(p.weekday), off: p.timeZoneName.replace('GMT', '') || '+00:00' }; }
+function plMidnight(dateStr) { // chwila 00:00 czasu polskiego danego dnia
+  const guess = new Date(dateStr + 'T12:00:00Z').getTime();
+  return new Date(`${dateStr}T00:00:00${plInfo(guess).off}`).getTime();
+}
+const addDays = (dateStr, n) => { const d = new Date(dateStr + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+// Od tygodnia 28.09 okresy kończą się o 21:00 (godzina codziennej aktualizacji): granica = północ danego dnia − 3 h.
+// Między 21:00 a północą nie ma zmiany czasu, więc to zawsze dokładnie 21:00 czasu polskiego. Wcześniejsze okresy bez zmian.
+const CUT_DAY = '2026-09-28', H3 = 3 * 3600e3;
+const edge = (dateStr) => plMidnight(dateStr) - (dateStr > CUT_DAY ? H3 : 0);
+const shift = (ms) => ms >= plMidnight(CUT_DAY) ? ms + H3 : ms;
+function weekOf(ms) { const i = plInfo(shift(ms)); const mon = addDays(i.date, -i.wd); return { mon, start: edge(mon), end: edge(addDays(mon, 7)) }; }
+const dm = (s) => { const [, m, d] = s.split('-'); return `${+d}.${m}`; };
+const weekLabel = (w) => `${dm(w.mon)}–${dm(addDays(w.mon, 6))}`;
+const MIES = ['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec','Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'];
+// "Wrzesień · tydzień 4": tydzień należy do miesiąca, w którym wypada jego czwartek; tydzień 1 = ten z 1. dniem miesiąca
+function weekNice(w) {
+  const thu = addDays(w.mon, 3), first = thu.slice(0, 8) + '01', firstMon = weekOf(plMidnight(first) + 3600e3).mon;
+  const n = Math.round((new Date(w.mon + 'T12:00Z') - new Date(firstMon + 'T12:00Z')) / (7 * day)) + 1;
+  return `${MIES[+thu.slice(5, 7) - 1]} · tydzień ${n}`;
+}
+
+// --- Puchary: tydzień (pn–nd), miesiąc, rok; wszystko w czasie polskim ---
+const START = '2026-09-21';      // od tego dnia liczymy puchary (pierwszy tydzień)
+const FIRST_MONTH = '2026-10';   // pierwszy pełny miesiąc po starcie
+const MONTHS = ['styczeń','luty','marzec','kwiecień','maj','czerwiec','lipiec','sierpień','wrzesień','październik','listopad','grudzień'];
+const nextMonth = (ym) => { let [y, m] = ym.split('-').map(Number); m++; if (m > 12) { m = 1; y++; } return `${y}-${String(m).padStart(2, '0')}`; };
+const P = {
+  w: { of(ms) { const w = weekOf(ms); return { key: w.mon, start: w.start, end: w.end, label: weekLabel(w), nice: weekNice(w) }; }, ok: (p) => p.key >= START },
+  m: { of(ms) { const k = plInfo(shift(ms)).date.slice(0, 7), [y, m] = k.split('-'); return { key: k, start: edge(k + '-01'), end: edge(nextMonth(k) + '-01'), label: `${MONTHS[m - 1]} ${y}` }; }, ok: (p) => p.key >= FIRST_MONTH },
+  y: { of(ms) { const y = plInfo(shift(ms)).date.slice(0, 4); const s = y === START.slice(0, 4) ? START : y + '-01-01';
+         return { key: y, start: edge(s), end: edge(`${+y + 1}-01-01`), label: s === START ? `${y} (od ${dm(START)})` : y }; }, ok: (p) => p.key >= START.slice(0, 4) },
+};
+const TYPE = { w: { name: 'tygodnia', sym: 'cup' }, m: { name: 'miesiąca', sym: 'cupM' }, y: { name: 'roku', sym: 'cupY' } };
+const cupSvg = (t = 'w', cls = 'cup') => `<svg class="${cls}"><use href="#${TYPE[t].sym}"/></svg>`;
+
+// Odznaki przy nicku w rankingu: puchary (rok, płonące za miesiąc — każdy zamienia jeden złoty, złote za tydzień) i gwiazdka roku za nickiem
+const FIRE = `<span class="firew"><svg class="cup fire" viewBox="0 -14 64 78"><g class="fl"><path d="M32 -12c5 8 13 12 13 23a13 13 0 0 1-26 0c0-7 4-10 5-16 2 5 4 6 5 8 1-5 1-9 3-15z" fill="#e3140a"/><path d="M32 0c3 5 8 8 8 14a8 8 0 0 1-16 0c0-4 2-7 4-10 1 2 2 3 3 4z" fill="#ff7a1a"/><path d="M32 8c2 3 4 4 4 7a4 4 0 0 1-8 0c0-2 1-4 2-5z" fill="#ffd23f"/></g><use href="#cupR"/></svg></span>`;
+function nickBadges(u) {
+  const c = cups.get(u) || [], n = (t) => c.filter((k) => k.t === t).length, y = n('y'), m = n('m'), w = n('w');
+  const title = c.map((k) => 'Mistrz ' + TYPE[k.t].name + ': ' + k.label).join(', ');
+  const icons = cupSvg('y').repeat(y) + FIRE.repeat(m) + cupSvg('w').repeat(Math.max(0, w - m));
+  return `<span class="${reign.has(u) ? 'reign' : ''}"${reign.has(u) ? ' title="Panujący mistrz miesiąca"' : ''}>${link(u)}</span>${y ? '<span class="ystar" title="Mistrz roku">★</span>' : ''}${icons ? `<span class="mini" title="${esc(title)}">${icons}</span>` : ''}`;
+}
+function computeAll() {
+  const covered = D.from || D.posts[0][3] * 1000, doneUpTo = D.complete || new Date(D.updated).getTime(), now = Date.now();
+  const res = {};
+  for (const t of ['w', 'm', 'y']) {
+    const by = new Map();
+    for (const [, , u, ts] of D.posts) {
+      const p = P[t].of(ts * 1000);
+      if (ts * 1000 < p.start) continue; // rok startowy liczony od START
+      const x = by.get(p.key) || by.set(p.key, { p, users: new Map(), total: 0 }).get(p.key);
+      x.users.set(u, (x.users.get(u) || 0) + 1); x.total++;
+    }
+    const past = []; let current = null;
+    for (const x of [...by.values()].sort((a, b) => b.p.start - a.p.start)) {
+      x.rank = [...x.users].sort((a, b) => b[1] - a[1]);
+      if (!P[t].ok(x.p)) continue;
+      if (x.p.start <= now && now < x.p.end) current = x;
+      else if (x.p.start >= covered && x.p.end <= doneUpTo) {
+        const top = x.rank[0][1]; x.winners = x.rank.filter((r) => r[1] === top).map((r) => r[0]);
+        past.push(x);
+        for (const u of x.winners) (cups.get(u) || cups.set(u, []).get(u)).push({ t, label: x.p.label });
+      }
+    }
+    const cp = P[t].of(now);
+    if (!current) current = { p: cp, rank: [], total: 0, notYet: !P[t].ok(cp) };
+    res[t] = { past, current };
+  }
+  return res;
+}
+const until = (ms) => { const l = ms - Date.now(), d = Math.floor(l / day), h = Math.floor(l % day / 3600e3); return `${d ? d + ' d ' : ''}${h} h`; };
+
+function renderCups(R) {
+  reign = new Set(R.m.past[0]?.winners || []); // fioletowy nick do czasu kolejnego mistrza miesiąca
+  const last = R.w.past[0];
+  $('champ').innerHTML = last
+    ? `${cupSvg('w', 'big')}<div class="lab">Mistrz tygodnia</div><div class="wk" title="${last.p.label}">${last.p.nice}</div>
+       <div class="who">${last.winners.map(link).join(' & ')}</div>
+       <div class="meta">${fmt(last.rank[0][1])} postów · ${Math.round(last.rank[0][1] / last.total * 100)}% całego tygodnia</div>`
+    : `${cupSvg('w', 'big')}<div class="lab">Pierwszy puchar</div><div class="meta">zostanie przyznany po niedzieli</div>`;
+
+  // Mistrz miesiąca i roku: duże karty jak tygodnia; zwycięzca ostatniego okresu albo kto prowadzi w bieżącym
+  const cap = (x) => x[0].toUpperCase() + x.slice(1);
+  for (const t of ['m', 'y']) {
+    const { past, current: c } = R[t], won = past[0];
+    const upcoming = c.notYet ? P[t].of(plMidnight((t === 'm' ? FIRST_MONTH + '-01' : START)) + 3600e3) : c.p;
+    const standings = !c.notYet && c.rank.length
+      ? `<div class="lead"><span>${won ? cap(c.p.label) + ' · w toku' : 'na czele'}</span>${c.rank.slice(0, 3).map(([u, n], i) => `<div class="ld"><span class="ldn">${i + 1}. ${link(u)}</span><span class="ldv">${fmt(n)}</span></div>`).join('')}</div>` : '';
+    const head = `${cupSvg(t, 'big')}<div class="lab">Mistrz ${TYPE[t].name}${t === 'y' ? ' ' + (won ? won.p : upcoming).key : ''}</div>`;
+    const body = won
+      ? `${t === 'y' ? '' : `<div class="wk">${cap(won.p.label)}</div>`}<div class="who">${won.winners.map(link).join(' & ')}</div><div class="meta">${fmt(won.rank[0][1])} postów · ${Math.round(won.rank[0][1] / won.total * 100)}% całego okresu</div>`
+      : `${t === 'y' ? (upcoming.label.includes('od') ? `<div class="wk">liczony od ${dm(START)}</div>` : '') : `<div class="wk">${cap(upcoming.label)}</div>`}<div class="who tbd">jeszcze nieznany</div><div class="meta">${c.notYet ? 'liczenie od ' + (t === 'm' ? '1.10' : dm(START)) : 'przyznanie za ' + until(c.p.end)}</div>`;
+    $('champ' + t.toUpperCase()).innerHTML = head + body + standings;
+  }
+
+  const c = R.w.current, lead = c.rank[0]?.[1] || 1;
+  $('raceH').textContent = `Wyścig · ${c.p.nice}`;
+  $('race').innerHTML = c.rank.slice(0, 5).map(([u, n], i) => `<li><span class="pos ${i < 3 ? 'p' + (i + 1) : ''}" ${i >= 3 ? 'style="background:var(--line);color:var(--mute)"' : ''}>${i + 1}</span>
+    <div class="grow"><div class="nm">${link(u)}</div><div class="track"><i style="width:${n / lead * 100}%"></i></div></div><span class="num">${fmt(n)}</span></li>`).join('')
+    || '<li class="empty">Jeszcze nikt nie pisał w tym tygodniu.</li>';
+  const up = new Date(D.updated), today = ymd(Date.now()) === ymd(up), yest = ymd(Date.now() - day) === ymd(up);
+  $('raceNote').innerHTML = `Koniec: niedziela 21:00 (za ${until(c.p.end)})<br><b>Ostatnia aktualizacja:</b> ${today ? 'dziś' : yest ? 'wczoraj' : up.toLocaleDateString('pl-PL')} ${up.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })} · kolejna za ok. 2 h`;
+
+  const hist = [...R.y.past.map((x) => ['y', x]), ...R.m.past.map((x) => ['m', x]), ...R.w.past.map((x) => ['w', x])].sort((a, b) => b[1].p.end - a[1].p.end || 'ymw'.indexOf(a[0]) - 'ymw'.indexOf(b[0]));
+  $('hist').innerHTML = hist.map(([t, x]) => `<li><span class="dt" title="${x.p.label}">${t === 'w' ? x.p.nice.replace(' · ', '<br>') : x.p.label}</span>${cupSvg(t)}<div class="grow"><div class="nm">${x.winners.map(link).join(' & ')}</div></div><span class="num">${fmt(x.rank[0][1])}</span></li>`).join('')
+    || '<li class="empty">Brak przyznanych pucharów.</li>';
+
+  const score = (l) => l.reduce((s, c) => s + { y: 10000, m: 100, w: 1 }[c.t], 0);
+  const fame = [...cups].sort((a, b) => score(b[1]) - score(a[1]));
+  $('fame').innerHTML = fame.map(([u, l]) => `<li><div class="grow"><div class="nm">${link(u)}</div></div>${['y', 'm', 'w'].map((t) => { const k = l.filter((c) => c.t === t); return k.length ? `<span class="mini" title="Mistrz ${TYPE[t].name}: ${k.map((c) => c.label).join(', ')}">${cupSvg(t)} ×${k.length}</span>` : ''; }).join('')}</li>`).join('')
+    || '<li class="empty">Nikt jeszcze nie ma pucharu.</li>';
+}
+
+// --- Kołowy wykres dnia: top 3 + reszta, z awatarami ---
+let dayUsers = new Map();
+const PIE = ['#e0a526', '#5b8def', '#d9667a', 'var(--mute)'];
+function pieHtml(k) {
+  const m = dayUsers.get(k); if (!m) return '';
+  const all = [...m].sort((a, b) => b[1] - a[1]), total = all.reduce((s, x) => s + x[1], 0);
+  const parts = all.slice(0, 3).map(([u, n]) => ({ u, n })); const rest = total - parts.reduce((s, p) => s + p.n, 0);
+  if (rest > 0) parts.push({ u: null, n: rest });
+  const R = 136, r = 76, C = 140; let a0 = -Math.PI / 2, svg = '', avs = '';
+  parts.forEach((p, i) => {
+    const frac = p.n / total, a1 = a0 + frac * 2 * Math.PI, col = p.u ? PIE[i] : PIE[3];
+    const pt = (a, rad) => `${C + rad * Math.cos(a)} ${C + rad * Math.sin(a)}`, big = frac > .5 ? 1 : 0;
+    svg += frac >= .999 ? `<circle cx="${C}" cy="${C}" r="${(R + r) / 2}" fill="none" stroke="${col}" stroke-width="${R - r}"/>`
+      : `<path d="M${pt(a0, R)} A${R} ${R} 0 ${big} 1 ${pt(a1, R)} L${pt(a1, r)} A${r} ${r} 0 ${big} 0 ${pt(a0, r)}Z" fill="${col}" stroke="var(--card)" stroke-width="2"/>`;
+    if (p.u && frac >= .06) {
+      const am = (a0 + a1) / 2, x = (C + (R + r) / 2 * Math.cos(am)) / 280 * 100, y = (C + (R + r) / 2 * Math.sin(am)) / 280 * 100;
+      const av = D.avatars?.[p.u];
+      avs += `<div class="av" style="left:${x}%;top:${y}%;border-color:${col};${av ? `background-image:url('${esc(av)}')` : ''}">${av ? '' : esc(nick(p.u)[0].toUpperCase())}</div>`;
+    }
+    a0 = a1;
+  });
+  const dt = new Date(k + 'T12:00').toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' });
+  return `<h4>${dt}</h4><div class="ring"><svg viewBox="0 0 280 280">${svg}</svg><div class="mid"><div><b>${fmt(total)}</b>postów</div></div>${avs}</div>
+    <ul>${parts.map((p, i) => `<li><i style="background:${p.u ? PIE[i] : PIE[3]}"></i><span>${p.u ? esc(nick(p.u)) : `reszta (${all.length - 3} os.)`}</span><em>${p.n} · ${Math.round(p.n / total * 100)}%</em></li>`).join('')}</ul>`;
+}
+function showPie(col, ev) {
+  const el = $('pie'), html = pieHtml(col.dataset.k);
+  if (!html) { el.hidden = true; return; }
+  el.innerHTML = html; el.style.left = '0px'; el.style.top = '0px'; el.hidden = false;
+  const b = col.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
+  // obok słupka (po prawej, a gdy brak miejsca po lewej), w pionie zawsze w oknie
+  let x = b.right + 12; if (x + w > innerWidth - 8) x = b.left - w - 12; x = Math.max(8, Math.min(x, innerWidth - w - 8));
+  const y = Math.max(8, Math.min(b.top + b.height / 2 - h / 2, innerHeight - h - 8));
+  el.style.left = x + 'px'; el.style.top = y + 'px';
+}
+$('chart').addEventListener('mouseover', (e) => { const c = e.target.closest('.col'); if (c) showPie(c); });
+$('chart').addEventListener('mouseleave', () => { $('pie').hidden = true; });
+$('chart').addEventListener('click', (e) => { const c = e.target.closest('.col'); if (c) showPie(c); });
+document.addEventListener('scroll', () => { $('pie').hidden = true; }, { passive: true });
+// Czerwony "śnieg": z płonących pucharów po trochu sypią się malutkie żarzące drobinki (jedna pętla animacji na wszystkie)
+(() => {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const parts = [];
+  setInterval(() => {
+    if (document.hidden || parts.length > 24) return;
+    for (const c of [...document.querySelectorAll('.cup.fire')].slice(0, 4)) {
+      const r = c.getBoundingClientRect();
+      if (!r.width || r.bottom < 0 || r.top > innerHeight) continue;
+      const d = document.createElement('div'); d.className = 'lavadrop'; document.body.appendChild(d);
+      parts.push({ d, x0: r.left + r.width * (.25 + Math.random() * .5), y0: r.top + r.height * (.45 + Math.random() * .4), fall: 25 + Math.random() * 45, dur: 1600 + Math.random() * 1400, sway: (Math.random() - .5) * 14, t0: performance.now() });
+    }
+  }, 380);
+  (function loop(t) {
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const p = parts[i], k = Math.min(1, (t - p.t0) / p.dur);
+      p.d.style.transform = `translate(${p.x0 + Math.sin(k * 6) * p.sway * k}px,${p.y0 + p.fall * k}px)`; p.d.style.opacity = 1 - k;
+      if (k >= 1) { p.d.remove(); parts.splice(i, 1); }
+    }
+    requestAnimationFrame(loop);
+  })(performance.now());
+})();
+
+fetch('../data.json?' + Date.now()).then((r) => r.json()).then((d) => {
+  D = d;
+  // Wszystko liczymy od startu pucharów (21.09, poniedziałek 00:00); starsze posty zostają w pliku, ale ich nie pokazujemy.
+  const s0 = plMidnight(START); D.posts = D.posts.filter((p) => p[3] * 1000 >= s0); D.from = Math.max(D.from || 0, s0);
+  $('sub').textContent = `Sekcja f=${d.forum} · dane od ${new Date(d.from || d.posts[0][3]*1000).toLocaleDateString('pl-PL')} · aktualizacja ${new Date(d.updated).toLocaleString('pl-PL')}`;
+  renderCups(computeAll());
+  // ?demo — podgląd: druga osoba rankingu udaje mistrza miesiąca (nic się nie zapisuje)
+  if (new URLSearchParams(location.search).has('demo')) {
+    const [u] = [...D.posts.reduce((m, p) => m.set(p[2], (m.get(p[2]) || 0) + 1), new Map())].sort((a, b) => b[1] - a[1])[1] || [];
+    if (u) { cups.set(u, [...(cups.get(u) || []), { t: 'm', label: 'przykład' }, { t: 'w', label: 'przykład' }]); reign.add(u); }
+  }
+  setDays(30);
+}).catch((e) => { console.error(e); $('sub').textContent = 'Brak danych — pierwsza aktualizacja jeszcze się nie zakończyła.'; });
+
+function setDays(n) {
+  const now = Date.now();
+  to = now; from = n ? Math.max(now - n * day, D.from) : D.from;
+  document.querySelectorAll('#ranges button').forEach((b) => b.classList.toggle('on', +b.dataset.d === n));
+  $('from').value = ymd(from); $('to').value = ymd(to);
+  render();
+}
+$('ranges').addEventListener('click', (e) => { if (e.target.dataset.d) setDays(+e.target.dataset.d); });
+for (const id of ['from', 'to']) $(id).addEventListener('change', () => {
+  if (!$('from').value || !$('to').value) return;
+  from = new Date($('from').value + 'T00:00').getTime(); to = new Date($('to').value + 'T23:59:59').getTime();
+  document.querySelectorAll('#ranges button').forEach((b) => b.classList.remove('on'));
+  render();
+});
+$('q').addEventListener('input', render);
+
+function render() {
+  const f = from / 1000, t = to / 1000;
+  const posts = D.posts.filter((p) => p[3] >= f && p[3] <= t);
+  const users = new Map(), topics = new Set(), days = new Map(); dayUsers = new Map();
+  for (const [, tp, u, ts] of posts) {
+    const x = users.get(u) || users.set(u, { u, n: 0, t: new Set() }).get(u);
+    x.n++; x.t.add(tp); topics.add(tp);
+    const k = ymd(ts * 1000); days.set(k, (days.get(k) || 0) + 1);
+    const du = dayUsers.get(k) || dayUsers.set(k, new Map()).get(k); du.set(u, (du.get(u) || 0) + 1);
+  }
+  const nDays = Math.max(1, Math.round((to - from) / day));
+  $('tPosts').textContent = fmt(posts.length); $('tUsers').textContent = fmt(users.size);
+  $('tTopics').textContent = fmt(topics.size); $('tAvg').textContent = fmt(Math.round(posts.length / nDays));
+
+  const rank = [...users.values()].sort((a, b) => b.n - a.n);
+  const top = rank[0]?.n || 1, q = $('q').value.trim().toLowerCase();
+  $('rows').innerHTML = rank.map((x, i) => ({ x, i }))
+    .filter(({ x }) => !q || nick(x.u).toLowerCase().includes(q))
+    .map(({ x, i }) => { const c = cups.get(x.u);
+      return `<tr><td>${i+1}</td><td>${nickBadges(x.u)}</td><td class="n">${fmt(x.n)}</td><td class="n">${x.t.size}</td><td class="w"><div class="share" style="width:${x.n/top*100}%" title="${(x.n/posts.length*100).toFixed(1)}%"></div></td></tr>`; }).join('')
+    || '<tr><td colspan="5" style="color:var(--mute)">Brak postów w tym zakresie.</td></tr>';
+
+  const keys = []; for (let d = new Date(ymd(from) + 'T12:00').getTime(); d <= to; d += day) keys.push(ymd(d));
+  const vals = keys.map((k) => days.get(k) || 0), max = Math.max(1, ...vals), many = keys.length > 21, step = Math.ceil(keys.length / 12);
+  const WD = ['nd', 'pn', 'wt', 'śr', 'cz', 'pt', 'sb'], td = ymd(Date.now());
+  $('chart').innerHTML = keys.map((k, i) => { const dt = new Date(k + 'T12:00'), v = vals[i], show = !many || i % step === 0;
+    return `<div class="col${k === td ? ' today' : ''}" data-k="${k}" data-t="${dt.toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' })}: ${v} postów${k === td ? ' (dzień trwa)' : ''}">
+      ${many ? '' : `<span class="v">${v}</span>`}<div class="b" style="height:${Math.round(v / max * 120)}px"></div>
+      <span class="d">${show ? `${dt.getDate()}.${String(dt.getMonth() + 1).padStart(2, '0')}${many ? '' : `<i>${WD[dt.getDay()]}</i>`}` : '&nbsp;'}</span></div>`; }).join('');
+}
+</script>
+<script src="../gra.js?v=1790775314eq"></script>
+</body>
+</html>
