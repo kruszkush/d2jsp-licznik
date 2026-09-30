@@ -128,7 +128,7 @@
   const pickKind = () => { let r = Math.random() * 100; for (const k of KINDS) { if ((r -= k.w) < 0) return k; } return KINDS[0]; };
   const BADGE = { 1.3: '#ff8a3d', 1.7: '#ff5a3d', 2.2: '#d9264a' }; // kolory jak plakietki na piłeczkach
   // Bonusy z założonych przedmiotów (tylko TEST; bez przedmiotów wszystko jest zerem i gra liczy jak dotąd)
-  const zeroB = () => ({ setN: 0, setUid: '', setMult: 0, impl: 0, ostry: 0, stlum: 0, ciezki: 0, zreczny: 0, rozp: 0, wytrw: 0, olb: 0, mrozu: 0, lowcy: 0, serii: 0, brawur: 0, echa: 0, guardian: 0, lucky: 0 });
+  const zeroB = () => ({ setN: 0, setUid: '', setMult: 0, impl: 0, ostry: 0, stlum: 0, ciezki: 0, zreczny: 0, rozp: 0, wytrw: 0, olb: 0, mrozu: 0, lowcy: 0, serii: 0, brawur: 0, zuch: 0, echa: 0, guardian: 0, lucky: 0 });
   let B = zeroB();
   const r3 = (x) => Math.round(x * 1000) / 1000;
   function calcB(slots) {
@@ -143,7 +143,7 @@
         else if (a.id === 'zreczny') b.zreczny += v / 100; else if (a.id === 'szczesliwy') b.lucky += v; else if (a.id === 'rozpedzony') b.rozp += v / 100;
         else if (a.id === 'wytrwalosci') b.wytrw = Math.max(b.wytrw, v); else if (a.id === 'olbrzyma') b.olb += v / 100;
         else if (a.id === 'mrozu') b.mrozu += v; else if (a.id === 'lowcy') b.lowcy += v; else if (a.id === 'serii') b.serii += v;
-        else if (a.id === 'brawurowy') b.brawur += v; else if (a.id === 'echa') b.echa += v / 100;
+        else if (a.id === 'brawurowy') b.brawur += v; else if (a.id === 'zuchwaly') b.zuch += v; else if (a.id === 'echa') b.echa += v / 100;
       }
     }
     // zestaw: przedmioty z awatarem tej samej osoby — 2 szt. +0.2x, 3 szt. +0.5x, 4 szt. +0.5x i jedno odbicie od dołu
@@ -153,7 +153,7 @@
     b.setMult = b.setN >= 3 ? .5 : b.setN === 2 ? .2 : 0; if (b.setN === 4) b.guardian++;
     for (const k of Object.keys(b)) if (typeof b[k] === 'number') b[k] = r3(b[k]);
     // limity łączne (afiksy mogą się powtarzać, ale suma ma sufit)
-    const CAP = { stlum: .3, ciezki: .25, zreczny: .6, olb: .25, rozp: .6, lowcy: 1.5, lucky: 25, brawur: .6, echa: .25 };
+    const CAP = { stlum: .3, ciezki: .25, zreczny: .6, olb: .25, rozp: .6, lowcy: 1.5, lucky: 25, brawur: .5, zuch: .08, echa: .25 };
     for (const k in CAP) b[k] = Math.min(CAP[k], b[k]);
     return b;
   }
@@ -161,7 +161,7 @@
   const fm = (n) => { const r = Math.round(n * 100) / 100; return Math.abs(r * 10 - Math.round(r * 10)) < 1e-9 ? r.toFixed(1) : r.toFixed(2); };
   // (piłeczka + łowcy gdy mniejsza niż duża) × mnożnik poziomu (start 1 + rozpędzony) + przedmioty (implicit + ostry + seria × floor(podbicia/10))
   const partsOf = (g) => {
-    const b = g.base + (g.base > 1 ? g.B.lowcy : 0), lv = multOf(g.lvl, g.B), items = r3(g.B.impl + g.B.ostry + g.B.setMult + g.B.serii * Math.floor(g.hits / 10));
+    const b = g.base + (g.base > 1 ? g.B.lowcy : 0), lv = multOf(g.lvl, g.B), items = r3(g.B.impl + g.B.ostry + g.B.setMult + (g.zuchAcc || 0) + g.B.serii * Math.floor(g.hits / 10));
     return { b, lv, items, total: Math.round((b * lv + items) * RP) / RP };
   };
   const totalMult = () => game ? partsOf(game).total : 1;
@@ -188,7 +188,7 @@
   // błysk przy zużyciu odbicia od dołu
   function saveFx() { const e = document.createElement('div'); e.className = 'savefx'; document.body.appendChild(e); setTimeout(() => e.remove(), 900); }
   const flashEl = document.createElement('div'); flashEl.id = 'lvlup'; document.body.appendChild(flashEl);
-  let lastFlash = 0;
+  let lastFlash = 0; const BRAV_MAX = 1.5, ZUCH_MAX = 0.6; // sufity premii z serii Brawurowego i nabitego Zuchwałego
   function flash(t) { lastFlash = performance.now(); flashEl.textContent = t; flashEl.classList.remove('go'); void flashEl.offsetWidth; flashEl.classList.add('go'); }
   // Na komputerze gra tylko w dużym oknie — w małym/wąskim oknie jest dużo łatwiej (mało miejsca na ucieczkę piłeczki)
   // Pole gry ma stałe proporcje (szerokość = 1,5 × wysokość, wyśrodkowane), więc na każdym monitorze jest tak samo trudno
@@ -201,7 +201,7 @@
     }
     for (const o of flakes) if (o !== f) o.el.remove();
     flakes.clear(); flakes.add(f);
-    game = { f, score: 0, hits: 0, lvl: 0, k: scaleK(), base: f.base || 1, B, per: B.wytrw || PER_LEVEL, saves: B.guardian, slow: 0 }; f.el.classList.add('ball'); showMult(0, false);
+    game = { f, score: 0, hits: 0, lvl: 0, k: scaleK(), base: f.base || 1, B, per: B.wytrw || PER_LEVEL, saves: B.guardian, lowRun: 0, zuchAcc: 0 }; f.el.classList.add('ball'); showMult(0, false);
     document.body.classList.add('playing'); getSelection()?.removeAllRanges(); const pie = document.getElementById('pie'); if (pie) pie.hidden = true; f.vx = 0; f.vy = 0;
     hit(f, e);
   }
@@ -210,9 +210,14 @@
     game.hits++;
     const up = game.hits % game.per === 0 && game.hits > 0;
     // Brawurowy: podbicie w dolnych 15% ekranu daje dodatkowy mnożnik; Echa: szansa, że podbicie liczy się podwójnie
-    const low = game.B.brawur && f.y + f.size / 2 > H * .85, echo = game.B.echa && Math.random() < game.B.echa;
-    game.score += (totalMult() + (low ? game.B.brawur : 0)) * (echo ? 2 : 1);
-    if (!up && performance.now() - lastFlash > 1200) if (echo) flash('Echo! x2'); else if (low) flash(`Brawura! +${fm(game.B.brawur)}x`);
+    // podbicie tuż nad dołem (dolne 15%): Brawurowy — premia rosnąca z każdym kolejnym takim podbiciem z rzędu (wyższe podbicie zeruje serię),
+    // Zuchwały — stały przyrost mnożnika do końca gry; Echa — szansa, że punkty za podbicie liczą się podwójnie
+    const low = (game.B.brawur || game.B.zuch) && f.y + f.size / 2 > H * .85, echo = game.B.echa && Math.random() < game.B.echa;
+    game.lowRun = low ? game.lowRun + 1 : 0;
+    const brav = low ? Math.min(BRAV_MAX, game.B.brawur * game.lowRun) : 0;
+    game.score += (totalMult() + brav) * (echo ? 2 : 1);
+    if (low && game.B.zuch && game.lvl > 0) game.zuchAcc = r3(Math.min(ZUCH_MAX, game.zuchAcc + game.B.zuch));
+    if (!up && performance.now() - lastFlash > 1200) if (echo) flash('Echo! x2'); else if (brav) flash(`Brawura x${game.lowRun}! +${fm(brav)}x`);
     if (up) { game.lvl++; flash(`Szybciej! x${fm(totalMult())}`); showMult(game.lvl, true); }
     const r = f.el.getBoundingClientRect(), off = ((e.clientX - (r.left + r.width / 2)) / (r.width / 2)) || 0;
     // podbicie nie wyrzuca ponad górną krawędź: siła ograniczona tak, żeby szczyt lotu był ok. 12 px pod górą ekranu
@@ -277,7 +282,8 @@
     ciezki: ['p', 'Ciężki', 5, 10, 1, ['Ciężki', 'Ciężka', 'Ciężkie'], (v) => `Grawitacja słabsza o ${v}%`],
     zreczny: ['p', 'Zręczny', 10, 30, 1, ['Zręczny', 'Zręczna', 'Zręczne'], (v) => `Odbicie w bok mniejsze o ${v}%`],
     szczesliwy: ['p', 'Szczęśliwy', 3, 10, 1, ['Szczęśliwy', 'Szczęśliwa', 'Szczęśliwe'], (v) => `+${v}% szansy na rzadszy przedmiot`],
-    brawurowy: ['p', 'Brawurowy', 0.1, 0.3, 0.1, ['Brawurowy', 'Brawurowa', 'Brawurowe'], (v) => `+${v.toFixed(1)}x mnożnika za podbicie tuż nad dołem ekranu`],
+    brawurowy: ['p', 'Brawurowy', 0.15, 0.25, 0.01, ['Brawurowy', 'Brawurowa', 'Brawurowe'], (v) => `+${v.toFixed(2)}x mnożnika za każde kolejne podbicie z rzędu tuż nad dołem ekranu`],
+    zuchwaly: ['p', 'Zuchwały', 0.02, 0.04, 0.01, ['Zuchwały', 'Zuchwała', 'Zuchwałe'], (v) => `+${v.toFixed(2)}x mnożnika na stałe za każde podbicie tuż nad dołem ekranu (od 2. poziomu)`],
     rozpedzony: ['p', 'Rozpędzony', 10, 20, 1, ['Rozpędzony', 'Rozpędzona', 'Rozpędzone'], (v) => `Rozpocznij z mnożnikiem ogólnym zwiększonym o ${v}%`],
     wytrwalosci: ['s', 'Wytrwałości', 9, 10, 1, 'Wytrwałości', (v) => `Nowy poziom co ${v} podbić`],
     olbrzyma: ['s', 'Olbrzyma', 5, 10, 1, 'Olbrzyma', (v) => `Większa piłeczka o ${v}%`],
@@ -294,7 +300,7 @@
   // Dymek w stylu D2 (najechanie; na telefonie dotknięcie pokazuje/ukrywa)
   const ITEMS = {};
   // klasa afiksu (jak na serwerze): im wyższa, tym rzadsza
-  const TIER = { stlumiony: 'slaby', zreczny: 'slaby', olbrzyma: 'slaby', lowcy: 'dobry',  ciezki: 'dobry', wytrwalosci: 'znakomity', rozpedzony: 'znakomity', szczesliwy: 'znakomity', brawurowy: 'znakomity', echa: 'znakomity', ostry: 'boski', serii: 'boski' };
+  const TIER = { stlumiony: 'slaby', zreczny: 'slaby', olbrzyma: 'slaby', lowcy: 'dobry',  ciezki: 'dobry', wytrwalosci: 'dobry', rozpedzony: 'znakomity', szczesliwy: 'dobry', brawurowy: 'znakomity', zuchwaly: 'znakomity', echa: 'znakomity', ostry: 'boski', serii: 'boski' };
   const TIERN = { slaby: 'słaby', dobry: 'dobry', znakomity: 'znakomity', boski: 'boski' };
   const tipHtml = (it) => `<div class="tn" style="color:${COL[it.rarity]}">${esc(itemName(it))}</div><div class="ts">${SLOT[it.slot][0]} · ${RAR[it.rarity]}</div><div class="ts">Poziom przedmiotu: ${it.ilvl ?? 0}</div>
     <div class="tg">+${(it.implicit?.mult ?? 0.1).toFixed(1)}x mnożnika</div>${(it.affixes || []).filter((a) => AFF[a.id]).map((a) => `<div class="tb">${esc(AFF[a.id][6](a.v))}<small class="tier t-${TIER[a.id]}">(${TIERN[TIER[a.id]]})</small></div>`).join('')}${it.rarity === 'u' ? '<div class="tb">Raz na grę: odbicie od dołu zamiast końca gry</div>' : ''}`;
@@ -303,7 +309,8 @@
     const mult = r3(b.impl + b.ostry); if (mult) L.push(`+${fm(mult)}x mnożnika`);
     if (b.setN) L.push(`Zestaw ${D.users[b.setUid] || ''} (${b.setN}/4): +${fm(b.setMult)}x mnożnika${b.setN === 4 ? ' i odbicie od dołu' : ''}`);
     if (b.serii) L.push(`+${b.serii.toFixed(2)}x za każde 10 podbić`);
-    if (b.brawur) L.push(`+${fm(b.brawur)}x mnożnika za podbicie tuż nad dołem ekranu`);
+    if (b.brawur) L.push(`+${b.brawur.toFixed(2)}x mnożnika za każde kolejne podbicie z rzędu tuż nad dołem ekranu`);
+    if (b.zuch) L.push(`+${b.zuch.toFixed(2)}x mnożnika na stałe za każde podbicie tuż nad dołem ekranu (od 2. poziomu)`);
     if (b.echa) L.push(`+${pct(b.echa)}% szansy na podwójne punkty za podbicie`);
     if (b.lowcy) L.push(`+${b.lowcy.toFixed(1)} do mnożnika piłeczki`);
     if (b.rozp) L.push(`Rozpocznij z mnożnikiem ogólnym zwiększonym o ${pct(b.rozp)}%`);
