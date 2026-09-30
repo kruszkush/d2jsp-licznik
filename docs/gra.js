@@ -112,9 +112,9 @@
   // Co 8 podbić poziom w górę: awatar leci szybciej (cały ruch przyspiesza), a mnożnik punktów rośnie o 0,1
   // Rozmiar i fizyka liczone względem wielkości okna — przybliżenie strony (Ctrl +) nie ułatwia gry
   // Rozmiary piłeczek: mniejsza = trudniej, ale większy mnożnik bazowy (mnoży się z mnożnikiem poziomu)
-  const KINDS = [{ p: 1, m: 1, w: 25 }, { p: .8, m: 1.3, w: 25, cls: 'b2' }, { p: .65, m: 1.7, w: 25, cls: 'b3' }, { p: .5, m: 2.2, w: 25, cls: 'b4' }];
+  const KINDS = [{ p: 1, m: 1, w: 25 }, { p: .8, m: 1.3, w: 25, cls: 'b2' }, { p: .65, m: 1.7, w: 25, cls: 'b3' }, { p: .5, m: 3, w: 25, cls: 'b4' }];
   const pickKind = () => { let r = Math.random() * 100; for (const k of KINDS) { if ((r -= k.w) < 0) return k; } return KINDS[0]; };
-  const BADGE = { 1.3: '#ff8a3d', 1.7: '#ff5a3d', 2.2: '#d9264a' }; // kolory jak plakietki na piłeczkach
+  const BADGE = { 1.3: '#ff8a3d', 1.7: '#ff5a3d', 3: '#d9264a' }; // kolory jak plakietki na piłeczkach
   const totalMult = () => game ? Math.round(game.base * multOf(game.lvl) * 10) / 10 : 1;
   // liczone od wysokości okna: na telefonie (wąski, wysoki ekran) awatary nie są malutkie, a wysokość podbicia jest proporcjonalna
   const scaleK = () => Math.max(.5, Math.min(1.4, innerHeight / 950));
