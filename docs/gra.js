@@ -247,7 +247,7 @@
     hud.hidden = false; hud.innerHTML = `${game.saves ? `<span title="odbicia od dołu" style="margin-right:8px">🛡${game.saves}</span>` : ''}${game.bans ? `<span title="Kapcie Moderatora: pudło liczy się jako podbicie" style="margin-right:8px">🔨${game.bans}</span>` : ''}${Math.round(game.score)}<small>pkt${TOUCH ? ` · x${fm(P.total)}` : ` · ${P.b > 1 ? `x${fm(P.b)} more · ` : ''}+${Math.round((P.lv - 1) * 100)}% increased${P.items ? ` + ${fm(P.items)} przedmioty` : ''} = x${fm(P.total)} · ${game.hits} podbić`}</small>`;
   }
   function endGame() {
-    const gLvlN = game.lvl + 1, score = Math.round(game.score), f = game.f, gHits = game.hits, P = partsOf(game); game = null; document.body.classList.remove('playing'); hideMult();
+    const gLvlN = game.lvl + 1, score = Math.round(game.score), f = game.f, gHits = game.hits, gZuch = game.zuchAcc || 0, P = partsOf(game); game = null; document.body.classList.remove('playing'); hideMult();
     f.el.remove(); flakes.clear(); hud.hidden = true;
     const ov = document.createElement('div'); ov.id = 'over';
     const av = D.avatars?.[f.u], who = D.users[f.u] || '?', hits = gHits;
@@ -255,7 +255,7 @@
       <div class="ball" style="border-color:${f.el.style.borderColor};${av ? `background-image:url('${esc(av)}')` : ''}">${av ? '' : esc(who[0].toUpperCase())}</div>
       <div class="txt"><b style="color:var(--ink)">${esc(who)}</b> · ${hits} ${hits === 1 ? 'podbicie' : hits % 10 >= 2 && hits % 10 <= 4 && (hits % 100 < 12 || hits % 100 > 14) ? 'podbicia' : 'podbić'}</div>
       <div class="sc">${score}<small> pkt</small></div>
-      <div class="eq">${P.b > 1 ? `<span class="ch" style="background:${BADGE[f.base] || '#d9264a'};color:#fff"><b>×${fm(P.b)}</b><i>piłeczka</i></span><span class="op">×</span>` : ''}<span class="ch"><b>×${fm(P.lv)}</b><i>poziom ${gLvlN}</i></span>${P.items ? `<span class="op">+</span><span class="ch"><b>+${fm(P.items)}</b><i>przedmioty</i></span>` : ''}<span class="op">=</span><span class="ch tot"><b>×${fm(P.total)}</b><i>na koniec</i></span></div>
+      <div class="eq">${P.b > 1 ? `<span class="ch" style="background:${BADGE[f.base] || '#d9264a'};color:#fff"><b>×${fm(P.b)}</b><i>piłeczka</i></span><span class="op">×</span>` : ''}<span class="ch"><b>×${fm(P.lv)}</b><i>poziom ${gLvlN}</i></span>${P.items ? `<span class="op">+</span><span class="ch"><b>+${fm(P.items)}${gZuch ? `<sup class="zsup" title="w tym nabite podbiciami tuż nad dołem ekranu">+${fm(gZuch)}</sup>` : ''}</b><i>przedmioty</i></span>` : ''}<span class="op">=</span><span class="ch tot"><b>×${fm(P.total)}</b><i>na koniec</i></span></div>
       ${EQON ? chancesHtml(score) : ''}
       <input id="pilNick" maxlength="20" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Twój nick" value="${esc(ls.get('pilNick') || '')}">
       <div class="row"><button class="pri" id="pilSave">Zapisz wynik</button></div><div class="msg" id="pilMsg"></div><div id="pilDrop"></div><button id="pilClose" class="closebig">Zamknij</button></div>`;
@@ -518,7 +518,7 @@
     .eqinv{position:relative;width:420px;height:400px;border-radius:6px;background:radial-gradient(ellipse at 30% 20%,rgba(255,255,255,.05),transparent 60%),repeating-linear-gradient(115deg,rgba(255,255,255,.015) 0 2px,transparent 2px 7px),linear-gradient(#3a3835,#2a2826);border:3px solid #56514a;box-shadow:inset 0 0 0 2px #1b1a18,inset 0 0 40px rgba(0,0,0,.6);box-sizing:border-box;color:#ecebe6}
     .eqinv h3{margin:0;padding:12px 0 6px;text-align:center;font:600 20px Georgia,'Times New Roman',serif;letter-spacing:.28em;color:#c9b98f;text-shadow:0 1px 0 #000}
     .lgr{display:flex;gap:10px;align-items:baseline;padding:3px 0;font-size:13px}.lgr b{min-width:80px}.lgr span{color:var(--mute)}.eqbox h4{margin:12px 0 4px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
-    .rng{opacity:.55;font-size:.9em}.tier{display:block;font-size:10px;opacity:.85;margin:-1px 0 3px}.t-slaby{color:#9a9892}.t-dobry{color:#8fb3ff}.t-znakomity{color:#c38bff;text-shadow:0 0 6px rgba(160,90,255,.9)}.t-boski{color:#ff5a4a;text-shadow:0 0 7px rgba(255,40,30,.95)}
+    .zsup{font-size:.55em;margin-left:2px;color:#8fb3ff;vertical-align:super}.rng{opacity:.55;font-size:.9em}.tier{display:block;font-size:10px;opacity:.85;margin:-1px 0 3px}.t-slaby{color:#9a9892}.t-dobry{color:#8fb3ff}.t-znakomity{color:#c38bff;text-shadow:0 0 6px rgba(160,90,255,.9)}.t-boski{color:#ff5a4a;text-shadow:0 0 7px rgba(255,40,30,.95)}
     .eqslot.setg{outline:2px solid #3fd13f;outline-offset:2px;box-shadow:inset 0 0 0 2px #000,0 0 14px rgba(63,209,63,.7)!important}
     .eqslot{position:absolute;box-sizing:border-box;background:#0d0d0c;border:2px solid #4a463f;box-shadow:inset 0 0 0 2px #000,inset 0 0 18px rgba(0,0,0,.9);display:grid;place-items:center}
     .eqslot .eqit{width:86px;height:86px}
