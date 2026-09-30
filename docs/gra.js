@@ -98,7 +98,10 @@
   const pickUser = () => {
     const withAv = Object.keys(D.avatars || {}).filter((u) => D.users[u]);
     const pool = withAv.length ? withAv : Object.keys(D.users || {});
-    return pool[Math.floor(Math.random() * pool.length)];
+    if (!window.avatarWeight) return pool[Math.floor(Math.random() * pool.length)];
+    const w = pool.map((u) => window.avatarWeight(u)); let r = Math.random() * w.reduce((a, b) => a + b, 0);
+    for (let i = 0; i < pool.length; i++) if ((r -= w[i]) < 0) return pool[i];
+    return pool[pool.length - 1];
   };
   function makeEl(u, size) {
     const el = document.createElement('div'); el.className = 'flake';
