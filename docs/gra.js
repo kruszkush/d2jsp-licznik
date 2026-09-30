@@ -268,15 +268,15 @@
   // afiksy: [typ p/s, nazwa, min, max, krok, przymiotnik m/ż/lm albo dopełniacz, opis(v)]
   const AFF = {
     ostry: ['p', 'Ostry', 0.4, 1.0, 0.1, ['Ostry', 'Ostra', 'Ostre'], (v) => `+${v.toFixed(1)}x mnożnika`],
-    stlumiony: ['p', 'Stłumiony', 5, 15, 1, ['Stłumiony', 'Stłumiona', 'Stłumione'], (v) => `Podbicie niższe o ${v}%`],
+    stlumiony: ['p', 'Stłumiony', 5, 15, 1, ['Stłumiony', 'Stłumiona', 'Stłumione'], (v) => `Niższe podbicie o ${v}%`],
     ciezki: ['p', 'Ciężki', 5, 10, 1, ['Ciężki', 'Ciężka', 'Ciężkie'], (v) => `Grawitacja słabsza o ${v}%`],
     zreczny: ['p', 'Zręczny', 10, 30, 1, ['Zręczny', 'Zręczna', 'Zręczne'], (v) => `Odbicie w bok mniejsze o ${v}%`],
     szczesliwy: ['p', 'Szczęśliwy', 3, 10, 1, ['Szczęśliwy', 'Szczęśliwa', 'Szczęśliwe'], (v) => `+${v}% szansy na rzadszy przedmiot`],
-    rozpedzony: ['p', 'Rozpędzony', 10, 20, 1, ['Rozpędzony', 'Rozpędzona', 'Rozpędzone'], (v) => `Start gry od +${v}% increased`],
-    wytrwalosci: ['s', 'Wytrwałości', 9, 10, 1, 'Wytrwałości', (v) => `Poziom co ${v} podbić (zamiast 8)`],
-    olbrzyma: ['s', 'Olbrzyma', 5, 10, 1, 'Olbrzyma', (v) => `Piłeczka większa o ${v}%`],
+    rozpedzony: ['p', 'Rozpędzony', 10, 20, 1, ['Rozpędzony', 'Rozpędzona', 'Rozpędzone'], (v) => `Rozpocznij z mnożnikiem ogólnym zwiększonym o ${v}%`],
+    wytrwalosci: ['s', 'Wytrwałości', 9, 10, 1, 'Wytrwałości', (v) => `Nowy poziom co ${v} podbić`],
+    olbrzyma: ['s', 'Olbrzyma', 5, 10, 1, 'Olbrzyma', (v) => `Większa piłeczka o ${v}%`],
     mrozu: ['s', 'Mrozu', 1.5, 3.0, 0.1, 'Mrozu', (v) => `Po wzroście poziomu spowolnienie ${v.toFixed(1)} s`],
-    lowcy: ['s', 'Łowcy', 0.2, 0.5, 0.1, 'Łowcy', (v) => `+${v.toFixed(1)} do mnożnika piłeczek mniejszych niż duża`],
+    lowcy: ['s', 'Łowcy', 0.2, 0.5, 0.1, 'Łowcy', (v) => `+${v.toFixed(1)} do mnożnika piłeczki`],
     serii: ['s', 'Serii', 0.10, 0.25, 0.01, 'Serii', (v) => `+${v.toFixed(2)}x mnożnika za każde 10 podbić`],
   };
   const itemName = (it) => {
@@ -297,13 +297,13 @@
     const mult = r3(b.impl + b.ostry); if (mult) L.push(`+${fm(mult)}x mnożnika`);
     if (b.setN) L.push(`Zestaw ${D.users[b.setUid] || ''} (${b.setN}/4): +${fm(b.setMult)}x mnożnika${b.setN === 4 ? ' i odbicie od dołu' : ''}`);
     if (b.serii) L.push(`+${b.serii.toFixed(2)}x za każde 10 podbić`);
-    if (b.lowcy) L.push(`+${b.lowcy.toFixed(1)} do mnożnika mniejszych piłeczek`);
-    if (b.rozp) L.push(`Start od +${pct(b.rozp)}% increased`);
-    if (b.wytrw) L.push(`Poziom co ${b.wytrw} podbić`);
-    if (b.stlum) L.push(`Podbicie niższe o ${pct(b.stlum)}%`);
+    if (b.lowcy) L.push(`+${b.lowcy.toFixed(1)} do mnożnika piłeczki`);
+    if (b.rozp) L.push(`Rozpocznij z mnożnikiem ogólnym zwiększonym o ${pct(b.rozp)}%`);
+    if (b.wytrw) L.push(`Nowy poziom co ${b.wytrw} podbić`);
+    if (b.stlum) L.push(`Niższe podbicie o ${pct(b.stlum)}%`);
     if (b.ciezki) L.push(`Grawitacja słabsza o ${pct(b.ciezki)}%`);
     if (b.zreczny) L.push(`Odbicie w bok mniejsze o ${pct(b.zreczny)}%`);
-    if (b.olb) L.push(`Piłeczka większa o ${pct(b.olb)}%`);
+    if (b.olb) L.push(`Większa piłeczka o ${pct(b.olb)}%`);
     if (b.mrozu) L.push(`Po wzroście poziomu spowolnienie ${b.mrozu.toFixed(1)} s`);
     if (b.lucky) L.push(`+${b.lucky}% szansy na rzadszy przedmiot`);
     if (b.guardian) L.push(`Anioł Stróż: ${b.guardian}× ratunek na grę`);
@@ -388,6 +388,7 @@
       <h4>Klasy afiksów</h4>
       <div class="lgr"><b class="t-slaby">słaby</b><span>najczęstszy</span></div><div class="lgr"><b class="t-dobry">dobry</b><span>częsty</span></div><div class="lgr"><b class="t-znakomity">znakomity</b><span>rzadki</span></div><div class="lgr"><b class="t-boski">boski</b><span>bardzo rzadki</span></div>
       <h4>Zestaw</h4><div class="lgr"><b style="color:#3fd13f">2 / 3 / 4</b><span>rzadkie lub unikaty z awatarem tej samej osoby: +0.2x / +0.5x / +0.5x i odbicie od dołu</span></div>
+      <h4>Magic find</h4><div class="lgr"><span>Zwiększa szansę na magiczne i rzadkie kosztem normalnych. Rośnie z wynikiem gry, a do tego dochodzi „szansa na rzadszy przedmiot” z przedmiotów (wartości się sumują).</span></div>
       <p class="mute" style="font-size:12px;margin:10px 0 0">Przedmiot może wypaść po grze od 15 pkt — im więcej punktów, tym częściej i tym rzadszy.</p>
       <div class="row" style="margin-top:12px"><button data-a="close">Zamknij</button></div></div>`;
     document.body.appendChild(ov);
