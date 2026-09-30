@@ -2,6 +2,7 @@
 (() => {
   // Wersja testowa (/test/): osobna funkcja i kolekcje; ekwipunek włączony tylko tam
   const TEST = location.pathname.includes('/test/');
+  const EQON = true; // ekwipunek i przedmioty włączone także na oficjalnej stronie (narzędzie testowe tylko na /test/)
   const API = TEST ? 'https://pileczka-test-i3odn44x6q-ue.a.run.app' : 'https://pileczka-i3odn44x6q-ue.a.run.app';
   const COLORS = ['#e0a526', '#5b8def', '#d9667a', '#4fb286', '#9b5de5', '#e07a3f'];
   const ls = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
@@ -80,14 +81,14 @@
   // Karta rankingu pod galerią sław: widoczna dopiero dla kogoś, kto już zagrał
   const fameCard = document.getElementById('fame')?.closest('.card');
   const card = document.createElement('div'); card.className = 'card'; card.hidden = true;
-  card.innerHTML = `<h3 style="display:flex;justify-content:space-between;align-items:center">Piłeczka · ranking${TEST ? '<a href="#" id="pilLeg" style="font-size:11px;letter-spacing:0;text-transform:none;color:var(--acc)">Legenda</a>' : ''}</h3><ul class="pil" id="pil"><li class="empty">Ładowanie…</li></ul>`;
-  if (TEST) card.querySelector('#pilLeg').onclick = (e) => { e.preventDefault(); openLegend(); };
+  card.innerHTML = `<h3 style="display:flex;justify-content:space-between;align-items:center">Piłeczka · ranking${EQON ? '<a href="#" id="pilLeg" style="font-size:11px;letter-spacing:0;text-transform:none;color:var(--acc)">Legenda</a>' : ''}</h3><ul class="pil" id="pil"><li class="empty">Ładowanie…</li></ul>`;
+  if (EQON) card.querySelector('#pilLeg').onclick = (e) => { e.preventDefault(); openLegend(); };
   fameCard?.after(card);
   const ballAv = (r) => { const a = r.ballUid && D?.avatars?.[r.ballUid]; return a ? `<i style="background-image:url('${esc(a)}')"></i>` : ''; };
   function showRank(top) {
     card.hidden = false;
     const me = (ls.get('pilNick') || '').toLowerCase();
-    document.getElementById('pil').innerHTML = top.length ? top.map((r, i) => `<li class="${r.nick.toLowerCase() === me ? 'me' : ''}${TEST && r.eq ? ' clk' : ''}"${TEST && r.eq ? ` data-eq="${esc(r.eq)}" data-nick="${esc(r.nick)}" title="Zobacz ekwipunek"` : ''}><span style="width:22px;color:var(--mute)">${i + 1}.</span><span class="pn"><span>${esc(r.nick)}</span>${r.hits ? `<small>${ballAv(r)}${r.hits}× ${esc(r.ball || '')}</small>` : ''}</span><b>${r.dev ? `<span class="dev" title="${r.dev === 'm' ? 'telefon' : 'komputer'}">${r.dev === 'm' ? '📱' : '🖥️'}</span>` : ''}${r.score}${TEST && r.plays ? `<small class="plays">${r.plays} ${r.plays === 1 ? 'gra' : r.plays % 10 >= 2 && r.plays % 10 <= 4 && (r.plays % 100 < 12 || r.plays % 100 > 14) ? 'gry' : 'gier'}</small>` : ''}</b></li>`).join('') : '<li class="empty">Jeszcze nikt nie zagrał.</li>';
+    document.getElementById('pil').innerHTML = top.length ? top.map((r, i) => `<li class="${r.nick.toLowerCase() === me ? 'me' : ''}${EQON && r.eq ? ' clk' : ''}"${EQON && r.eq ? ` data-eq="${esc(r.eq)}" data-nick="${esc(r.nick)}" title="Zobacz ekwipunek"` : ''}><span style="width:22px;color:var(--mute)">${i + 1}.</span><span class="pn"><span>${esc(r.nick)}</span>${r.hits ? `<small>${ballAv(r)}${r.hits}× ${esc(r.ball || '')}</small>` : ''}</span><b>${r.dev ? `<span class="dev" title="${r.dev === 'm' ? 'telefon' : 'komputer'}">${r.dev === 'm' ? '📱' : '🖥️'}</span>` : ''}${r.score}${EQON && r.plays ? `<small class="plays">${r.plays} ${r.plays === 1 ? 'gra' : r.plays % 10 >= 2 && r.plays % 10 <= 4 && (r.plays % 100 < 12 || r.plays % 100 > 14) ? 'gry' : 'gier'}</small>` : ''}</b></li>`).join('') : '<li class="empty">Jeszcze nikt nie zagrał.</li>';
   }
   const loadRank = (n = 0) => fetch(API).then((r) => { if (!r.ok) throw 0; return r.json(); }).then((j) => showRank(j.top || []))
     .catch(() => { card.hidden = false; document.getElementById('pil').innerHTML = '<li class="empty">Ranking chwilowo niedostępny, ponawiam…</li>'; if (n < 5) setTimeout(() => loadRank(n + 1), 15000); });
@@ -168,7 +169,7 @@
     for (const k in CAP) b[k] = Math.min(CAP[k], b[k]);
     return b;
   }
-  const RP = TEST ? 100 : 10; // dokładność mnożnika: w produkcji 0.1, w teście 0.01 (seria)
+  const RP = 100; // dokładność mnożnika 0.01 (przedmioty dają ułamki)
   const fm = (n) => { const r = Math.round(n * 100) / 100; return Math.abs(r * 10 - Math.round(r * 10)) < 1e-9 ? r.toFixed(1) : r.toFixed(2); };
   // (piłeczka + łowcy gdy mniejsza niż duża) × mnożnik poziomu (start 1 + rozpędzony) + przedmioty (implicit + ostry + seria × floor(podbicia/10))
   const partsOf = (g) => {
@@ -254,7 +255,7 @@
       <div class="txt"><b style="color:var(--ink)">${esc(who)}</b> · ${hits} ${hits === 1 ? 'podbicie' : hits % 10 >= 2 && hits % 10 <= 4 && (hits % 100 < 12 || hits % 100 > 14) ? 'podbicia' : 'podbić'}</div>
       <div class="sc">${score}<small> pkt</small></div>
       <div class="eq">${P.b > 1 ? `<span class="ch" style="background:${BADGE[f.base] || '#d9264a'};color:#fff"><b>×${fm(P.b)}</b><i>piłeczka</i></span><span class="op">×</span>` : ''}<span class="ch"><b>×${fm(P.lv)}</b><i>poziom ${gLvlN}</i></span>${P.items ? `<span class="op">+</span><span class="ch"><b>+${fm(P.items)}</b><i>przedmioty</i></span>` : ''}<span class="op">=</span><span class="ch tot"><b>×${fm(P.total)}</b><i>na koniec</i></span></div>
-      ${TEST ? chancesHtml(score) : ''}
+      ${EQON ? chancesHtml(score) : ''}
       <input id="pilNick" maxlength="20" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Twój nick" value="${esc(ls.get('pilNick') || '')}">
       <div class="row"><button class="pri" id="pilSave">Zapisz wynik</button></div><div class="msg" id="pilMsg"></div><div id="pilDrop"></div><button id="pilClose" class="closebig">Zamknij</button></div>`;
     document.body.appendChild(ov);
@@ -265,7 +266,7 @@
       ov.remove();
     };
     let dropOpen = false; // nierozstrzygnięty przedmiot: okno zamyka się tylko przyciskiem
-    if (TEST && score >= 15) { // drop idzie od razu, niezależnie od zapisu wyniku
+    if (EQON && score >= 15) { // drop idzie od razu, niezależnie od zapisu wyniku
       eqPost('/drop', { key: getKey(), gameId: rndHex().slice(0, 16), score, ballUid: /^\d+$/.test(f.u) ? f.u : '', ballNick: D.users[f.u] || '' })
         .then((r) => { if (r.ok && r.j.reason === 'pech') ov.querySelector('#pilDrop').innerHTML = `<div class="msg">Tym razem nic nie wypadło (szansa ${r.j.chance}%).</div>`; if (r.ok && r.j.drop) { pendId = r.j.autoDiscard ? null : r.j.drop.id; ov.querySelector('.box').classList.add('wide'); showDrop(ov.querySelector('#pilDrop'), r.j, (o) => { dropOpen = o; }); } }).catch(() => {});
     }
@@ -275,15 +276,15 @@
       if (!nick) { ov.querySelector('#pilMsg').textContent = 'Wpisz nick.'; return; }
       ls.set('pilNick', nick); ls.set('pilGral', '1');
       ov.querySelector('#pilMsg').textContent = 'Zapisuję…';
-      fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nick, score, dev: TOUCH ? 'm' : 'd', hits: gHits, ball: D.users[f.u] || '', ballUid: /^\d+$/.test(f.u) ? f.u : '', ...(TEST ? { key: getKey() } : {}) }) })
-        .then((r) => r.json()).then((j) => { if (j.top) { showRank(j.top); const m = j.me; if (TEST && m) { ov.querySelector('#pilMsg').innerHTML = `✔ <b>${esc(nick)}</b> · ${m.record ? '<b style="color:var(--acc)">nowy rekord!</b>' : `rekord ${m.best}`} · gra nr ${m.plays} · <a href="#" data-a="chg">zmień nick</a>`; const ch = ov.querySelector('#pilMsg [data-a="chg"]'); if (ch) ch.onclick = (e) => { e.preventDefault(); window.__chgNick?.(); }; return; } if (dropOpen) ov.querySelector('#pilMsg').textContent = 'Wynik zapisany. Rozstrzygnij przedmiot poniżej.'; else { close(); card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } } else ov.querySelector('#pilMsg').textContent = j.error || 'Błąd zapisu.'; })
+      fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nick, score, dev: TOUCH ? 'm' : 'd', hits: gHits, ball: D.users[f.u] || '', ballUid: /^\d+$/.test(f.u) ? f.u : '', ...(EQON ? { key: getKey() } : {}) }) })
+        .then((r) => r.json()).then((j) => { if (j.top) { showRank(j.top); const m = j.me; if (EQON && m) { ov.querySelector('#pilMsg').innerHTML = `✔ <b>${esc(nick)}</b> · ${m.record ? '<b style="color:var(--acc)">nowy rekord!</b>' : `rekord ${m.best}`} · gra nr ${m.plays} · <a href="#" data-a="chg">zmień nick</a>`; const ch = ov.querySelector('#pilMsg [data-a="chg"]'); if (ch) ch.onclick = (e) => { e.preventDefault(); window.__chgNick?.(); }; return; } if (dropOpen) ov.querySelector('#pilMsg').textContent = 'Wynik zapisany. Rozstrzygnij przedmiot poniżej.'; else { close(); card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } } else ov.querySelector('#pilMsg').textContent = j.error || 'Błąd zapisu.'; })
         .catch(() => { ov.querySelector('#pilMsg').textContent = 'Nie udało się zapisać, spróbuj jeszcze raz.'; });
     };
     ov.querySelector('#pilSave').onclick = save;
     ov.querySelector('#pilNick').addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
     // Wersja testowa: zapamiętany nick → zapis automatyczny (serwer i tak trzyma najlepszy wynik), z opcją zmiany nicku
     const saved = ls.get('pilNick');
-    if (TEST && saved) {
+    if (EQON && saved) {
       const nickEl = ov.querySelector('#pilNick'), btn = ov.querySelector('#pilSave');
       nickEl.style.display = 'none'; btn.style.display = 'none';
       const chgNick = () => { ov.querySelector('#pilMsg').textContent = ''; nickEl.style.display = ''; btn.style.display = ''; btn.textContent = 'Zapisz pod nowym nickiem'; nickEl.value = ''; nickEl.focus(); };
@@ -456,6 +457,7 @@
     load();
     // narzędzie testowe: zakłada dowolny przedmiot (endpoint /grant działa tylko na funkcji testowej)
     const tool = $q('.eqtool'), opt = (v, t) => `<option value="${v}">${esc(t)}</option>`;
+    if (!TEST) tool.remove(); // poza /test/ bez narzędzia testowego
     const affOpts = Object.entries(AFF).map(([id, a]) => opt(id, `${a[0] === 'p' ? 'prefiks' : 'sufiks'}: ${a[1]}`)).join('');
     const valOpts = (id) => { const [, , lo, hi, st] = AFF[id]; let o = ''; for (let i = 0, n = Math.round((hi - lo) / st); i <= n; i++) { const v = +(lo + i * st).toFixed(2); o += opt(v, String(v)); } return o; };
     tool.insertAdjacentHTML('beforeend', `<div class="kc"><select data-t="slot">${Object.entries(SLOT).map(([k, v]) => opt(k, v[0])).join('')}</select><select data-t="rar">${Object.entries(RAR).map(([k, v]) => opt(k, v)).join('')}</select></div>
@@ -485,7 +487,7 @@
       }
     }));
   }
-  if (TEST) {
+  if (EQON) {
     const eqCss = document.createElement('style');
     eqCss.textContent = `
     #over .box.wide{width:min(380px,calc(100vw - 32px));max-height:calc(100vh - 16px);overflow:auto}
