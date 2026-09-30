@@ -1,4 +1,4 @@
-# Pobieranie z domowego komputera (zaplanowane zadanie Windows „d2jsp-licznik”). Osobny klon repo w %LOCALAPPDATA%,
+# Pobieranie z domowego komputera (zaplanowane zadanie Windows „d2jsp-licznik”). Osobny klon repo w E:Vibe codingjsp-licznik-bot,
 # żeby reset do GitHuba nie ruszał roboczej kopii. Chrome startuje poza ekranem, więc nic nie wyskakuje.
 $ErrorActionPreference = 'Continue'
 $dir = "$env:LOCALAPPDATA\d2jsp-licznik-bot"
