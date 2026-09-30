@@ -354,9 +354,9 @@
   // Szanse na przedmiot (kopia wzoru z serwera): płynny wzrost do 1000 pkt; szczęśliwy przesuwa % z Normalnego (70% → M, 30% → R)
   function chances(score, luck = 0) {
     const cv = (P) => { const x = Math.max(P[0][0], Math.min(score, P[P.length - 1][0])); for (let i = 1; i < P.length; i++) if (x <= P[i][0]) return P[i - 1][1] + (P[i][1] - P[i - 1][1]) * (x - P[i - 1][0]) / (P[i][0] - P[i - 1][0]); return P[P.length - 1][1]; };
-    const r0 = cv([[15, .25], [100, 1.25], [300, 3], [600, 5], [1000, 12.5]]), m0 = cv([[15, 14], [100, 25], [300, 35], [600, 42], [1000, 45]]);
+    const r0 = cv([[15, .25], [50, 1], [100, 2], [200, 4], [300, 6], [600, 10], [1000, 15]]), m0 = cv([[15, 14], [50, 22], [100, 30], [200, 38], [300, 42], [600, 45], [1000, 45]]);
     const n0 = Math.max(5, 100 - m0 - r0), s = Math.min(luck, n0);
-    const L = Math.min(luck, 100) / 100, n = n0 - r0 * L, m = m0, r = r0 * (1 + L), u = (score < 50 ? 0 : .3 + .5 * Math.min(1, (score - 50) / 100)) * (1 + L), k = (100 - u) / (n + m + r);
+    const L = Math.min(luck, 100) / 100, n = n0 - r0 * L, m = m0, r = r0 * (1 + L), u = (score < 50 ? 0 : cv([[50, .3], [150, .8], [300, 1.1], [600, 1.5], [1000, 1.8]])) * (1 + L), k = (100 - u) / (n + m + r);
     return { n: n * k, m: m * k, r: r * k, u, mf: Math.round(((m + r) / 14.25 - 1) * 100) };
   }
   function chancesHtml(score) {

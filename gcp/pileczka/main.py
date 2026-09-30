@@ -42,8 +42,9 @@ AFF = {
 PRE_IDS = tuple(k for k, v in AFF.items() if v[0] == "p")
 SUF_IDS = tuple(k for k, v in AFF.items() if v[0] == "s")
 UNIQUE_MIN_SCORE = 50
-def unique_chance(score):  # 0.3% od 50 pkt, liniowo do 0.8% przy 150 pkt
-    return 0 if score < 50 else (0.003 + 0.005 * min(1, (score - 50) / 100))
+U_PTS = [(50, 0.3), (150, 0.8), (300, 1.1), (600, 1.5), (1000, 1.8)]  # % szansy na unikat
+def unique_chance(score):  # od 50 pkt, rośnie do 1.8% przy 1000 pkt
+    return 0 if score < 50 else _curve(U_PTS, score) / 100
 
 def drop_chance(score):  # szansa, że w ogóle coś wypadnie: wynik/80 (od 80 pkt zawsze)
     return min(1.0, score / 80)
@@ -52,8 +53,8 @@ EQID_RE = re.compile(r"^[0-9a-f]{40}$")
 DROP_MIN, DROP_GAP = 15, 15
 # punkty kontrolne: wynik -> (normalne, magiczne, rzadkie) w %; poniżej 30 i powyżej 150 stałe
 # Szanse rzadkości rosną płynnie (liniowo między punktami, bez schodków) aż do 1000 pkt; dalej bez zmian.
-R_PTS = [(15, 0.25), (100, 1.25), (300, 3), (600, 5), (1000, 12.5)]  # rzadkie o 75% rzadziej (30.09)
-M_PTS = [(15, 14), (100, 25), (300, 35), (600, 42), (1000, 45)]
+R_PTS = [(15, 0.25), (50, 1), (100, 2), (200, 4), (300, 6), (600, 10), (1000, 15)]  # rzadkie: szybszy wzrost do 300 pkt
+M_PTS = [(15, 14), (50, 22), (100, 30), (200, 38), (300, 42), (600, 45), (1000, 45)]
 
 def _curve(pts, x):
     x = max(pts[0][0], min(x, pts[-1][0]))
