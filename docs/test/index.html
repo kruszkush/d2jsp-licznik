@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Licznik postów d2jsp 4.0-test</title>
+<title>Licznik postów d2jsp 4.8-test</title>
 <style>
 :root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e4e2dc;--acc:#b4441f;--bar:#d9825f;
  --gold:#c9961a;--gold2:#f3d46b;--goldbg:#fff8e3;--goldline:#efd89a;--silver:#9aa0a6;--bronze:#b3713f}
@@ -15,6 +15,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-ap
 @media (max-width:900px){.wrap{grid-template-columns:1fr}aside{order:-1}}
 h1{font-size:24px;margin:0 0 4px}
 .sub{color:var(--mute);margin:0 0 20px;font-size:13px}
+.crownb{margin-left:6px;font-size:11px;color:var(--gold);white-space:nowrap}
 .ranges{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:16px}
 button{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:6px 12px;border-radius:999px;cursor:pointer}
 button.on{background:var(--acc);border-color:var(--acc);color:#fff}
@@ -183,11 +184,11 @@ aside{position:sticky;top:16px}
 </svg>
 <div class="wrap">
 <main>
-<h1>Licznik postów — d2jsp Polska <span class="ver">4.7-test</span></h1>
+<h1>Licznik postów — d2jsp Polska <span class="ver">4.8-test</span></h1>
 <p class="sub" id="sub">Ładowanie danych…</p>
 
 <div class="ranges" id="ranges">
-  <button data-d="1">24 h</button><button data-d="7">7 dni</button><button data-d="30" class="on">30 dni</button>
+  <button data-d="1" class="on">24 h</button><button data-d="7">7 dni</button><button data-d="30">30 dni</button>
   <button data-d="90">90 dni</button><button data-d="0">Całość</button>
   <span style="margin-left:6px;color:var(--mute);font-size:13px">lub od</span><input type="date" id="from">
   <span style="color:var(--mute);font-size:13px">do</span><input type="date" id="to">
@@ -200,7 +201,7 @@ aside{position:sticky;top:16px}
   <div class="tile"><b id="tAvg">–</b><span>postów dziennie</span></div>
 </div>
 
-<div class="card"><h2>Posty dziennie</h2><p class="note" style="margin:-6px 0 10px">Ile postów napisano na forum każdego dnia w wybranym zakresie.</p><div id="chart" class="bars"></div></div>
+<div class="card"><h2 id="chartH">Posty dziennie</h2><p class="note" id="chartN" style="margin:-6px 0 10px">Ile postów napisano na forum każdego dnia w wybranym zakresie.</p><div id="chart" class="bars"></div></div>
 
 <div class="card">
   <div class="head"><h2>Ranking</h2><input id="q" placeholder="Szukaj nicku…"></div>
@@ -432,7 +433,7 @@ fetch('../data.json?' + Date.now()).then((r) => r.json()).then((d) => {
     const [u] = [...D.posts.reduce((m, p) => m.set(p[2], (m.get(p[2]) || 0) + 1), new Map())].sort((a, b) => b[1] - a[1])[1] || [];
     if (u) { cups.set(u, [...(cups.get(u) || []), { t: 'm', label: 'przykład' }, { t: 'w', label: 'przykład' }]); reign.add(u); }
   }
-  setDays(30);
+  setDays(1);
 }).catch((e) => { console.error(e); $('sub').textContent = 'Brak danych — pierwsza aktualizacja jeszcze się nie zakończyła.'; });
 
 function setDays(n) {
@@ -451,7 +452,18 @@ for (const id of ['from', 'to']) $(id).addEventListener('change', () => {
 });
 $('q').addEventListener('input', render);
 
+// Korona Króla Forum (gra): premia do piłeczki wg miejsca w rankingu ostatnich 24 h — 1.: +1.0x, 2–3: +0.6x, 4–10: +0.3x
+function crownTable() {
+  const f = Date.now() / 1000 - 86400, m = new Map();
+  for (const p of D.posts) if (p[3] >= f) m.set(p[2], (m.get(p[2]) || 0) + 1);
+  const r = new Map();
+  [...m].sort((a, b) => b[1] - a[1]).slice(0, 10).forEach(([u], i) => r.set(u, i === 0 ? 1 : i < 3 ? .6 : .3));
+  return r;
+}
+window.crownOf = (u) => crownTable().get(String(u)) || 0;
+
 function render() {
+  const crown = crownTable();
   const f = from / 1000, t = to / 1000;
   const posts = D.posts.filter((p) => p[3] >= f && p[3] <= t);
   const users = new Map(), topics = new Set(), days = new Map(); dayUsers = new Map();
@@ -470,9 +482,22 @@ function render() {
   $('rows').innerHTML = rank.map((x, i) => ({ x, i }))
     .filter(({ x }) => !q || nick(x.u).toLowerCase().includes(q))
     .map(({ x, i }) => { const c = cups.get(x.u);
-      return `<tr><td>${i+1}</td><td>${nickBadges(x.u)}</td><td class="n">${fmt(x.n)}</td><td class="n">${x.t.size}</td><td class="w"><div class="share" style="width:${x.n/top*100}%" title="${(x.n/posts.length*100).toFixed(1)}%"></div></td></tr>`; }).join('')
+      return `<tr><td>${i+1}</td><td>${nickBadges(x.u)}${crown.has(x.u) ? `<small class="crownb" title="Korona Króla Forum: premia do piłeczki z tym awatarem (miejsce w ostatnich 24 h)">+${crown.get(x.u).toFixed(1)}x do piłeczki</small>` : ''}</td><td class="n">${fmt(x.n)}</td><td class="n">${x.t.size}</td><td class="w"><div class="share" style="width:${x.n/top*100}%" title="${(x.n/posts.length*100).toFixed(1)}%"></div></td></tr>`; }).join('')
     || '<tr><td colspan="5" style="color:var(--mute)">Brak postów w tym zakresie.</td></tr>';
 
+  // zakres do 2 dni: słupki co godzinę (dzienne dałyby tylko 1–2 słupki)
+  const hourly = to - from <= 2 * day;
+  $('chartH').textContent = hourly ? 'Posty co godzinę' : 'Posty dziennie';
+  $('chartN').textContent = hourly ? 'Ile postów napisano na forum w każdej godzinie wybranego zakresu.' : 'Ile postów napisano na forum każdego dnia w wybranym zakresie.';
+  if (hourly) {
+    const h0 = Math.floor(from / 36e5) * 36e5, hv = new Map();
+    for (const p of posts) { const k = Math.floor(p[3] * 1000 / 36e5) * 36e5; hv.set(k, (hv.get(k) || 0) + 1); }
+    const hs = []; for (let x = h0; x <= to; x += 36e5) hs.push(x);
+    const hmax = Math.max(1, ...hs.map((x) => hv.get(x) || 0)), nowH = Math.floor(Date.now() / 36e5) * 36e5;
+    $('chart').innerHTML = hs.map((x, i) => { const d = new Date(x), v = hv.get(x) || 0, hh = String(d.getHours()).padStart(2, '0');
+      return `<div class="col${x === nowH ? ' today' : ''}" data-k="${ymd(x)}" data-t="${d.toLocaleDateString('pl-PL', { weekday: 'long' })} ${hh}:00–${hh}:59: ${v} postów${x === nowH ? ' (godzina trwa)' : ''}"><div class="b" style="height:${Math.round(v / hmax * 120)}px"></div><span class="d">${i % 3 === 0 ? hh : '&nbsp;'}</span></div>`; }).join('');
+    return;
+  }
   const keys = []; for (let d = new Date(ymd(from) + 'T12:00').getTime(); d <= to; d += day) keys.push(ymd(d));
   const vals = keys.map((k) => days.get(k) || 0), max = Math.max(1, ...vals), many = keys.length > 21, step = Math.ceil(keys.length / 12);
   const WD = ['nd', 'pn', 'wt', 'śr', 'cz', 'pt', 'sb'], td = ymd(Date.now());
@@ -482,6 +507,6 @@ function render() {
       <span class="d">${show ? `${dt.getDate()}.${String(dt.getMonth() + 1).padStart(2, '0')}${many ? '' : `<i>${WD[dt.getDay()]}</i>`}` : '&nbsp;'}</span></div>`; }).join('');
 }
 </script>
-<script src="../gra.js?v=1790785002"></script>
+<script src="../gra.js?v=1790785341"></script>
 </body>
 </html>
