@@ -123,7 +123,7 @@
     if (window.dayLeader?.() === u) { f.el.classList.add('leader'); const c = document.createElement('span'); c.className = 'lcrown'; c.textContent = '👑'; f.el.appendChild(c); }
     // z Koroną Króla Forum plakietka pokazuje mnożnik piłeczki już z premią za miejsce właściciela awatara w top 10 z 24 h
     const cr = B.korona && window.crownOf ? window.crownOf(u) : 0, bm = Math.round((kind.m + cr) * 10) / 10;
-    if (bm > 1) { const b = document.createElement('span'); b.className = 'badge ' + (kind.m > 1 ? kind.cls : ''); b.textContent = 'x' + bm + (cr ? ' 👑' : ''); f.el.appendChild(b); }
+    if (bm > 1) { const b = document.createElement('span'); b.className = 'badge ' + (kind.m > 1 ? kind.cls : ''); b.textContent = 'x' + bm; if (cr) b.title = `z Koroną: +${cr}x`; f.el.appendChild(b); }
     f.el.addEventListener('pointerdown', (e) => { e.preventDefault(); game ? hit(f, e) : startGame(f, e); });
     flakes.add(f);
   }
