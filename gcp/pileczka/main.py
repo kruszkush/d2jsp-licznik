@@ -257,7 +257,7 @@ def pileczka(req):
         j = req.get_json(silent=True) or {}
         nick = re.sub(r"\s+", " ", str(j.get("nick", ""))).strip()[:20]
         score = j.get("score")
-        if not nick or not isinstance(score, int) or not 0 < score <= 100000:
+        if len(nick) < 3 or not isinstance(score, int) or not 0 < score <= 100000:
             return cors(req, {"error": "zły nick lub wynik"}, 400)
         hits = j.get("hits") if isinstance(j.get("hits"), int) and 0 < j.get("hits") <= 100000 else None
         ball = str(j.get("ball", ""))[:30] or None

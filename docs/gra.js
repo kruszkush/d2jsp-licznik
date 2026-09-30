@@ -257,7 +257,7 @@
       <div class="sc">${score}<small> pkt</small></div>
       <div class="eq">${P.b > 1 ? `<span class="ch" style="background:${BADGE[f.base] || '#d9264a'};color:#fff"><b>×${fm(P.b)}</b><i>piłeczka</i></span><span class="op">×</span>` : ''}<span class="ch"><b>×${fm(P.lv)}</b><i>poziom ${gLvlN}</i></span>${P.items ? `<span class="op">+</span><span class="ch"><b>+${fm(P.items)}${gZuch ? `<sup class="zsup" title="w tym nabite podbiciami tuż nad dołem ekranu">+${fm(gZuch)}</sup>` : ''}</b><i>przedmioty</i></span>` : ''}<span class="op">=</span><span class="ch tot"><b>×${fm(P.total)}</b><i>na koniec</i></span></div>
       ${EQON ? chancesHtml(score) : ''}
-      <input id="pilNick" maxlength="20" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Twój nick" value="${esc(ls.get('pilNick') || '')}">
+      <input id="pilNick" minlength="3" maxlength="20" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Twój nick" value="${esc(ls.get('pilNick') || '')}">
       <div class="row"><button class="pri" id="pilSave">Zapisz wynik</button></div><div class="msg" id="pilMsg"></div><div id="pilDrop"></div><button id="pilClose" class="closebig">Zamknij</button></div>`;
     document.body.appendChild(ov);
     // decyzja o przedmiocie tylko tutaj: zamknięcie okna bez wyboru = przedmiot przepada (nie da się odłożyć i porównać później)
@@ -274,7 +274,7 @@
     ov.querySelector('#pilClose').onclick = close;
     const save = (auto) => {
       const nick = ov.querySelector('#pilNick').value.trim();
-      if (!nick) { ov.querySelector('#pilMsg').textContent = 'Wpisz nick.'; return; }
+      if (nick.length < 3) { ov.querySelector('#pilMsg').textContent = 'Nick musi mieć co najmniej 3 znaki.'; return; }
       ls.set('pilNick', nick); ls.set('pilGral', '1');
       ov.querySelector('#pilMsg').textContent = 'Zapisuję…';
       fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nick, score, dev: TOUCH ? 'm' : 'd', hits: gHits, ball: D.users[f.u] || '', ballUid: /^\d+$/.test(f.u) ? f.u : '', ...(EQON ? { key: getKey() } : {}) }) })
