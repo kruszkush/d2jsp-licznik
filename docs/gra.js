@@ -310,7 +310,7 @@
     rozpedzony: ['p', 'Rozpędzony', 10, 20, 1, ['Rozpędzony', 'Rozpędzona', 'Rozpędzone'], (v) => `Rozpocznij z mnożnikiem ogólnym zwiększonym o ${v}%`],
     wytrwalosci: ['s', 'Wytrwałości', 5, 15, 1, 'Wytrwałości', (v) => `Piłeczka przyspiesza o ${v}% wolniej`],
     olbrzyma: ['s', 'Olbrzyma', 5, 10, 1, 'Olbrzyma', (v) => `Większa piłeczka o ${v}%`],
-    lowcy: ['s', 'Łowcy', 0.2, 0.5, 0.1, 'Łowcy', (v) => `+${v.toFixed(1)} do mnożnika piłeczki`],
+    lowcy: ['s', 'Łowcy', 0.2, 0.5, 0.1, 'Łowcy', (v) => `+${v.toFixed(1)}x do mnożnika piłeczki`],
     echa: ['s', 'Echa', 10, 20, 1, 'Echa', (v) => `+${v}% szansy na podwójne punkty za podbicie`],
     stroza: ['s', 'Stróża', 1, 1, 1, 'Stróża', () => 'Raz na grę: odbicie od dołu zamiast końca gry'],
     serii: ['s', 'Serii', 0.10, 0.25, 0.01, 'Serii', (v) => `+${v.toFixed(2)}x mnożnika za każde 10 podbić`],
@@ -338,7 +338,7 @@
     if (b.brawur) L.push(`+${b.brawur.toFixed(2)}x mnożnika za każde kolejne podbicie z rzędu tuż nad dołem ekranu`);
     if (b.zuch) L.push(`+${b.zuch.toFixed(2)}x mnożnika na stałe za każde podbicie tuż nad dołem ekranu (od 2. poziomu)`);
     if (b.echa) L.push(`+${pct(b.echa)}% szansy na podwójne punkty za podbicie`);
-    if (b.lowcy) L.push(`+${b.lowcy.toFixed(1)} do mnożnika piłeczki`);
+    if (b.lowcy) L.push(`+${b.lowcy.toFixed(1)}x do mnożnika piłeczki`);
     if (b.rozp) L.push(`Rozpocznij z mnożnikiem ogólnym zwiększonym o ${pct(b.rozp)}%`);
     if (b.wytrw) L.push(`Piłeczka przyspiesza o ${Math.round(b.wytrw * 100)}% wolniej`);
     if (b.stlum) L.push(`Niższe podbicie o ${pct(b.stlum)}%`);
