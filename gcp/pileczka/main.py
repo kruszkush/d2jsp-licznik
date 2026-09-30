@@ -36,7 +36,7 @@ SLOTS = ("helm", "armor", "gloves", "boots")
 # afiksy: id -> (prefiks/sufiks, min, max, krok); wartości zawsze z kroku (procenty co 1, mnożniki co 0.1, sekundy co 0.1, seria co 0.01)
 AFF = {
     "ostry": ("p", 0.4, 1.0, 0.1), "stlumiony": ("p", 5, 15, 1), "ciezki": ("p", 5, 10, 1), "zreczny": ("p", 10, 30, 1),
-    "szczesliwy": ("p", 3, 10, 1), "rozpedzony": ("p", 10, 20, 1), "brawurowy": ("p", 0.15, 0.25, 0.01), "zuchwaly": ("p", 0.02, 0.04, 0.01),
+    "szczesliwy": ("p", 20, 50, 1), "rozpedzony": ("p", 10, 20, 1), "brawurowy": ("p", 0.15, 0.25, 0.01), "zuchwaly": ("p", 0.02, 0.04, 0.01),
     "wytrwalosci": ("s", 9, 10, 1), "olbrzyma": ("s", 5, 10, 1), "lowcy": ("s", 0.2, 0.5, 0.1), "serii": ("s", 0.10, 0.25, 0.01), "echa": ("s", 10, 20, 1), "stroza": ("s", 1, 1, 1),
 }
 PRE_IDS = tuple(k for k, v in AFF.items() if v[0] == "p")
@@ -89,8 +89,8 @@ def luck_of(slots):
 
 def pick_rarity(score, luck=0):
     n, m, r = rarity_weights(score)
-    x = min(luck, n)  # szczęśliwy przesuwa punkty proc. z Normalnego: 70% do Magicznego, 30% do Rzadkiego
-    n, m, r = n - x + .225 * x, m + .7 * x, r + .075 * x  # część dla rzadkiego też -75% (reszta zostaje w Normalnym)
+    extra = r * min(luck, 100) / 100  # szczęśliwy: +X% (względnie) do szansy na rzadki, kosztem normalnego
+    n, r = n - extra, r + extra
     return random.choices(("n", "m", "r"), weights=(n, m, r))[0]
 
 def make_item(slot, rarity, affixes, uid=None, nick=None, ilvl=0, mult=0.1):
@@ -107,7 +107,7 @@ TIER_W = {t: _TW[t] / sum(1 for x in TIER.values() if x == t) for t in _TW}
 
 def roll_item(score, uid, nick, luck=0):
     slot = random.choice(SLOTS)
-    if random.random() < unique_chance(score):
+    if random.random() < unique_chance(score) * (1 + min(luck, 100) / 100):  # szczęśliwy zwiększa też szansę na unikat
         rarity = "u"  # unikat losowany przed tabelą rzadkości
         slot = random.choice(("helm", "boots"))  # na razie unikaty tylko: Korona Króla Forum i Kapcie Moderatora
     else:

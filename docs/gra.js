@@ -165,7 +165,7 @@
     b.setMult = b.setN >= 3 ? .5 : b.setN === 2 ? .2 : 0; if (b.setN === 4) b.guardian++;
     for (const k of Object.keys(b)) if (typeof b[k] === 'number') b[k] = r3(b[k]);
     // limity łączne (afiksy mogą się powtarzać, ale suma ma sufit)
-    const CAP = { stlum: .3, ciezki: .25, zreczny: .6, olb: .25, rozp: .6, lowcy: 1.5, lucky: 25, brawur: .5, zuch: .08, echa: .25 };
+    const CAP = { stlum: .3, ciezki: .25, zreczny: .6, olb: .25, rozp: .6, lowcy: 1.5, lucky: 100, brawur: .5, zuch: .08, echa: .25 };
     for (const k in CAP) b[k] = Math.min(CAP[k], b[k]);
     return b;
   }
@@ -303,7 +303,7 @@
     stlumiony: ['p', 'Stłumiony', 5, 15, 1, ['Stłumiony', 'Stłumiona', 'Stłumione'], (v) => `Niższe podbicie o ${v}%`],
     ciezki: ['p', 'Ciężki', 5, 10, 1, ['Ciężki', 'Ciężka', 'Ciężkie'], (v) => `Grawitacja słabsza o ${v}%`],
     zreczny: ['p', 'Zręczny', 10, 30, 1, ['Zręczny', 'Zręczna', 'Zręczne'], (v) => `Odbicie w bok mniejsze o ${v}%`],
-    szczesliwy: ['p', 'Szczęśliwy', 3, 10, 1, ['Szczęśliwy', 'Szczęśliwa', 'Szczęśliwe'], (v) => `+${v}% szansy na rzadszy przedmiot`],
+    szczesliwy: ['p', 'Szczęśliwy', 20, 50, 1, ['Szczęśliwy', 'Szczęśliwa', 'Szczęśliwe'], (v) => `+${v}% szansy na rzadkie i unikalne przedmioty`],
     brawurowy: ['p', 'Brawurowy', 0.15, 0.25, 0.01, ['Brawurowy', 'Brawurowa', 'Brawurowe'], (v) => `+${v.toFixed(2)}x mnożnika za każde kolejne podbicie z rzędu tuż nad dołem ekranu`],
     zuchwaly: ['p', 'Zuchwały', 0.02, 0.04, 0.01, ['Zuchwały', 'Zuchwała', 'Zuchwałe'], (v) => `+${v.toFixed(2)}x mnożnika na stałe za każde podbicie tuż nad dołem ekranu (od 2. poziomu)`],
     rozpedzony: ['p', 'Rozpędzony', 10, 20, 1, ['Rozpędzony', 'Rozpędzona', 'Rozpędzone'], (v) => `Rozpocznij z mnożnikiem ogólnym zwiększonym o ${v}%`],
@@ -342,7 +342,7 @@
     if (b.ciezki) L.push(`Grawitacja słabsza o ${pct(b.ciezki)}%`);
     if (b.zreczny) L.push(`Odbicie w bok mniejsze o ${pct(b.zreczny)}%`);
     if (b.olb) L.push(`Większa piłeczka o ${pct(b.olb)}%`);
-    if (b.lucky) L.push(`+${b.lucky}% szansy na rzadszy przedmiot`);
+    if (b.lucky) L.push(`+${b.lucky}% szansy na rzadkie i unikalne przedmioty`);
     if (b.kapcie) L.push('Kapcie Moderatora: raz na grę kliknięcie w dowolne miejsce ekranu liczy się jako podbicie');
     if (b.korona) L.push('Hełm Weterana: podwaja premię piłeczek osób, którymi grasz, z top 10 z ostatnich 24 godzin');
     if (b.guardian) L.push(`Anioł Stróż: ${b.guardian}× ratunek na grę`);
@@ -353,7 +353,7 @@
     const cv = (P) => { const x = Math.max(P[0][0], Math.min(score, P[P.length - 1][0])); for (let i = 1; i < P.length; i++) if (x <= P[i][0]) return P[i - 1][1] + (P[i][1] - P[i - 1][1]) * (x - P[i - 1][0]) / (P[i][0] - P[i - 1][0]); return P[P.length - 1][1]; };
     const r0 = cv([[15, .25], [100, 1.25], [300, 3], [600, 5], [1000, 12.5]]), m0 = cv([[15, 14], [100, 25], [300, 35], [600, 42], [1000, 45]]);
     const n0 = Math.max(5, 100 - m0 - r0), s = Math.min(luck, n0);
-    const n = n0 - s + .225 * s, m = m0 + .7 * s, r = r0 + .075 * s, u = score < 50 ? 0 : .3 + .5 * Math.min(1, (score - 50) / 100), k = (100 - u) / (n + m + r);
+    const L = Math.min(luck, 100) / 100, n = n0 - r0 * L, m = m0, r = r0 * (1 + L), u = (score < 50 ? 0 : .3 + .5 * Math.min(1, (score - 50) / 100)) * (1 + L), k = (100 - u) / (n + m + r);
     return { n: n * k, m: m * k, r: r * k, u, mf: Math.round(((m + r) / 14.25 - 1) * 100) };
   }
   function chancesHtml(score) {
@@ -361,10 +361,10 @@
     const c = chances(score, B.lucky || 0), c0 = chances(score, 0), p = (v) => v < 10 ? v.toFixed(1) : Math.round(v);
     const mfPts = Math.round(c0.m + c0.r - 14.25), mfIt = B.lucky || 0; // magic find: zwykła suma — z punktów + z przedmiotów
     const row = (k, name, v) => `<div class="mfr"><span style="color:${COL[k]}">${name}</span><i>·</i><b>${p(v)}%</b></div>`;
-    return `<details class="mf"><summary>Magic find <b>+${mfPts + mfIt}%</b> ▾</summary>
+    return `<details class="mf"><summary>Magic find <b>+${mfPts}%</b>${mfIt ? ` · rzadkie i unikaty <b>+${mfIt}%</b>` : ''} ▾</summary>
       <div class="mfr"><span>Szansa na drop</span><i>·</i><b>${Math.round(Math.min(1, score / 80) * 100)}%</b></div>
       ${row('n', 'Normalny', c.n)}${row('m', 'Magiczny', c.m)}${row('r', 'Rzadki', c.r)}${c.u ? row('u', 'Unikat', c.u) : ''}
-      ${mfIt ? `<div class="mft"><span>z punktów +${mfPts}%, z przedmiotów +${mfIt}%</span></div>` : ''}</details>`;
+      ${mfIt ? `<div class="mft"><span>magic find z punktów, +${mfIt}% do rzadkich i unikatów z afiksu Szczęśliwy</span></div>` : ''}</details>`;
   }
   const rndHex = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
   const getKey = () => { let k = ls.get('eqKey'); if (!/^[0-9a-f]{32}$/.test(k || '')) { k = rndHex(); ls.set('eqKey', k); } return k; };
