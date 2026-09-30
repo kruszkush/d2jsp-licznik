@@ -50,9 +50,10 @@ async function open(path) {
   let res;
   try { res = await page.goto(B + path, { waitUntil: 'domcontentloaded', timeout: 60000 }); }
   catch (e) { res = null; }
-  for (let i = 0; i < 30 && !/d2jsp/i.test(await page.title().catch(() => '')); i++) await new Promise((r) => setTimeout(r, 2000));
+  // „Just a moment...” to sprawdzenie przeglądarki — czekamy jak człowiek (do ~90 s); liczy się to, co się ostatecznie załadowało
+  for (let i = 0; i < 45 && !/d2jsp/i.test(await page.title().catch(() => '')); i++) await new Promise((r) => setTimeout(r, 2000));
   const title = await page.title().catch(() => '');
-  if (!/d2jsp/i.test(title) || /access denied|attention required/i.test(title) || (res && res.status() >= 400))
+  if (!/d2jsp/i.test(title) || /access denied|attention required/i.test(title))
     throw new Blocked(`blokada na ${path}: HTTP ${res && res.status()} „${title}”`);
 }
 async function list(o) {
