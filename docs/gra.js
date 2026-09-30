@@ -124,9 +124,9 @@
   // Co 8 podbić poziom w górę: awatar leci szybciej (cały ruch przyspiesza), a mnożnik punktów rośnie o 0,1
   // Rozmiar i fizyka liczone względem wielkości okna — przybliżenie strony (Ctrl +) nie ułatwia gry
   // Rozmiary piłeczek: mniejsza = trudniej, ale większy mnożnik bazowy (mnoży się z mnożnikiem poziomu)
-  const KINDS = [{ p: 1, m: 1, w: 25 }, { p: .8, m: 1.3, w: 25, cls: 'b2' }, { p: .65, m: 1.7, w: 25, cls: 'b3' }, { p: .5, m: 3, w: 25, cls: 'b4' }];
+  const KINDS = [{ p: 1, m: 1, w: 25 }, { p: .8, m: 1.3, w: 25, cls: 'b2' }, { p: .65, m: 1.7, w: 25, cls: 'b3' }, { p: .5, m: 2.2, w: 25, cls: 'b4' }];
   const pickKind = () => { let r = Math.random() * 100; for (const k of KINDS) { if ((r -= k.w) < 0) return k; } return KINDS[0]; };
-  const BADGE = { 1.3: '#ff8a3d', 1.7: '#ff5a3d', 3: '#d9264a' }; // kolory jak plakietki na piłeczkach
+  const BADGE = { 1.3: '#ff8a3d', 1.7: '#ff5a3d', 2.2: '#d9264a' }; // kolory jak plakietki na piłeczkach
   // Bonusy z założonych przedmiotów (tylko TEST; bez przedmiotów wszystko jest zerem i gra liczy jak dotąd)
   const zeroB = () => ({ setN: 0, setUid: '', setMult: 0, impl: 0, ostry: 0, stlum: 0, ciezki: 0, zreczny: 0, rozp: 0, wytrw: 0, olb: 0, mrozu: 0, lowcy: 0, serii: 0, guardian: 0, lucky: 0 });
   let B = zeroB();
@@ -146,12 +146,14 @@
       }
     }
     // zestaw: przedmioty z awatarem tej samej osoby — 2 szt. +0.2x, 3 szt. +0.5x, 4 szt. +0.5x i jedno odbicie od dołu
-    const cnt = {}; for (const it of Object.values(slots || {})) if (it?.uid) cnt[it.uid] = (cnt[it.uid] || 0) + 1;
+    const cnt = {}; for (const it of Object.values(slots || {})) if (it?.uid) if (it.rarity === 'r' || it.rarity === 'u') cnt[it.uid] = (cnt[it.uid] || 0) + 1; // do zestawu liczą się tylko rzadkie i unikaty
     const top = Object.entries(cnt).sort((a, c) => c[1] - a[1])[0];
     b.setN = top && top[1] >= 2 ? top[1] : 0; b.setUid = b.setN ? top[0] : '';
     b.setMult = b.setN >= 3 ? .5 : b.setN === 2 ? .2 : 0; if (b.setN === 4) b.guardian++;
     for (const k of Object.keys(b)) if (typeof b[k] === 'number') b[k] = r3(b[k]);
-    for (const k of ['stlum', 'ciezki', 'zreczny']) b[k] = Math.min(.9, b[k]);
+    // limity łączne (afiksy mogą się powtarzać, ale suma ma sufit)
+    const CAP = { stlum: .3, ciezki: .25, zreczny: .6, olb: .25, rozp: .6, lowcy: 1.5, lucky: 25, mrozu: 6 };
+    for (const k in CAP) b[k] = Math.min(CAP[k], b[k]);
     return b;
   }
   const RP = TEST ? 100 : 10; // dokładność mnożnika: w produkcji 0.1, w teście 0.01 (seria)
@@ -234,7 +236,7 @@
     let dropOpen = false; // nierozstrzygnięty przedmiot: okno zamyka się tylko przyciskiem
     if (TEST && score >= 15) { // drop idzie od razu, niezależnie od zapisu wyniku
       eqPost('/drop', { key: getKey(), gameId: rndHex().slice(0, 16), score, ballUid: /^\d+$/.test(f.u) ? f.u : '', ballNick: D.users[f.u] || '' })
-        .then((r) => { if (r.ok && r.j.drop) { ov.querySelector('.box').classList.add('wide'); showDrop(ov.querySelector('#pilDrop'), r.j, (o) => { dropOpen = o; }); } }).catch(() => {});
+        .then((r) => { if (r.ok && r.j.reason === 'pech') ov.querySelector('#pilDrop').innerHTML = `<div class="msg">Tym razem nic nie wypadło (szansa ${r.j.chance}%).</div>`; if (r.ok && r.j.drop) { ov.querySelector('.box').classList.add('wide'); showDrop(ov.querySelector('#pilDrop'), r.j, (o) => { dropOpen = o; }); } }).catch(() => {});
     }
     ov.querySelector('#pilClose').onclick = close;
     const save = (auto) => {
@@ -265,7 +267,7 @@
   const UNIQ = { helm: 'Czapka Anioła Stróża', armor: 'Zbroja Anioła Stróża', gloves: 'Rękawice Anioła Stróża', boots: 'Buty Anioła Stróża' };
   // afiksy: [typ p/s, nazwa, min, max, krok, przymiotnik m/ż/lm albo dopełniacz, opis(v)]
   const AFF = {
-    ostry: ['p', 'Ostry', 0.1, 0.3, 0.1, ['Ostry', 'Ostra', 'Ostre'], (v) => `+${v.toFixed(1)}x mnożnika`],
+    ostry: ['p', 'Ostry', 0.4, 1.0, 0.1, ['Ostry', 'Ostra', 'Ostre'], (v) => `+${v.toFixed(1)}x mnożnika`],
     stlumiony: ['p', 'Stłumiony', 5, 15, 1, ['Stłumiony', 'Stłumiona', 'Stłumione'], (v) => `Podbicie niższe o ${v}%`],
     ciezki: ['p', 'Ciężki', 5, 10, 1, ['Ciężki', 'Ciężka', 'Ciężkie'], (v) => `Grawitacja słabsza o ${v}%`],
     zreczny: ['p', 'Zręczny', 10, 30, 1, ['Zręczny', 'Zręczna', 'Zręczne'], (v) => `Odbicie w bok mniejsze o ${v}%`],
@@ -273,9 +275,9 @@
     rozpedzony: ['p', 'Rozpędzony', 10, 20, 1, ['Rozpędzony', 'Rozpędzona', 'Rozpędzone'], (v) => `Start gry od +${v}% increased`],
     wytrwalosci: ['s', 'Wytrwałości', 9, 10, 1, 'Wytrwałości', (v) => `Poziom co ${v} podbić (zamiast 8)`],
     olbrzyma: ['s', 'Olbrzyma', 5, 10, 1, 'Olbrzyma', (v) => `Piłeczka większa o ${v}%`],
-    mrozu: ['s', 'Mrozu', 0.5, 1.0, 0.1, 'Mrozu', (v) => `Po wzroście poziomu spowolnienie ${v.toFixed(1)} s`],
+    mrozu: ['s', 'Mrozu', 1.5, 3.0, 0.1, 'Mrozu', (v) => `Po wzroście poziomu spowolnienie ${v.toFixed(1)} s`],
     lowcy: ['s', 'Łowcy', 0.2, 0.5, 0.1, 'Łowcy', (v) => `+${v.toFixed(1)} do mnożnika piłeczek mniejszych niż duża`],
-    serii: ['s', 'Serii', 0.01, 0.05, 0.01, 'Serii', (v) => `+${v.toFixed(2)}x mnożnika za każde 10 podbić`],
+    serii: ['s', 'Serii', 0.10, 0.25, 0.01, 'Serii', (v) => `+${v.toFixed(2)}x mnożnika za każde 10 podbić`],
   };
   const itemName = (it) => {
     const s = SLOT[it.slot]; if (it.rarity === 'u') return UNIQ[it.slot];
@@ -312,7 +314,7 @@
     const cv = (P) => { const x = Math.max(P[0][0], Math.min(score, P[P.length - 1][0])); for (let i = 1; i < P.length; i++) if (x <= P[i][0]) return P[i - 1][1] + (P[i][1] - P[i - 1][1]) * (x - P[i - 1][0]) / (P[i][0] - P[i - 1][0]); return P[P.length - 1][1]; };
     const r0 = cv([[15, 1], [100, 5], [300, 12], [600, 20], [1000, 50]]), m0 = cv([[15, 14], [100, 25], [300, 35], [600, 42], [1000, 45]]);
     const n0 = Math.max(5, 100 - m0 - r0), s = Math.min(luck, n0);
-    const n = n0 - s, m = m0 + .7 * s, r = r0 + .3 * s, u = score >= 50 ? 1 : 0, k = (100 - u) / (n + m + r);
+    const n = n0 - s, m = m0 + .7 * s, r = r0 + .3 * s, u = score < 50 ? 0 : .3 + .5 * Math.min(1, (score - 50) / 100), k = (100 - u) / (n + m + r);
     return { n: n * k, m: m * k, r: r * k, u, mf: Math.round(((m + r) / 15 - 1) * 100) };
   }
   function chancesHtml(score) {
@@ -321,6 +323,7 @@
     const mfPts = Math.round(c0.m + c0.r - 15), mfIt = B.lucky || 0; // magic find: zwykła suma — z punktów + z przedmiotów
     const row = (k, name, v) => `<div class="mfr"><span style="color:${COL[k]}">${name}</span><i>·</i><b>${p(v)}%</b></div>`;
     return `<details class="mf"><summary>Magic find <b>+${mfPts + mfIt}%</b> ▾</summary>
+      <div class="mfr"><span>Szansa na drop</span><i>·</i><b>${Math.round(Math.min(1, score / 80) * 100)}%</b></div>
       ${row('n', 'Normalny', c.n)}${row('m', 'Magiczny', c.m)}${row('r', 'Rzadki', c.r)}${c.u ? row('u', 'Unikat', c.u) : ''}
       ${mfIt ? `<div class="mft"><span>z punktów +${mfPts}%, z przedmiotów +${mfIt}%</span></div>` : ''}</details>`;
   }
@@ -384,8 +387,8 @@
       ${r(COL.n, 'Normalny', '+0.1x mnożnika')}${r(COL.m, 'Magiczny', '+0.1x mnożnika i 1 afiks')}${r(COL.r, 'Rzadki', '+0.1x mnożnika i 2 afiksy')}${r(COL.u, 'Unikat', '+0.1x mnożnika, 1 afiks i raz na grę odbicie od dołu')}
       <h4>Klasy afiksów</h4>
       <div class="lgr"><b class="t-slaby">słaby</b><span>najczęstszy</span></div><div class="lgr"><b class="t-dobry">dobry</b><span>częsty</span></div><div class="lgr"><b class="t-znakomity">znakomity</b><span>rzadki</span></div><div class="lgr"><b class="t-boski">boski</b><span>bardzo rzadki</span></div>
-      <h4>Zestaw</h4><div class="lgr"><b style="color:#3fd13f">2 / 3 / 4</b><span>przedmioty z awatarem tej samej osoby: +0.2x / +0.5x / +0.5x i odbicie od dołu</span></div>
-      <p class="mute" style="font-size:12px;margin:10px 0 0">Przedmiot wypada po grze od 15 pkt — im więcej punktów, tym większa szansa na rzadszy.</p>
+      <h4>Zestaw</h4><div class="lgr"><b style="color:#3fd13f">2 / 3 / 4</b><span>rzadkie lub unikaty z awatarem tej samej osoby: +0.2x / +0.5x / +0.5x i odbicie od dołu</span></div>
+      <p class="mute" style="font-size:12px;margin:10px 0 0">Przedmiot może wypaść po grze od 15 pkt — im więcej punktów, tym częściej i tym rzadszy.</p>
       <div class="row" style="margin-top:12px"><button data-a="close">Zamknij</button></div></div>`;
     document.body.appendChild(ov);
     ov.onclick = (e) => { if (e.target === ov || e.target.dataset?.a === 'close') ov.remove(); };

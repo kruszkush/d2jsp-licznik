@@ -35,13 +35,18 @@ def ip_key(req):
 SLOTS = ("helm", "armor", "gloves", "boots")
 # afiksy: id -> (prefiks/sufiks, min, max, krok); wartości zawsze z kroku (procenty co 1, mnożniki co 0.1, sekundy co 0.1, seria co 0.01)
 AFF = {
-    "ostry": ("p", 0.1, 0.3, 0.1), "stlumiony": ("p", 5, 15, 1), "ciezki": ("p", 5, 10, 1), "zreczny": ("p", 10, 30, 1),
+    "ostry": ("p", 0.4, 1.0, 0.1), "stlumiony": ("p", 5, 15, 1), "ciezki": ("p", 5, 10, 1), "zreczny": ("p", 10, 30, 1),
     "szczesliwy": ("p", 3, 10, 1), "rozpedzony": ("p", 10, 20, 1),
-    "wytrwalosci": ("s", 9, 10, 1), "olbrzyma": ("s", 5, 10, 1), "mrozu": ("s", 0.5, 1.0, 0.1), "lowcy": ("s", 0.2, 0.5, 0.1), "serii": ("s", 0.01, 0.05, 0.01),
+    "wytrwalosci": ("s", 9, 10, 1), "olbrzyma": ("s", 5, 10, 1), "mrozu": ("s", 1.5, 3.0, 0.1), "lowcy": ("s", 0.2, 0.5, 0.1), "serii": ("s", 0.10, 0.25, 0.01),
 }
 PRE_IDS = tuple(k for k, v in AFF.items() if v[0] == "p")
 SUF_IDS = tuple(k for k, v in AFF.items() if v[0] == "s")
-UNIQUE_CHANCE, UNIQUE_MIN_SCORE = 0.01, 50
+UNIQUE_MIN_SCORE = 50
+def unique_chance(score):  # 0.3% od 50 pkt, liniowo do 0.8% przy 150 pkt
+    return 0 if score < 50 else (0.003 + 0.005 * min(1, (score - 50) / 100))
+
+def drop_chance(score):  # szansa, że w ogóle coś wypadnie: wynik/80 (od 80 pkt zawsze)
+    return min(1.0, score / 80)
 KEY_RE = re.compile(r"^[0-9a-f]{32}$")
 EQID_RE = re.compile(r"^[0-9a-f]{40}$")
 DROP_MIN, DROP_GAP = 15, 15
@@ -102,7 +107,7 @@ TIER_W = {t: _TW[t] / sum(1 for x in TIER.values() if x == t) for t in _TW}
 
 def roll_item(score, uid, nick, luck=0):
     slot = random.choice(SLOTS)
-    if score >= UNIQUE_MIN_SCORE and random.random() < UNIQUE_CHANCE:
+    if random.random() < unique_chance(score):
         rarity = "u"  # unikat losowany przed tabelą rzadkości; jedyna właściwość (guardian) jest po stronie klienta
     else:
         rarity = pick_rarity(score, luck)
@@ -145,6 +150,10 @@ def eq_drop(req, j):
             return {"drop": None, "reason": "ta gra już była"}
         if now - d.get("lastDropTs", 0) < DROP_GAP:
             return {"drop": None, "reason": "za szybko"}
+        if random.random() >= drop_chance(score):  # gra zużyta, ale bez przedmiotu
+            d["lastGameId"] = gid
+            tx.set(ref, d, merge=True) if snap.exists else None
+            return {"drop": None, "reason": "pech", "chance": round(drop_chance(score) * 100)}
         st = eq_state(d)
         item = roll_item(score, uid, nick, luck_of(st["slots"]))
         d["slots"], d["pending"], d["lastDropTs"], d["lastGameId"] = st["slots"], st["pending"], now, gid
