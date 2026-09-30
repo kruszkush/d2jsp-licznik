@@ -36,8 +36,8 @@ SLOTS = ("helm", "armor", "gloves", "boots")
 # afiksy: id -> (prefiks/sufiks, min, max, krok); wartości zawsze z kroku (procenty co 1, mnożniki co 0.1, sekundy co 0.1, seria co 0.01)
 AFF = {
     "ostry": ("p", 0.4, 1.0, 0.1), "stlumiony": ("p", 5, 15, 1), "ciezki": ("p", 5, 10, 1), "zreczny": ("p", 10, 30, 1),
-    "szczesliwy": ("p", 3, 10, 1), "rozpedzony": ("p", 10, 20, 1),
-    "wytrwalosci": ("s", 9, 10, 1), "olbrzyma": ("s", 5, 10, 1), "lowcy": ("s", 0.2, 0.5, 0.1), "serii": ("s", 0.10, 0.25, 0.01),
+    "szczesliwy": ("p", 3, 10, 1), "rozpedzony": ("p", 10, 20, 1), "brawurowy": ("p", 0.1, 0.3, 0.1),
+    "wytrwalosci": ("s", 9, 10, 1), "olbrzyma": ("s", 5, 10, 1), "lowcy": ("s", 0.2, 0.5, 0.1), "serii": ("s", 0.10, 0.25, 0.01), "echa": ("s", 10, 20, 1),
 }
 PRE_IDS = tuple(k for k, v in AFF.items() if v[0] == "p")
 SUF_IDS = tuple(k for k, v in AFF.items() if v[0] == "s")
@@ -100,7 +100,7 @@ def make_item(slot, rarity, affixes, uid=None, nick=None, ilvl=0):
 # klasy afiksów i ich waga losowania (łączna na klasę dzielona po równo między afiksy tej klasy)
 TIER = {"stlumiony": "slaby", "zreczny": "slaby", "olbrzyma": "slaby",
         "lowcy": "dobry", "ciezki": "dobry",
-        "wytrwalosci": "znakomity", "rozpedzony": "znakomity", "szczesliwy": "znakomity",
+        "wytrwalosci": "znakomity", "rozpedzony": "znakomity", "szczesliwy": "znakomity", "brawurowy": "znakomity", "echa": "znakomity",
         "ostry": "boski", "serii": "boski"}
 _TW = {"slaby": 55, "dobry": 35, "znakomity": 7, "boski": 3}
 TIER_W = {t: _TW[t] / sum(1 for x in TIER.values() if x == t) for t in _TW}

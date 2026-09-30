@@ -128,7 +128,7 @@
   const pickKind = () => { let r = Math.random() * 100; for (const k of KINDS) { if ((r -= k.w) < 0) return k; } return KINDS[0]; };
   const BADGE = { 1.3: '#ff8a3d', 1.7: '#ff5a3d', 2.2: '#d9264a' }; // kolory jak plakietki na piłeczkach
   // Bonusy z założonych przedmiotów (tylko TEST; bez przedmiotów wszystko jest zerem i gra liczy jak dotąd)
-  const zeroB = () => ({ setN: 0, setUid: '', setMult: 0, impl: 0, ostry: 0, stlum: 0, ciezki: 0, zreczny: 0, rozp: 0, wytrw: 0, olb: 0, mrozu: 0, lowcy: 0, serii: 0, guardian: 0, lucky: 0 });
+  const zeroB = () => ({ setN: 0, setUid: '', setMult: 0, impl: 0, ostry: 0, stlum: 0, ciezki: 0, zreczny: 0, rozp: 0, wytrw: 0, olb: 0, mrozu: 0, lowcy: 0, serii: 0, brawur: 0, echa: 0, guardian: 0, lucky: 0 });
   let B = zeroB();
   const r3 = (x) => Math.round(x * 1000) / 1000;
   function calcB(slots) {
@@ -143,6 +143,7 @@
         else if (a.id === 'zreczny') b.zreczny += v / 100; else if (a.id === 'szczesliwy') b.lucky += v; else if (a.id === 'rozpedzony') b.rozp += v / 100;
         else if (a.id === 'wytrwalosci') b.wytrw = Math.max(b.wytrw, v); else if (a.id === 'olbrzyma') b.olb += v / 100;
         else if (a.id === 'mrozu') b.mrozu += v; else if (a.id === 'lowcy') b.lowcy += v; else if (a.id === 'serii') b.serii += v;
+        else if (a.id === 'brawurowy') b.brawur += v; else if (a.id === 'echa') b.echa += v / 100;
       }
     }
     // zestaw: przedmioty z awatarem tej samej osoby — 2 szt. +0.2x, 3 szt. +0.5x, 4 szt. +0.5x i jedno odbicie od dołu
@@ -152,7 +153,7 @@
     b.setMult = b.setN >= 3 ? .5 : b.setN === 2 ? .2 : 0; if (b.setN === 4) b.guardian++;
     for (const k of Object.keys(b)) if (typeof b[k] === 'number') b[k] = r3(b[k]);
     // limity łączne (afiksy mogą się powtarzać, ale suma ma sufit)
-    const CAP = { stlum: .3, ciezki: .25, zreczny: .6, olb: .25, rozp: .6, lowcy: 1.5, lucky: 25, mrozu: 6 };
+    const CAP = { stlum: .3, ciezki: .25, zreczny: .6, olb: .25, rozp: .6, lowcy: 1.5, lucky: 25, brawur: .6, echa: .25 };
     for (const k in CAP) b[k] = Math.min(CAP[k], b[k]);
     return b;
   }
@@ -187,7 +188,8 @@
   // błysk przy zużyciu odbicia od dołu
   function saveFx() { const e = document.createElement('div'); e.className = 'savefx'; document.body.appendChild(e); setTimeout(() => e.remove(), 900); }
   const flashEl = document.createElement('div'); flashEl.id = 'lvlup'; document.body.appendChild(flashEl);
-  function flash(t) { flashEl.textContent = t; flashEl.classList.remove('go'); void flashEl.offsetWidth; flashEl.classList.add('go'); }
+  let lastFlash = 0;
+  function flash(t) { lastFlash = performance.now(); flashEl.textContent = t; flashEl.classList.remove('go'); void flashEl.offsetWidth; flashEl.classList.add('go'); }
   // Na komputerze gra tylko w dużym oknie — w małym/wąskim oknie jest dużo łatwiej (mało miejsca na ucieczkę piłeczki)
   // Pole gry ma stałe proporcje (szerokość = 1,5 × wysokość, wyśrodkowane), więc na każdym monitorze jest tak samo trudno
   const ASPECT = 1.5, MIN_H = 600;
@@ -207,7 +209,10 @@
     if (!game || game.f !== f) return;
     game.hits++;
     const up = game.hits % game.per === 0 && game.hits > 0;
-    game.score += totalMult();
+    // Brawurowy: podbicie w dolnych 15% ekranu daje dodatkowy mnożnik; Echa: szansa, że podbicie liczy się podwójnie
+    const low = game.B.brawur && f.y + f.size / 2 > H * .85, echo = game.B.echa && Math.random() < game.B.echa;
+    game.score += (totalMult() + (low ? game.B.brawur : 0)) * (echo ? 2 : 1);
+    if (!up && performance.now() - lastFlash > 1200) if (echo) flash('Echo! x2'); else if (low) flash(`Brawura! +${fm(game.B.brawur)}x`);
     if (up) { game.lvl++; flash(`Szybciej! x${fm(totalMult())}`); showMult(game.lvl, true); }
     const r = f.el.getBoundingClientRect(), off = ((e.clientX - (r.left + r.width / 2)) / (r.width / 2)) || 0;
     // podbicie nie wyrzuca ponad górną krawędź: siła ograniczona tak, żeby szczyt lotu był ok. 12 px pod górą ekranu
@@ -272,10 +277,12 @@
     ciezki: ['p', 'Ciężki', 5, 10, 1, ['Ciężki', 'Ciężka', 'Ciężkie'], (v) => `Grawitacja słabsza o ${v}%`],
     zreczny: ['p', 'Zręczny', 10, 30, 1, ['Zręczny', 'Zręczna', 'Zręczne'], (v) => `Odbicie w bok mniejsze o ${v}%`],
     szczesliwy: ['p', 'Szczęśliwy', 3, 10, 1, ['Szczęśliwy', 'Szczęśliwa', 'Szczęśliwe'], (v) => `+${v}% szansy na rzadszy przedmiot`],
+    brawurowy: ['p', 'Brawurowy', 0.1, 0.3, 0.1, ['Brawurowy', 'Brawurowa', 'Brawurowe'], (v) => `+${v.toFixed(1)}x mnożnika za podbicie tuż nad dołem ekranu`],
     rozpedzony: ['p', 'Rozpędzony', 10, 20, 1, ['Rozpędzony', 'Rozpędzona', 'Rozpędzone'], (v) => `Rozpocznij z mnożnikiem ogólnym zwiększonym o ${v}%`],
     wytrwalosci: ['s', 'Wytrwałości', 9, 10, 1, 'Wytrwałości', (v) => `Nowy poziom co ${v} podbić`],
     olbrzyma: ['s', 'Olbrzyma', 5, 10, 1, 'Olbrzyma', (v) => `Większa piłeczka o ${v}%`],
     lowcy: ['s', 'Łowcy', 0.2, 0.5, 0.1, 'Łowcy', (v) => `+${v.toFixed(1)} do mnożnika piłeczki`],
+    echa: ['s', 'Echa', 10, 20, 1, 'Echa', (v) => `+${v}% szansy na podwójne punkty za podbicie`],
     serii: ['s', 'Serii', 0.10, 0.25, 0.01, 'Serii', (v) => `+${v.toFixed(2)}x mnożnika za każde 10 podbić`],
   };
   const itemName = (it) => {
@@ -287,7 +294,7 @@
   // Dymek w stylu D2 (najechanie; na telefonie dotknięcie pokazuje/ukrywa)
   const ITEMS = {};
   // klasa afiksu (jak na serwerze): im wyższa, tym rzadsza
-  const TIER = { stlumiony: 'slaby', zreczny: 'slaby', olbrzyma: 'slaby', lowcy: 'dobry', ciezki: 'dobry', wytrwalosci: 'znakomity', rozpedzony: 'znakomity', szczesliwy: 'znakomity', ostry: 'boski', serii: 'boski' };
+  const TIER = { stlumiony: 'slaby', zreczny: 'slaby', olbrzyma: 'slaby', lowcy: 'dobry',  ciezki: 'dobry', wytrwalosci: 'znakomity', rozpedzony: 'znakomity', szczesliwy: 'znakomity', brawurowy: 'znakomity', echa: 'znakomity', ostry: 'boski', serii: 'boski' };
   const TIERN = { slaby: 'słaby', dobry: 'dobry', znakomity: 'znakomity', boski: 'boski' };
   const tipHtml = (it) => `<div class="tn" style="color:${COL[it.rarity]}">${esc(itemName(it))}</div><div class="ts">${SLOT[it.slot][0]} · ${RAR[it.rarity]}</div><div class="ts">Poziom przedmiotu: ${it.ilvl ?? 0}</div>
     <div class="tg">+${(it.implicit?.mult ?? 0.1).toFixed(1)}x mnożnika</div>${(it.affixes || []).filter((a) => AFF[a.id]).map((a) => `<div class="tb">${esc(AFF[a.id][6](a.v))}<small class="tier t-${TIER[a.id]}">(${TIERN[TIER[a.id]]})</small></div>`).join('')}${it.rarity === 'u' ? '<div class="tb">Raz na grę: odbicie od dołu zamiast końca gry</div>' : ''}`;
@@ -296,6 +303,8 @@
     const mult = r3(b.impl + b.ostry); if (mult) L.push(`+${fm(mult)}x mnożnika`);
     if (b.setN) L.push(`Zestaw ${D.users[b.setUid] || ''} (${b.setN}/4): +${fm(b.setMult)}x mnożnika${b.setN === 4 ? ' i odbicie od dołu' : ''}`);
     if (b.serii) L.push(`+${b.serii.toFixed(2)}x za każde 10 podbić`);
+    if (b.brawur) L.push(`+${fm(b.brawur)}x mnożnika za podbicie tuż nad dołem ekranu`);
+    if (b.echa) L.push(`+${pct(b.echa)}% szansy na podwójne punkty za podbicie`);
     if (b.lowcy) L.push(`+${b.lowcy.toFixed(1)} do mnożnika piłeczki`);
     if (b.rozp) L.push(`Rozpocznij z mnożnikiem ogólnym zwiększonym o ${pct(b.rozp)}%`);
     if (b.wytrw) L.push(`Nowy poziom co ${b.wytrw} podbić`);
@@ -385,7 +394,7 @@
       ${r(COL.n, 'Normalny', '+0.1x mnożnika')}${r(COL.m, 'Magiczny', '+0.1x mnożnika i 1 afiks')}${r(COL.r, 'Rzadki', '+0.1x mnożnika i 2 afiksy')}${r(COL.u, 'Unikat', '+0.1x mnożnika i 1 afiks')}
       <h4>Klasy afiksów</h4>
       <div class="lgr"><b class="t-slaby">słaby</b><span>55%</span></div><div class="lgr"><b class="t-dobry">dobry</b><span>35%</span></div><div class="lgr"><b class="t-znakomity">znakomity</b><span>7%</span></div><div class="lgr"><b class="t-boski">boski</b><span>3%</span></div>
-      <h4>Zestaw</h4><div class="lgr"><b style="color:#3fd13f">2 / 3 / 4</b><span>rzadkie lub unikaty z awatarem tej samej osoby: +0.2x / +0.5x / +0.5x i odbicie od dołu</span></div>
+      <h4>Zestaw</h4><div class="lgr"><b style="color:#3fd13f">2 / 3 / 4</b><span>rzadkie lub unikaty z awatarem tej samej osoby: +0.2x / +0.5x / +0.5x</span></div>
       <h4>Magic find</h4><div class="lgr"><span>Zwiększa szansę na magiczne i rzadkie kosztem normalnych. Rośnie z wynikiem gry, a do tego dochodzi „szansa na rzadszy przedmiot” z przedmiotów (wartości się sumują).</span></div>
       <p class="mute" style="font-size:12px;margin:10px 0 0">Przedmiot może wypaść po grze od 15 pkt — im więcej punktów, tym częściej i tym rzadszy.</p>
       <div class="row" style="margin-top:12px"><button data-a="close">Zamknij</button></div></div>`;
