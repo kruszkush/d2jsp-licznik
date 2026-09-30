@@ -33,10 +33,12 @@
   #over .ch b{font-size:17px}#over .ch i{font-style:normal;font-size:10.5px;opacity:.8}
   #over .ch.tot{border-color:var(--acc);color:var(--acc)}
   #over .op{color:var(--mute);font-weight:700;font-size:16px}
+  #over details.mf summary{cursor:pointer;list-style:none;color:var(--mute)}#over details.mf summary::-webkit-details-marker{display:none}
   #over .mf{font-size:12.5px;color:var(--mute);margin:-6px auto 12px;line-height:1.45;max-width:260px}
   #over .mfh{font-weight:600;color:var(--ink);margin-bottom:3px}
   #over .mfr{display:flex;justify-content:center;gap:6px}#over .mfr span{min-width:70px;text-align:right;font-weight:700}#over .mfr i{font-style:normal;opacity:.6}#over .mfr b{min-width:40px;text-align:left;color:var(--ink)}
   #over .mft{margin-top:6px;color:var(--ink)}#over .mft span{color:var(--mute);font-size:11.5px}#over .mfs{font-size:11.5px}
+  #over .closebig{display:block;width:100%;margin-top:14px;padding:10px;font-weight:700;background:var(--acc);border-color:var(--acc);color:#fff;border-radius:12px}
   #over input{width:100%;margin-bottom:10px;text-align:center}
   #over .row{display:flex;gap:8px;justify-content:center}
   #over button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
@@ -221,13 +223,12 @@
     const av = D.avatars?.[f.u], who = D.users[f.u] || '?', hits = gHits;
     ov.innerHTML = `<div class="box"><h3>Koniec gry!</h3>
       <div class="ball" style="border-color:${f.el.style.borderColor};${av ? `background-image:url('${esc(av)}')` : ''}">${av ? '' : esc(who[0].toUpperCase())}</div>
-      <div class="who">${esc(who)}</div>
-      <div class="txt">Podrzuciłeś ${esc(who)} <b>${hits}</b> ${hits === 1 ? 'raz' : 'razy'}</div>
+      <div class="txt"><b style="color:var(--ink)">${esc(who)}</b> · ${hits} ${hits === 1 ? 'podbicie' : hits % 10 >= 2 && hits % 10 <= 4 && (hits % 100 < 12 || hits % 100 > 14) ? 'podbicia' : 'podbić'}</div>
       <div class="sc">${score}<small> pkt</small></div>
       <div class="eq">${P.b > 1 ? `<span class="ch" style="background:${BADGE[f.base] || '#d9264a'};color:#fff"><b>×${fm(P.b)}</b><i>piłeczka</i></span><span class="op">×</span>` : ''}<span class="ch"><b>×${fm(P.lv)}</b><i>poziom ${gLvlN}</i></span>${P.items ? `<span class="op">+</span><span class="ch"><b>+${fm(P.items)}</b><i>przedmioty</i></span>` : ''}<span class="op">=</span><span class="ch tot"><b>×${fm(P.total)}</b><i>na koniec</i></span></div>
       ${TEST ? chancesHtml(score) : ''}
       <input id="pilNick" maxlength="20" placeholder="Twój nick" value="${esc(ls.get('pilNick') || '')}">
-      <div class="row"><button class="pri" id="pilSave">Zapisz wynik</button><button id="pilClose">Zamknij</button></div><div class="msg" id="pilMsg"></div><div id="pilDrop"></div></div>`;
+      <div class="row"><button class="pri" id="pilSave">Zapisz wynik</button></div><div class="msg" id="pilMsg"></div><div id="pilDrop"></div><button id="pilClose" class="closebig">Zamknij</button></div>`;
     document.body.appendChild(ov);
     const close = () => ov.remove();
     let dropOpen = false; // nierozstrzygnięty przedmiot: okno zamyka się tylko przyciskiem
@@ -242,7 +243,7 @@
       ls.set('pilNick', nick); ls.set('pilGral', '1');
       ov.querySelector('#pilMsg').textContent = 'Zapisuję…';
       fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nick, score, dev: TOUCH ? 'm' : 'd', hits: gHits, ball: D.users[f.u] || '', ballUid: /^\d+$/.test(f.u) ? f.u : '', ...(TEST ? { key: getKey() } : {}) }) })
-        .then((r) => r.json()).then((j) => { if (j.top) { showRank(j.top); const m = j.me; if (TEST && m) { ov.querySelector('#pilMsg').innerHTML = m.record ? `✔ Zapisano — <b>nowy rekord!</b> · gier: ${m.plays}` : `✔ Zapisano (rekord: ${m.best}, ten wynik niższy) · gier: ${m.plays}`; return; } if (dropOpen) ov.querySelector('#pilMsg').textContent = 'Wynik zapisany. Rozstrzygnij przedmiot poniżej.'; else { close(); card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } } else ov.querySelector('#pilMsg').textContent = j.error || 'Błąd zapisu.'; })
+        .then((r) => r.json()).then((j) => { if (j.top) { showRank(j.top); const m = j.me; if (TEST && m) { ov.querySelector('#pilMsg').innerHTML = `✔ <b>${esc(nick)}</b> · ${m.record ? '<b style="color:var(--acc)">nowy rekord!</b>' : `rekord ${m.best}`} · gra nr ${m.plays} · <a href="#" data-a="chg">zmień nick</a>`; const ch = ov.querySelector('#pilMsg [data-a="chg"]'); if (ch) ch.onclick = (e) => { e.preventDefault(); window.__chgNick?.(); }; return; } if (dropOpen) ov.querySelector('#pilMsg').textContent = 'Wynik zapisany. Rozstrzygnij przedmiot poniżej.'; else { close(); card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } } else ov.querySelector('#pilMsg').textContent = j.error || 'Błąd zapisu.'; })
         .catch(() => { ov.querySelector('#pilMsg').textContent = 'Nie udało się zapisać, spróbuj jeszcze raz.'; });
     };
     ov.querySelector('#pilSave').onclick = save;
@@ -252,10 +253,8 @@
     if (TEST && saved) {
       const nickEl = ov.querySelector('#pilNick'), btn = ov.querySelector('#pilSave');
       nickEl.style.display = 'none'; btn.style.display = 'none';
-      const who2 = document.createElement('div'); who2.className = 'txt';
-      who2.innerHTML = `Gracz: <b>${esc(saved)}</b> · <a href="#" data-a="chg">Zmień nick</a>`;
-      nickEl.before(who2);
-      who2.querySelector('[data-a="chg"]').onclick = (e) => { e.preventDefault(); who2.remove(); nickEl.style.display = ''; btn.style.display = ''; btn.textContent = 'Zapisz pod nowym nickiem'; nickEl.value = ''; nickEl.focus(); };
+      const chgNick = () => { ov.querySelector('#pilMsg').textContent = ''; nickEl.style.display = ''; btn.style.display = ''; btn.textContent = 'Zapisz pod nowym nickiem'; nickEl.value = ''; nickEl.focus(); };
+      window.__chgNick = chgNick;
       save(true);
     } else setTimeout(() => ov.querySelector('#pilNick').focus(), 50);
   }
@@ -321,9 +320,9 @@
     const c = chances(score, B.lucky || 0), c0 = chances(score, 0), p = (v) => v < 10 ? v.toFixed(1) : Math.round(v);
     const mfPts = Math.round(c0.m + c0.r - 15), mfIt = B.lucky || 0; // magic find: zwykła suma — z punktów + z przedmiotów
     const row = (k, name, v) => `<div class="mfr"><span style="color:${COL[k]}">${name}</span><i>·</i><b>${p(v)}%</b></div>`;
-    return `<div class="mf"><div class="mfh">Szansa na przedmiot przy ${score} pkt</div>
+    return `<details class="mf"><summary>Magic find <b>+${mfPts + mfIt}%</b> ▾</summary>
       ${row('n', 'Normalny', c.n)}${row('m', 'Magiczny', c.m)}${row('r', 'Rzadki', c.r)}${c.u ? row('u', 'Unikat', c.u) : ''}
-      <div class="mft">Magic find: <b>+${mfPts + mfIt}%</b>${mfIt ? ` <span>(z punktów +${mfPts}%, z przedmiotów +${mfIt}%)</span>` : ''}</div></div>`;
+      ${mfIt ? `<div class="mft"><span>z punktów +${mfPts}%, z przedmiotów +${mfIt}%</span></div>` : ''}</details>`;
   }
   const rndHex = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
   const getKey = () => { let k = ls.get('eqKey'); if (!/^[0-9a-f]{32}$/.test(k || '')) { k = rndHex(); ls.set('eqKey', k); } return k; };
@@ -354,10 +353,10 @@
   // Sekcja dropu w oknie końca gry; setOpen(true) dopóki czeka na decyzję (okno się wtedy nie zamyka po zapisie wyniku)
   function showDrop(host, j, setOpen) {
     const it = j.drop;
-    host.innerHTML = `<div class="eqdrop"><div>Wypadł przedmiot! <b style="color:${COL[it.rarity]}">${RAR[it.rarity]}</b></div><div class="eqbody"></div><div class="row" style="margin-top:8px"><button data-a="seeinv">Zobacz ekwipunek</button></div></div>`;
-    host.querySelector('[data-a="seeinv"]').onclick = () => openInv();
+    host.innerHTML = `<div class="eqdrop">${j.equipped ? '' : `<div>Wypadł przedmiot! <b style="color:${COL[it.rarity]}">${RAR[it.rarity]}</b></div>`}<div class="eqbody"></div><a href="#" data-a="seeinv" class="seeinv">Ekwipunek ›</a></div>`;
+    host.querySelector('[data-a="seeinv"]').onclick = (e) => { e.preventDefault(); openInv(); };
     const body = host.querySelector('.eqbody');
-    if (j.equipped) { body.innerHTML = `<div class="eqres">${itemEl(it)}<span>Założono: ${coloured(it)}</span></div>`; setOpen(false); return; }
+    if (j.equipped) { body.innerHTML = `<div class="eqres">${itemEl(it)}<span>Nowy przedmiot: ${coloured(it)}<br><small style="color:var(--mute)">założony</small></span></div>`; setOpen(false); return; }
     setOpen(true);
     decideUI(body, it, j.current, () => setOpen(false));
   }
@@ -448,6 +447,7 @@
     eqCss.textContent = `
     #over .box.wide{width:min(380px,calc(100vw - 32px));max-height:calc(100vh - 16px);overflow:auto}
     .eqdrop{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:14px}.eqdrop .eqbody{margin-top:6px}
+    .seeinv{display:inline-block;margin-top:4px;font-size:12.5px;color:var(--acc)}
     .eqres{display:flex;align-items:center;justify-content:center;gap:8px;margin:6px 0;font-size:14px}.eqres .eqit{width:54px;height:54px}
     .eqit{position:relative;width:78px;height:78px}
     .eqav{position:absolute;inset:8%;border-radius:50%;background:#222 center/cover;border:3px solid;display:grid;place-items:center;font-weight:800;color:#ecebe6}
