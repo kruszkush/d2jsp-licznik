@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Licznik postów d2jsp 5.5-test</title>
+<title>Licznik postów d2jsp 5.6-test</title>
 <style>
 :root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e4e2dc;--acc:#b4441f;--bar:#d9825f;
  --gold:#c9961a;--gold2:#f3d46b;--goldbg:#fff8e3;--goldline:#efd89a;--silver:#9aa0a6;--bronze:#b3713f}
@@ -184,7 +184,7 @@ aside{position:sticky;top:16px}
 </svg>
 <div class="wrap">
 <main>
-<h1>Licznik postów — d2jsp Polska <span class="ver">5.5-test</span></h1>
+<h1>Licznik postów — d2jsp Polska <span class="ver">5.6-test</span></h1>
 <p class="sub" id="sub">Ładowanie danych…</p>
 
 <div class="ranges" id="ranges">
@@ -474,6 +474,7 @@ function render() {
     x.n++; x.t.add(tp); topics.add(tp);
     const k = ymd(ts * 1000); days.set(k, (days.get(k) || 0) + 1);
     const du = dayUsers.get(k) || dayUsers.set(k, new Map()).get(k); du.set(u, (du.get(u) || 0) + 1);
+    const hk = 'h' + Math.floor(ts / 3600) * 36e5, hu = dayUsers.get(hk) || dayUsers.set(hk, new Map()).get(hk); hu.set(u, (hu.get(u) || 0) + 1); // wykres godzinowy
   }
   const nDays = Math.max(1, Math.round((to - from) / day));
   $('tPosts').textContent = fmt(posts.length); $('tUsers').textContent = fmt(users.size);
@@ -497,7 +498,7 @@ function render() {
     const hs = []; for (let x = h0; x <= to; x += 36e5) hs.push(x);
     const hmax = Math.max(1, ...hs.map((x) => hv.get(x) || 0)), nowH = Math.floor(Date.now() / 36e5) * 36e5;
     $('chart').innerHTML = hs.map((x, i) => { const d = new Date(x), v = hv.get(x) || 0, hh = String(d.getHours()).padStart(2, '0');
-      return `<div class="col${x === nowH ? ' today' : ''}" data-k="${ymd(x)}" data-t="${d.toLocaleDateString('pl-PL', { weekday: 'long' })} ${hh}:00–${hh}:59: ${v} postów${x === nowH ? ' (godzina trwa)' : ''}"><div class="b" style="height:${Math.round(v / hmax * 120)}px"></div><span class="d">${i % 3 === 0 ? hh : '&nbsp;'}</span></div>`; }).join('');
+      return `<div class="col${x === nowH ? ' today' : ''}" data-k="h${x}" data-t="${d.toLocaleDateString('pl-PL', { weekday: 'long' })} ${hh}:00–${hh}:59: ${v} postów${x === nowH ? ' (godzina trwa)' : ''}"><div class="b" style="height:${Math.round(v / hmax * 120)}px"></div><span class="d">${i % 3 === 0 ? hh : '&nbsp;'}</span></div>`; }).join('');
     return;
   }
   const keys = []; for (let d = new Date(ymd(from) + 'T12:00').getTime(); d <= to; d += day) keys.push(ymd(d));
@@ -509,6 +510,6 @@ function render() {
       <span class="d">${show ? `${dt.getDate()}.${String(dt.getMonth() + 1).padStart(2, '0')}${many ? '' : `<i>${WD[dt.getDay()]}</i>`}` : '&nbsp;'}</span></div>`; }).join('');
 }
 </script>
-<script src="../gra.js?v=1790789527"></script>
+<script src="../gra.js?v=1790789638"></script>
 </body>
 </html>
