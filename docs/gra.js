@@ -300,20 +300,20 @@
   const UNIQ = { helm: 'Hełm Weterana', armor: 'Zbroja Anioła Stróża', gloves: 'Rękawice Anioła Stróża', boots: 'Kapcie Moderatora' };
   // afiksy: [typ p/s, nazwa, min, max, krok, przymiotnik m/ż/lm albo dopełniacz, opis(v)]
   const AFF = {
-    ostry: ['p', 'Ostry', 0.4, 1.0, 0.1, ['Ostry', 'Ostra', 'Ostre'], (v) => `+${v.toFixed(1)}x mnożnika`],
+    ostry: ['p', 'Ostry', 0.4, 1.0, 0.1, ['Ostry', 'Ostra', 'Ostre'], (v) => `+${v.toFixed(1)} pkt za każde podbicie`],
     stlumiony: ['p', 'Stłumiony', 5, 15, 1, ['Stłumiony', 'Stłumiona', 'Stłumione'], (v) => `Niższe podbicie o ${v}%`],
     ciezki: ['p', 'Ciężki', 5, 10, 1, ['Ciężki', 'Ciężka', 'Ciężkie'], (v) => `Grawitacja słabsza o ${v}%`],
     zreczny: ['p', 'Zręczny', 10, 30, 1, ['Zręczny', 'Zręczna', 'Zręczne'], (v) => `Odbicie w bok mniejsze o ${v}%`],
     szczesliwy: ['p', 'Szczęśliwy', 30, 60, 1, ['Szczęśliwy', 'Szczęśliwa', 'Szczęśliwe'], (v) => `+${v}% większa szansa na rzadkie i unikalne przedmioty`],
-    brawurowy: ['p', 'Brawurowy', 0.15, 0.25, 0.01, ['Brawurowy', 'Brawurowa', 'Brawurowe'], (v) => `+${v.toFixed(2)}x mnożnika za każde kolejne podbicie z rzędu tuż nad dołem ekranu`],
-    zuchwaly: ['p', 'Zuchwały', 0.02, 0.04, 0.01, ['Zuchwały', 'Zuchwała', 'Zuchwałe'], (v) => `+${v.toFixed(2)}x mnożnika na stałe za każde podbicie tuż nad dołem ekranu (od 2. poziomu)`],
-    rozpedzony: ['p', 'Rozpędzony', 10, 20, 1, ['Rozpędzony', 'Rozpędzona', 'Rozpędzone'], (v) => `Rozpocznij z mnożnikiem ogólnym zwiększonym o ${v}%`],
+    brawurowy: ['p', 'Brawurowy', 0.15, 0.25, 0.01, ['Brawurowy', 'Brawurowa', 'Brawurowe'], (v) => `+${v.toFixed(2)} pkt więcej za każde kolejne podbicie z rzędu tuż nad dołem ekranu`],
+    zuchwaly: ['p', 'Zuchwały', 0.02, 0.04, 0.01, ['Zuchwały', 'Zuchwała', 'Zuchwałe'], (v) => `+${v.toFixed(2)} pkt za każde podbicie na stałe, za każde podbicie tuż nad dołem ekranu (od 2. poziomu)`],
+    rozpedzony: ['p', 'Rozpędzony', 10, 20, 1, ['Rozpędzony', 'Rozpędzona', 'Rozpędzone'], (v) => `Mnożnik poziomu od startu wyższy o ${v}%`],
     wytrwalosci: ['s', 'Wytrwałości', 5, 15, 1, 'Wytrwałości', (v) => `Piłeczka przyspiesza o ${v}% wolniej`],
     olbrzyma: ['s', 'Olbrzyma', 5, 10, 1, 'Olbrzyma', (v) => `Większa piłeczka o ${v}%`],
-    lowcy: ['s', 'Łowcy', 0.2, 0.5, 0.1, 'Łowcy', (v) => `+${v.toFixed(1)} do mnożnika piłeczki`],
+    lowcy: ['s', 'Łowcy', 0.2, 0.5, 0.1, 'Łowcy', (v) => `+${v.toFixed(1)}x do mnożnika piłeczki`],
     echa: ['s', 'Echa', 10, 20, 1, 'Echa', (v) => `+${v}% szansy na podwójne punkty za podbicie`],
     stroza: ['s', 'Stróża', 1, 1, 1, 'Stróża', () => 'Raz na grę: odbicie od dołu zamiast końca gry'],
-    serii: ['s', 'Serii', 0.10, 0.25, 0.01, 'Serii', (v) => `+${v.toFixed(2)}x mnożnika za każde 10 podbić`],
+    serii: ['s', 'Serii', 0.10, 0.25, 0.01, 'Serii', (v) => `+${v.toFixed(2)} pkt za każde podbicie, rośnie co 10 podbić`],
   };
   const itemName = (it) => {
     const s = SLOT[it.slot]; if (it.rarity === 'u') return UNIQ[it.slot];
@@ -329,17 +329,17 @@
   // zakres rolla afiksu w nawiasie (min–max), żeby było widać, jak blisko maksimum jest przedmiot
   const rng = (id) => { const [, , lo, hi, st] = AFF[id]; if (lo === hi) return ''; const f = (v) => st >= 1 ? v : v.toFixed(st < .1 ? 2 : 1); return ` <span class="rng">(${f(lo)}–${f(hi)})</span>`; };
   const tipHtml = (it) => `<div class="tn" style="color:${COL[it.rarity]}">${esc(itemName(it))}</div><div class="ts">${SLOT[it.slot][0]} · ${RAR[it.rarity]}</div><div class="ts">Poziom przedmiotu: ${it.ilvl ?? 0}</div>
-    <div class="tg">+${(it.implicit?.mult ?? 0.1).toFixed(1)}x mnożnika</div>${(it.affixes || []).filter((a) => AFF[a.id]).map((a) => `<div class="tb">${esc(AFF[a.id][6](a.v))}${rng(a.id)}<small class="tier t-${TIER[a.id]}">(${TIERN[TIER[a.id]]})</small></div>`).join('')}${it.rarity === 'u' && it.slot === 'boots' ? '<div class="tb">Raz na grę: kliknięcie w dowolne miejsce ekranu liczy się jako podbicie</div>' : ''}${it.rarity === 'u' && it.slot === 'helm' ? '<div class="tb">Podwaja premię piłeczek osób, którymi grasz, z top 10 z ostatnich 24 godzin</div>' : ''}`;
+    <div class="tg">+${(it.implicit?.mult ?? 0.1).toFixed(1)} pkt za każde podbicie</div>${(it.affixes || []).filter((a) => AFF[a.id]).map((a) => `<div class="tb">${esc(AFF[a.id][6](a.v))}${rng(a.id)}<small class="tier t-${TIER[a.id]}">(${TIERN[TIER[a.id]]})</small></div>`).join('')}${it.rarity === 'u' && it.slot === 'boots' ? '<div class="tb">Raz na grę: kliknięcie w dowolne miejsce ekranu liczy się jako podbicie</div>' : ''}${it.rarity === 'u' && it.slot === 'helm' ? '<div class="tb">Podwaja premię piłeczek osób, którymi grasz, z top 10 z ostatnich 24 godzin</div>' : ''}`;
   const sumHtml = (b) => {
     const L = [], pct = (x) => Math.round(x * 100);
-    const mult = r3(b.impl + b.ostry); if (mult) L.push(`+${fm(mult)}x mnożnika`);
-    if (b.setN) L.push(`Zestaw ${D.users[b.setUid] || ''} (${b.setN}/4): +${fm(b.setMult)}x mnożnika${b.setN === 4 ? ' i odbicie od dołu' : ''}`);
+    const mult = r3(b.impl + b.ostry); if (mult) L.push(`+${fm(mult)} pkt za każde podbicie`);
+    if (b.setN) L.push(`Zestaw ${D.users[b.setUid] || ''} (${b.setN}/4): +${fm(b.setMult)} pkt za każde podbicie${b.setN === 4 ? ' i odbicie od dołu' : ''}`);
     if (b.serii) L.push(`+${b.serii.toFixed(2)}x za każde 10 podbić`);
-    if (b.brawur) L.push(`+${b.brawur.toFixed(2)}x mnożnika za każde kolejne podbicie z rzędu tuż nad dołem ekranu`);
-    if (b.zuch) L.push(`+${b.zuch.toFixed(2)}x mnożnika na stałe za każde podbicie tuż nad dołem ekranu (od 2. poziomu)`);
+    if (b.brawur) L.push(`+${b.brawur.toFixed(2)} pkt więcej za każde kolejne podbicie z rzędu tuż nad dołem ekranu`);
+    if (b.zuch) L.push(`+${b.zuch.toFixed(2)} pkt za każde podbicie na stałe, za każde podbicie tuż nad dołem ekranu (od 2. poziomu)`);
     if (b.echa) L.push(`+${pct(b.echa)}% szansy na podwójne punkty za podbicie`);
-    if (b.lowcy) L.push(`+${b.lowcy.toFixed(1)} do mnożnika piłeczki`);
-    if (b.rozp) L.push(`Rozpocznij z mnożnikiem ogólnym zwiększonym o ${pct(b.rozp)}%`);
+    if (b.lowcy) L.push(`+${b.lowcy.toFixed(1)}x do mnożnika piłeczki`);
+    if (b.rozp) L.push(`Mnożnik poziomu od startu wyższy o ${pct(b.rozp)}%`);
     if (b.wytrw) L.push(`Piłeczka przyspiesza o ${Math.round(b.wytrw * 100)}% wolniej`);
     if (b.stlum) L.push(`Niższe podbicie o ${pct(b.stlum)}%`);
     if (b.ciezki) L.push(`Grawitacja słabsza o ${pct(b.ciezki)}%`);
@@ -427,10 +427,10 @@
     const r = (c, n, d) => `<div class="lgr"><b style="color:${c}">${n}</b><span>${d}</span></div>`;
     ov.innerHTML = `<div class="eqbox" style="width:min(380px,calc(100vw - 32px))"><h3 style="margin:0 0 10px">Legenda · przedmioty</h3>
       <h4>Rzadkość przedmiotów</h4>
-      ${r(COL.n, 'Normalny', '+0.1x mnożnika')}${r(COL.m, 'Magiczny', '+0.1x mnożnika i 1 afiks')}${r(COL.r, 'Rzadki', '+0.1x mnożnika i 2 afiksy')}${r(COL.u, 'Unikat', '+0.3x mnożnika, 3 losowe afiksy (w tym gwarantowany boski) i unikatowa cecha')}${r(COL.u, 'Hełm Weterana', 'unikatowy hełm: podwaja premię piłeczek osób, którymi grasz, z top 10 z ostatnich 24 godzin')}${r(COL.u, 'Kapcie Moderatora', 'unikatowe buty: raz na grę kliknięcie w dowolne miejsce ekranu liczy się jako podbicie')}
+      ${r(COL.n, 'Normalny', '+0.1 pkt za każde podbicie')}${r(COL.m, 'Magiczny', '+0.1 pkt za każde podbicie i 1 afiks')}${r(COL.r, 'Rzadki', '+0.1 pkt za każde podbicie i 2 afiksy')}${r(COL.u, 'Unikat', '+0.3 pkt za każde podbicie, 3 losowe afiksy (w tym gwarantowany boski) i unikatowa cecha')}${r(COL.u, 'Hełm Weterana', 'unikatowy hełm: podwaja premię piłeczek osób, którymi grasz, z top 10 z ostatnich 24 godzin')}${r(COL.u, 'Kapcie Moderatora', 'unikatowe buty: raz na grę kliknięcie w dowolne miejsce ekranu liczy się jako podbicie')}
       <h4>Klasy afiksów</h4>
       <div class="lgr"><b class="t-slaby">słaby</b><span>55%</span></div><div class="lgr"><b class="t-dobry">dobry</b><span>35%</span></div><div class="lgr"><b class="t-znakomity">znakomity</b><span>7%</span></div><div class="lgr"><b class="t-boski">boski</b><span>3%</span></div>
-      <h4>Zestaw</h4><div class="lgr"><b style="color:#3fd13f">2 / 3 / 4</b><span>rzadkie lub unikaty z awatarem tej samej osoby — 2 szt.: +0.2x mnożnika, 3 szt.: +0.5x mnożnika, 4 szt.: +0.5x mnożnika</span></div>
+      <h4>Zestaw</h4><div class="lgr"><b style="color:#3fd13f">2 / 3 / 4</b><span>rzadkie lub unikaty z awatarem tej samej osoby — 2 szt.: +0.2 pkt za każde podbicie, 3 szt.: +0.5 pkt, 4 szt.: +0.5 pkt</span></div>
       <h4>Magic find</h4><div class="lgr"><span>Zwiększa szansę na magiczne i rzadkie kosztem normalnych. Rośnie z wynikiem gry, a do tego dochodzi „szansa na rzadszy przedmiot” z przedmiotów (wartości się sumują).</span></div>
       <p class="mute" style="font-size:12px;margin:10px 0 0">Przedmiot może wypaść po grze od 15 pkt — im więcej punktów, tym częściej i tym rzadszy.</p>
       <div class="row" style="margin-top:12px"><button data-a="close">Zamknij</button></div></div>`;
