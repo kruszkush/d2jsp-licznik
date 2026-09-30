@@ -136,14 +136,13 @@
     for (const it of Object.values(slots || {})) {
       if (!it) continue;
       b.impl += it.implicit?.mult || 0;
-      if (it.rarity === 'u') b.guardian++;
       for (const a of it.affixes || []) {
         const v = a.v || 0;
         if (a.id === 'ostry') b.ostry += v; else if (a.id === 'stlumiony') b.stlum += v / 100; else if (a.id === 'ciezki') b.ciezki += v / 100;
         else if (a.id === 'zreczny') b.zreczny += v / 100; else if (a.id === 'szczesliwy') b.lucky += v; else if (a.id === 'rozpedzony') b.rozp += v / 100;
         else if (a.id === 'wytrwalosci') b.wytrw = Math.max(b.wytrw, v); else if (a.id === 'olbrzyma') b.olb += v / 100;
         else if (a.id === 'mrozu') b.mrozu += v; else if (a.id === 'lowcy') b.lowcy += v; else if (a.id === 'serii') b.serii += v;
-        else if (a.id === 'brawurowy') b.brawur += v; else if (a.id === 'zuchwaly') b.zuch += v; else if (a.id === 'echa') b.echa += v / 100;
+        else if (a.id === 'brawurowy') b.brawur += v; else if (a.id === 'zuchwaly') b.zuch += v; else if (a.id === 'echa') b.echa += v / 100; else if (a.id === 'stroza') b.guardian += v;
       }
     }
     // zestaw: przedmioty z awatarem tej samej osoby — 2 szt. +0.2x, 3 szt. +0.5x, 4 szt. +0.5x i jedno odbicie od dołu
@@ -294,6 +293,7 @@
     olbrzyma: ['s', 'Olbrzyma', 5, 10, 1, 'Olbrzyma', (v) => `Większa piłeczka o ${v}%`],
     lowcy: ['s', 'Łowcy', 0.2, 0.5, 0.1, 'Łowcy', (v) => `+${v.toFixed(1)} do mnożnika piłeczki`],
     echa: ['s', 'Echa', 10, 20, 1, 'Echa', (v) => `+${v}% szansy na podwójne punkty za podbicie`],
+    stroza: ['s', 'Stróża', 1, 1, 1, 'Stróża', () => 'Raz na grę: odbicie od dołu zamiast końca gry'],
     serii: ['s', 'Serii', 0.10, 0.25, 0.01, 'Serii', (v) => `+${v.toFixed(2)}x mnożnika za każde 10 podbić`],
   };
   const itemName = (it) => {
@@ -305,10 +305,10 @@
   // Dymek w stylu D2 (najechanie; na telefonie dotknięcie pokazuje/ukrywa)
   const ITEMS = {};
   // klasa afiksu (jak na serwerze): im wyższa, tym rzadsza
-  const TIER = { stlumiony: 'slaby', zreczny: 'slaby', olbrzyma: 'slaby', lowcy: 'dobry',  ciezki: 'dobry', wytrwalosci: 'dobry', rozpedzony: 'znakomity', szczesliwy: 'dobry', brawurowy: 'znakomity', zuchwaly: 'znakomity', echa: 'znakomity', ostry: 'boski', serii: 'boski' };
+  const TIER = { stlumiony: 'slaby', zreczny: 'slaby', olbrzyma: 'slaby', lowcy: 'dobry',  ciezki: 'dobry', wytrwalosci: 'dobry', rozpedzony: 'znakomity', szczesliwy: 'dobry', brawurowy: 'znakomity', zuchwaly: 'znakomity', echa: 'znakomity', ostry: 'boski', serii: 'boski', stroza: 'boski' };
   const TIERN = { slaby: 'słaby', dobry: 'dobry', znakomity: 'znakomity', boski: 'boski' };
   const tipHtml = (it) => `<div class="tn" style="color:${COL[it.rarity]}">${esc(itemName(it))}</div><div class="ts">${SLOT[it.slot][0]} · ${RAR[it.rarity]}</div><div class="ts">Poziom przedmiotu: ${it.ilvl ?? 0}</div>
-    <div class="tg">+${(it.implicit?.mult ?? 0.1).toFixed(1)}x mnożnika</div>${(it.affixes || []).filter((a) => AFF[a.id]).map((a) => `<div class="tb">${esc(AFF[a.id][6](a.v))}<small class="tier t-${TIER[a.id]}">(${TIERN[TIER[a.id]]})</small></div>`).join('')}${it.rarity === 'u' ? '<div class="tb">Raz na grę: odbicie od dołu zamiast końca gry</div>' : ''}`;
+    <div class="tg">+${(it.implicit?.mult ?? 0.1).toFixed(1)}x mnożnika</div>${(it.affixes || []).filter((a) => AFF[a.id]).map((a) => `<div class="tb">${esc(AFF[a.id][6](a.v))}<small class="tier t-${TIER[a.id]}">(${TIERN[TIER[a.id]]})</small></div>`).join('')}`;
   const sumHtml = (b) => {
     const L = [], pct = (x) => Math.round(x * 100);
     const mult = r3(b.impl + b.ostry); if (mult) L.push(`+${fm(mult)}x mnożnika`);
@@ -404,7 +404,7 @@
     const r = (c, n, d) => `<div class="lgr"><b style="color:${c}">${n}</b><span>${d}</span></div>`;
     ov.innerHTML = `<div class="eqbox" style="width:min(380px,calc(100vw - 32px))"><h3 style="margin:0 0 10px">Legenda · przedmioty</h3>
       <h4>Rzadkość przedmiotów</h4>
-      ${r(COL.n, 'Normalny', '+0.1x mnożnika')}${r(COL.m, 'Magiczny', '+0.1x mnożnika i 1 afiks')}${r(COL.r, 'Rzadki', '+0.1x mnożnika i 2 afiksy')}${r(COL.u, 'Unikat', '+0.1x mnożnika i 1 afiks')}
+      ${r(COL.n, 'Normalny', '+0.1x mnożnika')}${r(COL.m, 'Magiczny', '+0.3x mnożnika i 3 losowe afiksy, w tym gwarantowany boski')}${r(COL.r, 'Rzadki', '+0.1x mnożnika i 2 afiksy')}${r(COL.u, 'Unikat', '+0.1x mnożnika i 1 afiks')}
       <h4>Klasy afiksów</h4>
       <div class="lgr"><b class="t-slaby">słaby</b><span>55%</span></div><div class="lgr"><b class="t-dobry">dobry</b><span>35%</span></div><div class="lgr"><b class="t-znakomity">znakomity</b><span>7%</span></div><div class="lgr"><b class="t-boski">boski</b><span>3%</span></div>
       <h4>Zestaw</h4><div class="lgr"><b style="color:#3fd13f">2 / 3 / 4</b><span>rzadkie lub unikaty z awatarem tej samej osoby: +0.2x / +0.5x / +0.5x</span></div>
@@ -549,7 +549,7 @@
     acc += dt; if (acc > 2.2) { acc = 0; spawn(); }
     for (const f of flakes) {
       if (game && game.f === f) {
-        const sd = dt * speedOf(game.lvl);
+        const sd = dt * speedOf(game.lvl) * (game.slow > t ? .45 : 1); // po odbiciu od dołu chwilowe spowolnienie
         f.vy += G * (1 - game.B.ciezki) * game.k * sd; f.x += f.vx * sd; f.y += f.vy * sd; f.rot += f.vr * sd;
         const A = TOUCH ? { l: 0, r: W } : arena();
         if (f.x < A.l) { f.x = A.l; f.vx = Math.abs(f.vx) * .8; }
@@ -557,7 +557,8 @@
         if (f.y < 0) { f.y = 0; f.vy = Math.abs(f.vy) * .3; }
         if (!TOUCH && (H < MIN_H || W < H * ASPECT)) { game = null; document.body.classList.remove('playing'); hideMult(); hud.hidden = true; f.el.remove(); flakes.clear(); flash('Okno za małe — gra przerwana'); break; }
         if (f.y > H + 10) {
-          if (game.saves > 0) { game.saves--; f.vy = -JUMP * game.k; f.y = H - f.size; flash(`🛡 Odbicie od dołu zużyte! Zostało w tej grze: ${game.saves}`); saveFx(); }
+          if (game.saves > 0) { game.saves--; f.y = H - f.size; f.vx = 0; f.vy = -Math.sqrt(2 * G * (1 - game.B.ciezki) * game.k * H * .55); game.slow = t + 1600; // wysoko, prosto w górę i wolniej — łatwo kliknąć
+            flash(`🛡 Odbicie od dołu zużyte! Zostało w tej grze: ${game.saves}`); saveFx(); }
           else { endGame(); break; }
         }
       } else {

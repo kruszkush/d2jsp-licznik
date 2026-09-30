@@ -37,7 +37,7 @@ SLOTS = ("helm", "armor", "gloves", "boots")
 AFF = {
     "ostry": ("p", 0.4, 1.0, 0.1), "stlumiony": ("p", 5, 15, 1), "ciezki": ("p", 5, 10, 1), "zreczny": ("p", 10, 30, 1),
     "szczesliwy": ("p", 3, 10, 1), "rozpedzony": ("p", 10, 20, 1), "brawurowy": ("p", 0.15, 0.25, 0.01), "zuchwaly": ("p", 0.02, 0.04, 0.01),
-    "wytrwalosci": ("s", 9, 10, 1), "olbrzyma": ("s", 5, 10, 1), "lowcy": ("s", 0.2, 0.5, 0.1), "serii": ("s", 0.10, 0.25, 0.01), "echa": ("s", 10, 20, 1),
+    "wytrwalosci": ("s", 9, 10, 1), "olbrzyma": ("s", 5, 10, 1), "lowcy": ("s", 0.2, 0.5, 0.1), "serii": ("s", 0.10, 0.25, 0.01), "echa": ("s", 10, 20, 1), "stroza": ("s", 1, 1, 1),
 }
 PRE_IDS = tuple(k for k, v in AFF.items() if v[0] == "p")
 SUF_IDS = tuple(k for k, v in AFF.items() if v[0] == "s")
@@ -93,28 +93,30 @@ def pick_rarity(score, luck=0):
     n, m, r = n - x, m + .7 * x, r + .3 * x
     return random.choices(("n", "m", "r"), weights=(n, m, r))[0]
 
-def make_item(slot, rarity, affixes, uid=None, nick=None, ilvl=0):
+def make_item(slot, rarity, affixes, uid=None, nick=None, ilvl=0, mult=0.1):
     return {"v": 2, "id": secrets.token_hex(6), "slot": slot, "rarity": rarity, "uid": uid, "unick": nick, "ilvl": ilvl,
-            "ts": int(time.time()), "implicit": {"mult": 0.1}, "affixes": affixes}
+            "ts": int(time.time()), "implicit": {"mult": mult}, "affixes": affixes}
 
 # klasy afiksów i ich waga losowania (łączna na klasę dzielona po równo między afiksy tej klasy)
 TIER = {"stlumiony": "slaby", "zreczny": "slaby", "olbrzyma": "slaby",
         "lowcy": "dobry", "ciezki": "dobry",
         "wytrwalosci": "dobry", "rozpedzony": "znakomity", "szczesliwy": "dobry", "brawurowy": "znakomity", "zuchwaly": "znakomity", "echa": "znakomity",
-        "ostry": "boski", "serii": "boski"}
+        "ostry": "boski", "serii": "boski", "stroza": "boski"}
 _TW = {"slaby": 55, "dobry": 35, "znakomity": 7, "boski": 3}
 TIER_W = {t: _TW[t] / sum(1 for x in TIER.values() if x == t) for t in _TW}
 
 def roll_item(score, uid, nick, luck=0):
     slot = random.choice(SLOTS)
     if random.random() < unique_chance(score):
-        rarity = "u"  # unikat losowany przed tabelą rzadkości; jedyna właściwość (guardian) jest po stronie klienta
+        rarity = "u"  # unikat losowany przed tabelą rzadkości
     else:
         rarity = pick_rarity(score, luck)
     # afiksy losowane wg klasy (słaby > dobry > znakomity > boski); mogą się powtarzać na jednym przedmiocie
     ids = list(TIER)
-    if rarity == "u":  # unikat: jeden afiks, każdy z równą szansą (bez względu na klasę)
-        aff = [{"id": a, "v": roll_val(a)} for a in random.choices(ids, k=1)]
+    if rarity == "u":  # unikat: +0.3x, jeden gwarantowany boski afiks (równe szanse w klasie) + 2 losowe wg zwykłych wag
+        gods = [i for i in ids if TIER[i] == "boski"]
+        picks = [random.choice(gods)] + random.choices(ids, weights=[TIER_W[TIER[i]] for i in ids], k=2)
+        return make_item(slot, rarity, [{"id": a, "v": roll_val(a)} for a in picks], uid, nick, score, mult=0.3)
     else:
         n_aff = {"m": 1, "r": 2}.get(rarity, 0)
         aff = [{"id": a, "v": roll_val(a)} for a in random.choices(ids, weights=[TIER_W[TIER[i]] for i in ids], k=n_aff)]
