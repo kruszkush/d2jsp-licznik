@@ -11,7 +11,7 @@ def stop_billing(event):
     data = json.loads(base64.b64decode(event.data["message"]["data"]).decode())
     cost, budget = data.get("costAmount", 0), data.get("budgetAmount", 0)
     print(f"koszt={cost} budżet={budget}")
-    if cost < 0.01:  # wyłączamy przy pierwszym cencie kosztu (bez środków próbnych), nie przy pełnym budżecie
+    if cost < float(os.environ.get("THRESHOLD", "0.01")):  # próg w walucie konta (GBP); domyślnie pierwszy pens
         return
     billing = discovery.build("cloudbilling", "v1", cache_discovery=False)
     name = f"projects/{PROJECT}"
