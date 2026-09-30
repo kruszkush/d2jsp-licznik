@@ -274,10 +274,9 @@ def pileczka(req):
             old = ref.get(transaction=tx)
             prev = old.to_dict() if old.exists else {}
             doc = {"nick": nick, "nickLower": nl, "ip": key, "ts": int(time.time())}
-            if eqk:
-                doc["eq"] = eq_ref(eqk).id  # tylko skrót; sam klucz nigdy nie trafia do rankingu
-            if score >= prev.get("score", 0):  # nowy rekord: zapisujemy też, ile podbić i czyim awatarem
+            if score >= prev.get("score", 0):  # nowy rekord: zapisujemy też, ile podbić, czyim awatarem i ekwipunek z tej gry
                 doc.update(score=score, hits=hits, ball=ball, ballUid=ball_uid, dev=dev)
+                doc["eq"] = eq_ref(eqk).id if eqk else firestore.DELETE_FIELD  # tylko skrót klucza; rekord bez klucza nie zostawia cudzego ekwipunku
             doc["plays"] = prev.get("plays", 0) + 1  # licznik rozegranych (zapisanych) gier
             tx.set(ref, doc, merge=True)
             return {"best": max(score, prev.get("score", 0)), "plays": doc["plays"], "record": score >= prev.get("score", 0)}
