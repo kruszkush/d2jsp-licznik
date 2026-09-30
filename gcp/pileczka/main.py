@@ -52,7 +52,7 @@ EQID_RE = re.compile(r"^[0-9a-f]{40}$")
 DROP_MIN, DROP_GAP = 15, 15
 # punkty kontrolne: wynik -> (normalne, magiczne, rzadkie) w %; poniżej 30 i powyżej 150 stałe
 # Szanse rzadkości rosną płynnie (liniowo między punktami, bez schodków) aż do 1000 pkt; dalej bez zmian.
-R_PTS = [(15, 1), (100, 5), (300, 12), (600, 20), (1000, 50)]
+R_PTS = [(15, 0.25), (100, 1.25), (300, 3), (600, 5), (1000, 12.5)]  # rzadkie o 75% rzadziej (30.09)
 M_PTS = [(15, 14), (100, 25), (300, 35), (600, 42), (1000, 45)]
 
 def _curve(pts, x):
@@ -90,7 +90,7 @@ def luck_of(slots):
 def pick_rarity(score, luck=0):
     n, m, r = rarity_weights(score)
     x = min(luck, n)  # szczęśliwy przesuwa punkty proc. z Normalnego: 70% do Magicznego, 30% do Rzadkiego
-    n, m, r = n - x, m + .7 * x, r + .3 * x
+    n, m, r = n - x + .225 * x, m + .7 * x, r + .075 * x  # część dla rzadkiego też -75% (reszta zostaje w Normalnym)
     return random.choices(("n", "m", "r"), weights=(n, m, r))[0]
 
 def make_item(slot, rarity, affixes, uid=None, nick=None, ilvl=0, mult=0.1):
