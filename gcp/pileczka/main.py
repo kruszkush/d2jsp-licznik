@@ -97,7 +97,7 @@ TIER = {"stlumiony": "slaby", "zreczny": "slaby", "olbrzyma": "slaby",
         "lowcy": "dobry", "mrozu": "dobry", "ciezki": "dobry",
         "wytrwalosci": "znakomity", "rozpedzony": "znakomity", "szczesliwy": "znakomity",
         "ostry": "boski", "serii": "boski"}
-_TW = {"slaby": 45, "dobry": 30, "znakomity": 18, "boski": 7}
+_TW = {"slaby": 55, "dobry": 35, "znakomity": 7, "boski": 3}
 TIER_W = {t: _TW[t] / sum(1 for x in TIER.values() if x == t) for t in _TW}
 
 def roll_item(score, uid, nick, luck=0):
@@ -107,9 +107,12 @@ def roll_item(score, uid, nick, luck=0):
     else:
         rarity = pick_rarity(score, luck)
     # afiksy losowane wg klasy (słaby > dobry > znakomity > boski); mogą się powtarzać na jednym przedmiocie
-    n_aff = {"m": 1, "r": 2}.get(rarity, 0)
     ids = list(TIER)
-    aff = [{"id": a, "v": roll_val(a)} for a in random.choices(ids, weights=[TIER_W[TIER[i]] for i in ids], k=n_aff)]
+    if rarity == "u":  # unikat: jeden afiks, każdy z równą szansą (bez względu na klasę)
+        aff = [{"id": a, "v": roll_val(a)} for a in random.choices(ids, k=1)]
+    else:
+        n_aff = {"m": 1, "r": 2}.get(rarity, 0)
+        aff = [{"id": a, "v": roll_val(a)} for a in random.choices(ids, weights=[TIER_W[TIER[i]] for i in ids], k=n_aff)]
     return make_item(slot, rarity, aff, uid, nick, score)
 
 def eq_ref(key):
