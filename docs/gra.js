@@ -103,7 +103,7 @@
     // bez powtórek: pomijamy awatary, które już lecą; lider dnia (tylko test) wypada w 15% przypadków, reszta po równo
     const onScreen = new Set([...flakes].map((f) => f.u)), free = pool.filter((u) => !onScreen.has(u));
     const lead = window.dayLeader?.();
-    if (lead && !onScreen.has(lead) && pool.includes(lead) && Math.random() < .15) return lead;
+    if (lead && [...flakes].filter((f) => f.u === lead).length < 2 && pool.includes(lead) && Math.random() < .15) return lead; // lider może lecieć w 2 egzemplarzach naraz
     const rest = free.filter((u) => u !== lead);
     return rest.length ? rest[Math.floor(Math.random() * rest.length)] : free[0];
   };
