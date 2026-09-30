@@ -75,7 +75,7 @@
   function showRank(top) {
     card.hidden = false;
     const me = (ls.get('pilNick') || '').toLowerCase();
-    document.getElementById('pil').innerHTML = top.length ? top.map((r, i) => `<li class="${r.nick.toLowerCase() === me ? 'me' : ''}"><span style="width:22px;color:var(--mute)">${i + 1}.</span><span class="pn"><span>${esc(r.nick)}</span>${r.hits ? `<small>${ballAv(r)}${r.hits}× ${esc(r.ball || '')}</small>` : ''}</span><b>${r.dev ? `<span class="dev" title="${r.dev === 'm' ? 'telefon' : 'komputer'}">${r.dev === 'm' ? '📱' : '🖥️'}</span>` : ''}${r.score}</b></li>`).join('') : '<li class="empty">Jeszcze nikt nie zagrał.</li>';
+    document.getElementById('pil').innerHTML = top.length ? top.map((r, i) => `<li class="${r.nick.toLowerCase() === me ? 'me' : ''}${TEST && r.eq ? ' clk' : ''}"${TEST && r.eq ? ` data-eq="${esc(r.eq)}" data-nick="${esc(r.nick)}" title="Zobacz ekwipunek"` : ''}><span style="width:22px;color:var(--mute)">${i + 1}.</span><span class="pn"><span>${esc(r.nick)}</span>${r.hits ? `<small>${ballAv(r)}${r.hits}× ${esc(r.ball || '')}</small>` : ''}</span><b>${r.dev ? `<span class="dev" title="${r.dev === 'm' ? 'telefon' : 'komputer'}">${r.dev === 'm' ? '📱' : '🖥️'}</span>` : ''}${r.score}</b></li>`).join('') : '<li class="empty">Jeszcze nikt nie zagrał.</li>';
   }
   const loadRank = (n = 0) => fetch(API).then((r) => { if (!r.ok) throw 0; return r.json(); }).then((j) => showRank(j.top || []))
     .catch(() => { card.hidden = false; document.getElementById('pil').innerHTML = '<li class="empty">Ranking chwilowo niedostępny, ponawiam…</li>'; if (n < 5) setTimeout(() => loadRank(n + 1), 15000); });
@@ -101,7 +101,7 @@
   function spawn() {
     if (!on || game || document.hidden || flakes.size >= 7 || !D?.users) return;
     const u = pickUser(); if (!u) return;
-    const kind = pickKind(), size = Math.round(80 * kind.p * scaleK() * (TOUCH ? 1.2 : 1)); // na telefonie o 20% większe
+    const kind = pickKind(), size = Math.round(80 * kind.p * scaleK() * (TOUCH ? 1.2 : 1) * (1 + B.olb)); // na telefonie o 20% większe
     const f = { u, size, x: (TOUCH ? 0 : arena().l) + Math.random() * ((TOUCH ? W : arena().r - arena().l) - size), y: -size - 10, vy: (28 + Math.random() * 30) * scaleK(), sway: 20 + Math.random() * 30, ph: Math.random() * 6.28, rot: 0, vr: (Math.random() - .5) * 40 };
     f.el = makeEl(u, size); f.base = kind.m;
     if (kind.m > 1) { const b = document.createElement('span'); b.className = 'badge ' + kind.cls; b.textContent = 'x' + kind.m; f.el.appendChild(b); }
@@ -117,20 +117,49 @@
   const KINDS = [{ p: 1, m: 1, w: 25 }, { p: .8, m: 1.3, w: 25, cls: 'b2' }, { p: .65, m: 1.7, w: 25, cls: 'b3' }, { p: .5, m: 3, w: 25, cls: 'b4' }];
   const pickKind = () => { let r = Math.random() * 100; for (const k of KINDS) { if ((r -= k.w) < 0) return k; } return KINDS[0]; };
   const BADGE = { 1.3: '#ff8a3d', 1.7: '#ff5a3d', 3: '#d9264a' }; // kolory jak plakietki na piłeczkach
-  const totalMult = () => game ? Math.round(game.base * multOf(game.lvl) * 10) / 10 : 1;
+  // Bonusy z założonych przedmiotów (tylko TEST; bez przedmiotów wszystko jest zerem i gra liczy jak dotąd)
+  const zeroB = () => ({ impl: 0, ostry: 0, stlum: 0, ciezki: 0, zreczny: 0, rozp: 0, wytrw: 0, olb: 0, mrozu: 0, lowcy: 0, serii: 0, guardian: 0, lucky: 0 });
+  let B = zeroB();
+  const r3 = (x) => Math.round(x * 1000) / 1000;
+  function calcB(slots) {
+    const b = zeroB();
+    for (const it of Object.values(slots || {})) {
+      if (!it) continue;
+      b.impl += it.implicit?.mult || 0;
+      if (it.rarity === 'u') b.guardian++;
+      for (const a of it.affixes || []) {
+        const v = a.v || 0;
+        if (a.id === 'ostry') b.ostry += v; else if (a.id === 'stlumiony') b.stlum += v / 100; else if (a.id === 'ciezki') b.ciezki += v / 100;
+        else if (a.id === 'zreczny') b.zreczny += v / 100; else if (a.id === 'szczesliwy') b.lucky += v; else if (a.id === 'rozpedzony') b.rozp += v / 100;
+        else if (a.id === 'wytrwalosci') b.wytrw = Math.max(b.wytrw, v); else if (a.id === 'olbrzyma') b.olb += v / 100;
+        else if (a.id === 'mrozu') b.mrozu += v; else if (a.id === 'lowcy') b.lowcy += v; else if (a.id === 'serii') b.serii += v;
+      }
+    }
+    for (const k of Object.keys(b)) b[k] = r3(b[k]);
+    for (const k of ['stlum', 'ciezki', 'zreczny']) b[k] = Math.min(.9, b[k]);
+    return b;
+  }
+  const RP = TEST ? 100 : 10; // dokładność mnożnika: w produkcji 0.1, w teście 0.01 (seria)
+  const fm = (n) => { const r = Math.round(n * 100) / 100; return Math.abs(r * 10 - Math.round(r * 10)) < 1e-9 ? r.toFixed(1) : r.toFixed(2); };
+  // (piłeczka + łowcy gdy mniejsza niż duża) × mnożnik poziomu (start 1 + rozpędzony) + przedmioty (implicit + ostry + seria × floor(podbicia/10))
+  const partsOf = (g) => {
+    const b = g.base + (g.base > 1 ? g.B.lowcy : 0), lv = multOf(g.lvl, g.B), items = r3(g.B.impl + g.B.ostry + g.B.serii * Math.floor(g.hits / 10));
+    return { b, lv, items, total: Math.round((b * lv + items) * RP) / RP };
+  };
+  const totalMult = () => game ? partsOf(game).total : 1;
   // liczone od wysokości okna: na telefonie (wąski, wysoki ekran) awatary nie są malutkie, a wysokość podbicia jest proporcjonalna
   const scaleK = () => Math.max(.5, Math.min(1.4, innerHeight / 950));
   const G = 1500, JUMP = 610, PER_LEVEL = 8;
   const TOUCH = matchMedia('(pointer: coarse)').matches; // na dotyku gra się łatwiej (kciuk, cały ekran w zasięgu) — +20% prędkości
-  const speedOf = (lvl) => (1 + lvl * 0.07) * (TOUCH ? 1.2 : 1), multOf = (lvl) => Math.round((1 + lvl * 0.1) * 10) / 10;
+  const speedOf = (lvl) => (1 + lvl * 0.07) * (TOUCH ? 1.2 : 1), multOf = (lvl, b = B) => Math.round((1 + b.rozp + lvl * 0.1) * 100) / 100;
   const hud = document.createElement('div'); hud.id = 'hud'; hud.hidden = true; document.body.appendChild(hud);
   const multEl = document.createElement('div'); multEl.id = 'mult'; document.body.appendChild(multEl);
   const edgeEl = document.createElement('div'); edgeEl.id = 'edge'; document.body.appendChild(edgeEl);
   // Duży, półprzezroczysty mnożnik w tle + poświata na brzegach ekranu rosnąca z poziomem
   function showMult(lvl, pulse) {
     const m = totalMult(), heat = Math.min(1, (m - 1) / 3);
-    const lv = multOf(lvl).toFixed(1), b = game ? game.base : 1;
-    multEl.innerHTML = `<span class="lv">x${lv}</span>` + (b > 1 ? `<span class="bs" style="background:${BADGE[b]}">×${b}</span>` : '');
+    const lv = fm(multOf(lvl, game ? game.B : B)), b = game ? game.base : 1, bEff = game ? partsOf(game).b : 1;
+    multEl.innerHTML = `<span class="lv">x${lv}</span>` + (b > 1 ? `<span class="bs" style="background:${BADGE[b]}">×${fm(bEff)}</span>` : '');
     multEl.style.color = `hsl(${45 - heat * 45}, 95%, ${60 - heat * 10}%)`;
     if (!TOUCH) { const A = arena(); edgesEl.style.cssText = `display:block;left:${A.l}px;width:${A.r - A.l}px`; }
     multEl.classList.add('on'); edgeEl.style.opacity = String(heat * .9);
@@ -151,26 +180,27 @@
     }
     for (const o of flakes) if (o !== f) o.el.remove();
     flakes.clear(); flakes.add(f);
-    game = { f, score: 0, hits: 0, lvl: 0, k: scaleK(), base: f.base || 1 }; f.el.classList.add('ball'); showMult(0, false);
+    game = { f, score: 0, hits: 0, lvl: 0, k: scaleK(), base: f.base || 1, B, per: B.wytrw || PER_LEVEL, saves: B.guardian, slow: 0 }; f.el.classList.add('ball'); showMult(0, false);
     document.body.classList.add('playing'); getSelection()?.removeAllRanges(); const pie = document.getElementById('pie'); if (pie) pie.hidden = true; f.vx = 0; f.vy = 0;
     hit(f, e);
   }
   function hit(f, e) {
     if (!game || game.f !== f) return;
     game.hits++;
-    const up = game.hits % PER_LEVEL === 0 && game.hits > 0;
+    const up = game.hits % game.per === 0 && game.hits > 0;
     game.score += totalMult();
-    if (up) { game.lvl++; flash(`Szybciej! x${totalMult().toFixed(1)}`); showMult(game.lvl, true); }
+    if (up) { game.lvl++; if (game.B.mrozu > 0) game.slow = performance.now() + game.B.mrozu * 1000; flash(`Szybciej! x${fm(totalMult())}`); showMult(game.lvl, true); }
     const r = f.el.getBoundingClientRect(), off = ((e.clientX - (r.left + r.width / 2)) / (r.width / 2)) || 0;
     // podbicie nie wyrzuca ponad górną krawędź: siła ograniczona tak, żeby szczyt lotu był ok. 12 px pod górą ekranu
-    const room = Math.max(0, f.y - 12), vMax = Math.sqrt(2 * G * game.k * room);
-    f.vy = -Math.max(JUMP * game.k * .3, Math.min(JUMP * game.k, vMax));
-    f.vx = Math.max(-420, Math.min(420, -off * 320 + (Math.random() - .5) * 120)) * game.k;
+    const room = Math.max(0, f.y - 12), vMax = Math.sqrt(2 * G * (1 - game.B.ciezki) * game.k * room), jump = JUMP * (1 - game.B.stlum);
+    f.vy = -Math.max(jump * game.k * .3, Math.min(jump * game.k, vMax));
+    f.vx = Math.max(-420, Math.min(420, -off * 320 + (Math.random() - .5) * 120)) * game.k * (1 - game.B.zreczny);
     f.vr = -off * 360;
-    hud.hidden = false; hud.innerHTML = `${Math.round(game.score)}<small>pkt${TOUCH ? ` · x${totalMult().toFixed(1)}` : ` · ${game.base > 1 ? `x${game.base} more · ` : ''}+${game.lvl * 10}% increased = x${totalMult().toFixed(1)} · ${game.hits} podbić`}</small>`;
+    const P = partsOf(game);
+    hud.hidden = false; hud.innerHTML = `${Math.round(game.score)}<small>pkt${TOUCH ? ` · x${fm(P.total)}` : ` · ${P.b > 1 ? `x${fm(P.b)} more · ` : ''}+${Math.round((P.lv - 1) * 100)}% increased${P.items ? ` + ${fm(P.items)} przedmioty` : ''} = x${fm(P.total)} · ${game.hits} podbić`}</small>`;
   }
   function endGame() {
-    const score = Math.round(game.score), f = game.f, gHits = game.hits, gBase = game.base, gLvl = game.lvl, gMult = totalMult(); game = null; document.body.classList.remove('playing'); hideMult();
+    const gLvlN = game.lvl + 1, score = Math.round(game.score), f = game.f, gHits = game.hits, P = partsOf(game); game = null; document.body.classList.remove('playing'); hideMult();
     f.el.remove(); flakes.clear(); hud.hidden = true;
     const ov = document.createElement('div'); ov.id = 'over';
     const av = D.avatars?.[f.u], who = D.users[f.u] || '?', hits = gHits;
@@ -179,7 +209,7 @@
       <div class="who">${esc(who)}</div>
       <div class="txt">Podrzuciłeś ${esc(who)} <b>${hits}</b> ${hits === 1 ? 'raz' : 'razy'}</div>
       <div class="sc">${score}<small> pkt</small></div>
-      <div class="eq">${gBase > 1 ? `<span class="ch" style="background:${BADGE[gBase]};color:#fff"><b>×${gBase}</b><i>piłeczka</i></span><span class="op">×</span>` : ''}<span class="ch"><b>×${multOf(gLvl).toFixed(1)}</b><i>poziom ${gLvl + 1}</i></span><span class="op">=</span><span class="ch tot"><b>×${gMult.toFixed(1)}</b><i>na koniec</i></span></div>
+      <div class="eq">${P.b > 1 ? `<span class="ch" style="background:${BADGE[f.base] || '#d9264a'};color:#fff"><b>×${fm(P.b)}</b><i>piłeczka</i></span><span class="op">×</span>` : ''}<span class="ch"><b>×${fm(P.lv)}</b><i>poziom ${gLvlN}</i></span>${P.items ? `<span class="op">+</span><span class="ch"><b>+${fm(P.items)}</b><i>przedmioty</i></span>` : ''}<span class="op">=</span><span class="ch tot"><b>×${fm(P.total)}</b><i>na koniec</i></span></div>
       <input id="pilNick" maxlength="20" placeholder="Twój nick" value="${esc(ls.get('pilNick') || '')}">
       <div class="row"><button class="pri" id="pilSave">Zapisz wynik</button><button id="pilClose">Zamknij</button></div><div class="msg" id="pilMsg"></div><div id="pilDrop"></div></div>`;
     document.body.appendChild(ov);
@@ -195,7 +225,7 @@
       if (!nick) { ov.querySelector('#pilMsg').textContent = 'Wpisz nick.'; return; }
       ls.set('pilNick', nick); ls.set('pilGral', '1');
       ov.querySelector('#pilMsg').textContent = 'Zapisuję…';
-      fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nick, score, dev: TOUCH ? 'm' : 'd', hits: gHits, ball: D.users[f.u] || '', ballUid: /^\d+$/.test(f.u) ? f.u : '' }) })
+      fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nick, score, dev: TOUCH ? 'm' : 'd', hits: gHits, ball: D.users[f.u] || '', ballUid: /^\d+$/.test(f.u) ? f.u : '', ...(TEST ? { key: getKey() } : {}) }) })
         .then((r) => r.json()).then((j) => { if (j.top) { showRank(j.top); if (dropOpen) ov.querySelector('#pilMsg').textContent = 'Wynik zapisany. Rozstrzygnij przedmiot poniżej.'; else { close(); card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } } else ov.querySelector('#pilMsg').textContent = j.error || 'Błąd zapisu.'; })
         .catch(() => { ov.querySelector('#pilMsg').textContent = 'Nie udało się zapisać, spróbuj jeszcze raz.'; });
     };
@@ -205,20 +235,58 @@
   }
 
   // --- ekwipunek (tylko wersja testowa: /test/) ---
-  const COL = { n: '#c8c8c8', m: '#6c8cff', r: '#f2d24b' }, RAR = { n: 'Normalny', m: 'Magiczny', r: 'Rzadki' };
+  const COL = { n: '#c8c8c8', m: '#6c8cff', r: '#f2d24b', u: '#c7864a' }, RAR = { n: 'Normalny', m: 'Magiczny', r: 'Rzadki', u: 'Unikat' };
   const SLOT = { helm: ['Hełm', 0, 'hełm'], armor: ['Zbroja', 1, 'zbroja'], gloves: ['Rękawice', 2, 'rękawice'], boots: ['Buty', 2, 'buty'] }; // nazwa, rodzaj (m/ż/lm), etykieta pustego slotu
-  const ADJ = { iron: ['Żelazny', 'Żelazna', 'Żelazne'], gold: ['Złoty', 'Złota', 'Złote'], crown: ['Koronowany', 'Koronowana', 'Koronowane'], shadow: ['Mroczny', 'Mroczna', 'Mroczne'], storm: ['Burzowy', 'Burzowa', 'Burzowe'] };
-  const GEN = { bear: 'Niedźwiedzia', fox: 'Lisa', tiger: 'Tygrysa', wolf: 'Wilka', eagle: 'Orła', snake: 'Węża', speed: 'Szybkości' };
-  const itemName = (it) => { const s = SLOT[it.slot]; return [ADJ[it.prefix]?.[s[1]], s[0], GEN[it.suffix]].filter(Boolean).join(' '); };
+  const UNIQ = { helm: 'Czapka Anioła Stróża', armor: 'Zbroja Anioła Stróża', gloves: 'Rękawice Anioła Stróża', boots: 'Buty Anioła Stróża' };
+  // afiksy: [typ p/s, nazwa, min, max, krok, przymiotnik m/ż/lm albo dopełniacz, opis(v)]
+  const AFF = {
+    ostry: ['p', 'Ostry', 0.1, 0.3, 0.1, ['Ostry', 'Ostra', 'Ostre'], (v) => `+${v.toFixed(1)}x mnożnika`],
+    stlumiony: ['p', 'Stłumiony', 5, 15, 1, ['Stłumiony', 'Stłumiona', 'Stłumione'], (v) => `Podbicie niższe o ${v}%`],
+    ciezki: ['p', 'Ciężki', 5, 10, 1, ['Ciężki', 'Ciężka', 'Ciężkie'], (v) => `Grawitacja słabsza o ${v}%`],
+    zreczny: ['p', 'Zręczny', 10, 30, 1, ['Zręczny', 'Zręczna', 'Zręczne'], (v) => `Odbicie w bok mniejsze o ${v}%`],
+    szczesliwy: ['p', 'Szczęśliwy', 3, 10, 1, ['Szczęśliwy', 'Szczęśliwa', 'Szczęśliwe'], (v) => `+${v} pkt proc. szansy na rzadszy przedmiot`],
+    rozpedzony: ['p', 'Rozpędzony', 10, 20, 1, ['Rozpędzony', 'Rozpędzona', 'Rozpędzone'], (v) => `Start gry od +${v}% increased`],
+    wytrwalosci: ['s', 'Wytrwałości', 9, 10, 1, 'Wytrwałości', (v) => `Poziom co ${v} podbić (zamiast 8)`],
+    olbrzyma: ['s', 'Olbrzyma', 5, 10, 1, 'Olbrzyma', (v) => `Piłeczka większa o ${v}%`],
+    mrozu: ['s', 'Mrozu', 0.5, 1.0, 0.1, 'Mrozu', (v) => `Po wzroście poziomu spowolnienie ${v.toFixed(1)} s`],
+    lowcy: ['s', 'Łowcy', 0.2, 0.5, 0.1, 'Łowcy', (v) => `+${v.toFixed(1)} do mnożnika piłeczek mniejszych niż duża`],
+    serii: ['s', 'Serii', 0.01, 0.05, 0.01, 'Serii', (v) => `+${v.toFixed(2)}x mnożnika za każde 10 podbić`],
+  };
+  const itemName = (it) => {
+    const s = SLOT[it.slot]; if (it.rarity === 'u') return UNIQ[it.slot];
+    const af = (it.affixes || []).filter((a) => AFF[a.id]);
+    return [...af.filter((a) => AFF[a.id][0] === 'p').map((a) => AFF[a.id][5][s[1]]), s[0], ...af.filter((a) => AFF[a.id][0] === 's').map((a) => AFF[a.id][5])].join(' ');
+  };
   const coloured = (it) => `<b style="color:${COL[it.rarity]}">${esc(itemName(it))}</b>`;
+  // Dymek w stylu D2 (najechanie; na telefonie dotknięcie pokazuje/ukrywa)
+  const ITEMS = {};
+  const tipHtml = (it) => `<div class="tn" style="color:${COL[it.rarity]}">${esc(itemName(it))}</div><div class="ts">${SLOT[it.slot][0]} · ${RAR[it.rarity]}</div><div class="ts">Poziom przedmiotu: ${it.ilvl ?? 0}</div>
+    <div class="tg">+${(it.implicit?.mult ?? 0.1).toFixed(1)}x mnożnika</div>${(it.affixes || []).filter((a) => AFF[a.id]).map((a) => `<div class="tb">${esc(AFF[a.id][6](a.v))}</div>`).join('')}${it.rarity === 'u' ? '<div class="tb">Raz na grę: odbicie od dołu zamiast końca gry</div>' : ''}`;
+  const sumHtml = (b) => {
+    const L = [], pct = (x) => Math.round(x * 100);
+    const mult = r3(b.impl + b.ostry); if (mult) L.push(`+${fm(mult)}x mnożnika`);
+    if (b.serii) L.push(`+${b.serii.toFixed(2)}x za każde 10 podbić`);
+    if (b.lowcy) L.push(`+${b.lowcy.toFixed(1)} do mnożnika mniejszych piłeczek`);
+    if (b.rozp) L.push(`Start od +${pct(b.rozp)}% increased`);
+    if (b.wytrw) L.push(`Poziom co ${b.wytrw} podbić`);
+    if (b.stlum) L.push(`Podbicie niższe o ${pct(b.stlum)}%`);
+    if (b.ciezki) L.push(`Grawitacja słabsza o ${pct(b.ciezki)}%`);
+    if (b.zreczny) L.push(`Odbicie w bok mniejsze o ${pct(b.zreczny)}%`);
+    if (b.olb) L.push(`Piłeczka większa o ${pct(b.olb)}%`);
+    if (b.mrozu) L.push(`Po wzroście poziomu spowolnienie ${b.mrozu.toFixed(1)} s`);
+    if (b.lucky) L.push(`+${b.lucky} pkt proc. szansy na rzadszy przedmiot`);
+    if (b.guardian) L.push(`Anioł Stróż: ${b.guardian}× ratunek na grę`);
+    return `<div class="eqsum"><h4>Łączne bonusy</h4>${L.length ? L.map((x) => `<div>${esc(x)}</div>`).join('') : '<div class="mute">brak</div>'}</div>`;
+  };
   const rndHex = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
   const getKey = () => { let k = ls.get('eqKey'); if (!/^[0-9a-f]{32}$/.test(k || '')) { k = rndHex(); ls.set('eqKey', k); } return k; };
   const eqPost = (path, body) => fetch(API + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-    .then((r) => r.json().then((j) => ({ ok: r.ok, status: r.status, j })));
+    .then((r) => r.json().then((j) => { if (path !== '/view' && j && j.slots) B = calcB(j.slots); return { ok: r.ok, status: r.status, j }; }));
   // Przedmiot = awatar podbitej osoby + nakładka slotu w kolorze rzadkości
   function itemEl(it) {
     const av = it.uid && D?.avatars?.[it.uid];
-    return `<div class="eqit q-${it.rarity}"><div class="eqav" style="${av ? `background-image:url('${esc(av)}')` : ''}">${av ? '' : esc((it.unick || '?')[0].toUpperCase())}</div><svg class="eqov" style="color:${COL[it.rarity]}"><use href="#eq-${it.slot}"/></svg></div>`;
+    ITEMS[it.id] = it;
+    return `<div class="eqit q-${it.rarity}" data-tid="${esc(it.id)}"><div class="eqav" style="${av ? `background-image:url('${esc(av)}')` : ''}">${av ? '' : esc((it.unick || '?')[0].toUpperCase())}</div><svg class="eqov" style="color:${COL[it.rarity]}"><use href="#eq-${it.slot}"/></svg></div>`;
   }
   // Porównanie „założone → nowy” z przyciskami; done(stan) po rozstrzygnięciu (albo done(null) gdy przedmiot już przepadł)
   function decideUI(host, item, cur, done) {
@@ -246,8 +314,18 @@
     decideUI(body, it, j.current, () => setOpen(false));
   }
   const SLOT_POS = { helm: 'left:160px;top:46px;width:100px;height:100px', armor: 'left:150px;top:186px;width:120px;height:150px', gloves: 'left:22px;top:252px;width:100px;height:100px', boots: 'left:298px;top:252px;width:100px;height:100px' };
-  function invPanel(st) {
-    return `<div class="eqinv"><h3>EKWIPUNEK</h3>${Object.keys(SLOT).map((s) => { const it = st.slots?.[s]; return `<div class="eqslot ${it ? 'q-' + it.rarity : 'empty'}" data-l="${SLOT[s][2]}" style="${SLOT_POS[s]}">${it ? `${itemEl(it)}<div class="eqname" style="color:${COL[it.rarity]}">${esc(itemName(it))}</div>` : ''}</div>`; }).join('')}</div>`;
+  function invPanel(st, title = 'EKWIPUNEK') {
+    return `<div class="eqinv"><h3>${esc(title)}</h3>${Object.keys(SLOT).map((s) => { const it = st.slots?.[s]; return `<div class="eqslot ${it ? 'q-' + it.rarity : 'empty'}" data-l="${SLOT[s][2]}" style="${SLOT_POS[s]}">${it ? `${itemEl(it)}<div class="eqname" data-tid="${esc(it.id)}" style="color:${COL[it.rarity]}">${esc(itemName(it))}</div>` : ''}</div>`; }).join('')}</div>${sumHtml(calcB(st.slots))}`;
+  }
+  // Podgląd cudzego ekwipunku (z rankingu): tylko do oglądania
+  function openView(eq, nick) {
+    const ov = document.createElement('div'); ov.className = 'eqo';
+    const z = Math.min(1, (innerWidth - 48) / 420);
+    ov.innerHTML = `<div class="eqbox" style="width:${Math.round(420 * z)}px"><div class="eqz" style="zoom:${z}"><div class="eqmain">Ładowanie…</div></div><div class="row" style="margin-top:12px"><button data-a="close">Zamknij</button></div></div>`;
+    document.body.appendChild(ov);
+    ov.onclick = (e) => { if (e.target === ov || e.target.dataset?.a === 'close') ov.remove(); };
+    eqPost('/view', { eq }).then((r) => { if (!r.ok) throw 0; ov.querySelector('.eqmain').innerHTML = invPanel(r.j, 'Ekwipunek: ' + nick); })
+      .catch(() => { ov.querySelector('.eqmain').textContent = 'Nie udało się pobrać ekwipunku.'; });
   }
   const fmtKey = (k) => k.match(/.{4}/g).join('-');
   function openInv() {
@@ -255,6 +333,7 @@
     const z = Math.min(1, (innerWidth - 48) / 420);
     ov.innerHTML = `<div class="eqbox" style="width:${Math.round(420 * z)}px"><div class="eqz" style="zoom:${z}"><div class="eqmain">Ładowanie…</div></div>
       <div class="eqpend"></div>
+      <div class="eqtool"><h4>Narzędzie testowe</h4></div>
       <div class="eqcode"><h4>Kod przenoszenia</h4><div class="kc"><code></code><button data-a="copy">Kopiuj</button></div>
       <div class="warn">Nie pokazuj nikomu — kto zna kod, ma Twój ekwipunek. Wyczyszczenie przeglądarki bez zapisanego kodu = utrata.</div>
       <div class="kc"><input placeholder="Wklej kod z innego urządzenia" maxlength="60"><button data-a="load">Wczytaj</button></div><div class="msg"></div></div>
@@ -269,6 +348,24 @@
     };
     const load = () => eqPost('/inv', { key: getKey() }).then((r) => { if (!r.ok) throw 0; show(r.j); }).catch(() => { $q('.eqmain').textContent = 'Nie udało się pobrać ekwipunku.'; });
     load();
+    // narzędzie testowe: zakłada dowolny przedmiot (endpoint /grant działa tylko na funkcji testowej)
+    const tool = $q('.eqtool'), opt = (v, t) => `<option value="${v}">${esc(t)}</option>`;
+    const affOpts = Object.entries(AFF).map(([id, a]) => opt(id, `${a[0] === 'p' ? 'prefiks' : 'sufiks'}: ${a[1]}`)).join('');
+    const valOpts = (id) => { const [, , lo, hi, st] = AFF[id]; let o = ''; for (let i = 0, n = Math.round((hi - lo) / st); i <= n; i++) { const v = +(lo + i * st).toFixed(2); o += opt(v, String(v)); } return o; };
+    tool.insertAdjacentHTML('beforeend', `<div class="kc"><select data-t="slot">${Object.entries(SLOT).map(([k, v]) => opt(k, v[0])).join('')}</select><select data-t="rar">${Object.entries(RAR).map(([k, v]) => opt(k, v)).join('')}</select></div>
+      ${[1, 2].map((n) => `<div class="kc" data-r="${n}"><select data-t="a${n}">${affOpts}</select><select data-t="v${n}"></select></div>`).join('')}
+      <div class="kc"><button data-t="go">Załóż</button></div><div class="msg"></div>`);
+    const tq = (k) => tool.querySelector(`[data-t="${k}"]`), nAff = () => ({ n: 0, m: 1, r: 2, u: 0 }[tq('rar').value]);
+    const syncTool = () => { tool.querySelectorAll('[data-r]').forEach((r) => { r.hidden = +r.dataset.r > nAff(); }); };
+    [1, 2].forEach((n) => { tq('a' + n).onchange = () => { tq('v' + n).innerHTML = valOpts(tq('a' + n).value); }; tq('a' + n).value = n === 1 ? 'ostry' : 'serii'; tq('a' + n).onchange(); });
+    tq('rar').onchange = syncTool; syncTool();
+    tq('go').onclick = () => {
+      const affixes = [1, 2].slice(0, nAff()).map((n) => ({ id: tq('a' + n).value, v: +tq('v' + n).value }));
+      if (new Set(affixes.map((a) => a.id)).size < affixes.length) { tool.querySelector('.msg').textContent = 'Afiksy muszą być różne.'; return; }
+      tool.querySelector('.msg').textContent = 'Zakładam…';
+      eqPost('/grant', { key: getKey(), slot: tq('slot').value, rarity: tq('rar').value, affixes })
+        .then((r) => { if (!r.ok) throw r.j?.error || 0; tool.querySelector('.msg').textContent = 'Założono.'; show(r.j); }).catch((e) => { tool.querySelector('.msg').textContent = typeof e === 'string' ? e : 'Błąd sieci.'; });
+    };
     ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
     ov.querySelectorAll('button[data-a]').forEach((b) => b.addEventListener('click', () => {
       if (b.dataset.a === 'close') ov.remove();
@@ -312,6 +409,13 @@
     .eqslot .eqit{width:86px;height:86px}
     .eqslot .eqname{position:absolute;top:100%;margin-top:3px;left:50%;transform:translateX(-50%);width:130px;text-shadow:0 1px 2px #000}
     .eqslot.empty::after{content:attr(data-l);color:#5a564f;font:12px Georgia,serif;letter-spacing:.1em}
+    .eqit.q-u .eqav{border-color:#c7864a;box-shadow:0 0 12px rgba(199,134,74,.75)}
+    .eqslot.q-u{border-color:#a8692f;box-shadow:inset 0 0 0 2px #000,inset 0 0 22px rgba(199,134,74,.28)}
+    .eqsum{margin-top:10px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;font-size:12.5px;background:var(--bg)}.eqsum h4,.eqtool h4{margin:0 0 4px;font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em}.eqsum .mute{color:var(--mute)}
+    .eqtool{margin:12px 0;font-size:13px}.eqtool .kc{display:flex;gap:6px;margin:5px 0}.eqtool select{flex:1;min-width:0;font:inherit;padding:4px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)}.eqtool .msg{font-size:12px;color:var(--mute);min-height:16px}
+    .pil li.clk{cursor:pointer;border-radius:6px}.pil li.clk:hover{background:var(--bg)}
+    #eqtip{position:fixed;z-index:95;pointer-events:none;background:rgba(10,10,9,.95);border:1px solid #56514a;border-radius:4px;padding:8px 12px;font-size:12.5px;line-height:1.4;color:#ecebe6;max-width:260px;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.6)}
+    #eqtip .tn{font:700 14px Georgia,serif}#eqtip .ts{color:#9a9892}#eqtip .tg{color:#9a9892;margin-top:4px}#eqtip .tb{color:#8f9bff}
     .eqslot.q-n{border-color:#6d6a64}.eqslot.q-m{border-color:#4a5fb8;box-shadow:inset 0 0 0 2px #000,inset 0 0 22px rgba(80,110,255,.25)}.eqslot.q-r{border-color:#b89a2c;box-shadow:inset 0 0 0 2px #000,inset 0 0 22px rgba(242,210,75,.22)}`;
     document.head.appendChild(eqCss);
     const defs = document.createElement('div');
@@ -327,6 +431,24 @@
     eqCard.innerHTML = '<button id="eqBtn" style="width:100%">Ekwipunek</button>';
     card.after(eqCard);
     eqCard.querySelector('#eqBtn').onclick = openInv;
+    const tip = document.createElement('div'); tip.id = 'eqtip'; tip.hidden = true; document.body.appendChild(tip);
+    let tipFor = null;
+    const hideTip = () => { tip.hidden = true; tipFor = null; };
+    const showTip = (el) => {
+      const it = ITEMS[el.dataset.tid]; if (!it) return;
+      tip.innerHTML = tipHtml(it); tip.hidden = false; tipFor = el;
+      const r = el.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+      let x = r.right + 8; if (x + w > innerWidth - 6) x = r.left - w - 8; if (x < 6) x = Math.max(6, Math.min(innerWidth - w - 6, r.left + r.width / 2 - w / 2));
+      tip.style.left = x + 'px'; tip.style.top = Math.max(6, Math.min(innerHeight - h - 6, r.top)) + 'px';
+    };
+    const tidEl = (e) => e.target.closest?.('[data-tid]');
+    if (!TOUCH) { // komputer: najechanie; telefon: dotknięcie pokazuje/ukrywa
+      document.addEventListener('mouseover', (e) => { const el = tidEl(e); if (el) showTip(el); else if (!tip.hidden) hideTip(); });
+    } else {
+      document.addEventListener('click', (e) => { const el = tidEl(e); if (el && el !== tipFor) showTip(el); else hideTip(); }, true);
+    }
+    document.getElementById('pil')?.addEventListener('click', (e) => { const li = e.target.closest('li[data-eq]'); if (li) openView(li.dataset.eq, li.dataset.nick); });
+    eqPost('/inv', { key: getKey() }).catch(() => {}); // bonusy z założonych przedmiotów od razu po wejściu na stronę
   }
 
   // --- pętla ---
@@ -336,14 +458,17 @@
     acc += dt; if (acc > 2.2) { acc = 0; spawn(); }
     for (const f of flakes) {
       if (game && game.f === f) {
-        const sd = dt * speedOf(game.lvl);
-        f.vy += G * game.k * sd; f.x += f.vx * sd; f.y += f.vy * sd; f.rot += f.vr * sd;
+        const sd = dt * speedOf(game.lvl) * (game.slow > t ? .5 : 1);
+        f.vy += G * (1 - game.B.ciezki) * game.k * sd; f.x += f.vx * sd; f.y += f.vy * sd; f.rot += f.vr * sd;
         const A = TOUCH ? { l: 0, r: W } : arena();
         if (f.x < A.l) { f.x = A.l; f.vx = Math.abs(f.vx) * .8; }
         if (f.x > A.r - f.size) { f.x = A.r - f.size; f.vx = -Math.abs(f.vx) * .8; }
         if (f.y < 0) { f.y = 0; f.vy = Math.abs(f.vy) * .3; }
         if (!TOUCH && (H < MIN_H || W < H * ASPECT)) { game = null; document.body.classList.remove('playing'); hideMult(); hud.hidden = true; f.el.remove(); flakes.clear(); flash('Okno za małe — gra przerwana'); break; }
-        if (f.y > H + 10) { endGame(); break; }
+        if (f.y > H + 10) {
+          if (game.saves > 0) { game.saves--; f.vy = -JUMP * game.k; f.y = H - f.size; flash('Anioł Stróż!'); }
+          else { endGame(); break; }
+        }
       } else {
         f.ph += dt; f.y += f.vy * dt; f.rot += f.vr * dt;
         if (f.y > H + 20) { f.el.remove(); flakes.delete(f); continue; }
