@@ -18,7 +18,7 @@ def cors(req, body, status=200):
     return body, status, h
 
 def top():
-    return [{"nick": d.get("nick"), "score": d.get("score"), "hits": d.get("hits"), "ball": d.get("ball"), "ballUid": d.get("ballUid"), "dev": d.get("dev"), "devs": d.get("devs"), "eq": d.get("eq"), "plays": d.get("plays")} for d in
+    return [{"nick": d.get("nick"), "score": d.get("score"), "hits": d.get("hits"), "ball": d.get("ball"), "ballUid": d.get("ballUid"), "dev": d.get("dev"), "eq": d.get("eq"), "plays": d.get("plays")} for d in
             (x.to_dict() for x in COL.order_by("score", direction=firestore.Query.DESCENDING).limit(20).stream())]
 
 def ip_key(req):
@@ -278,10 +278,6 @@ def pileczka(req):
                 doc["eq"] = eq_ref(eqk).id  # tylko skrót; sam klucz nigdy nie trafia do rankingu
             if score >= prev.get("score", 0):  # nowy rekord: zapisujemy też, ile podbić i czyim awatarem
                 doc.update(score=score, hits=hits, ball=ball, ballUid=ball_uid, dev=dev)
-            devs = set(prev.get("devs") or ([prev["dev"]] if prev.get("dev") else []))  # wszystkie urządzenia, na których grał
-            if dev:
-                devs.add(dev)
-            doc["devs"] = sorted(devs)
             doc["plays"] = prev.get("plays", 0) + 1  # licznik rozegranych (zapisanych) gier
             tx.set(ref, doc, merge=True)
             return {"best": max(score, prev.get("score", 0)), "plays": doc["plays"], "record": score >= prev.get("score", 0)}
