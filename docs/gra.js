@@ -161,8 +161,8 @@
     // zestaw: przedmioty z awatarem tej samej osoby — +0.2 pkt za sztukę, przy 4 szt. dodatkowo jedno odbicie od dołu
     const cnt = {}; for (const it of Object.values(slots || {})) if (it?.uid) if (it.rarity === 'r' || it.rarity === 'u') cnt[it.uid] = (cnt[it.uid] || 0) + 1; // do zestawu liczą się tylko rzadkie i unikaty
     const top = Object.entries(cnt).sort((a, c) => c[1] - a[1])[0];
-    b.setN = top && top[1] >= 1 ? top[1] : 0; b.setUid = b.setN ? top[0] : '';
-    b.setMult = r3(b.setN * .2); // zestaw: +0.2 pkt za każdą sztukę (1–4), pełny zestaw +0.8 if (b.setN === 4) b.guardian++;
+    b.setN = top && top[1] >= 2 ? top[1] : 0; b.setUid = b.setN ? top[0] : '';
+    b.setMult = r3(b.setN * .2); // zestaw od 2 szt.: +0.2 pkt za każdą sztukę (2 → 0.4, 3 → 0.6, 4 → 0.8) if (b.setN === 4) b.guardian++;
     for (const k of Object.keys(b)) if (typeof b[k] === 'number') b[k] = r3(b[k]);
     // limity łączne (afiksy mogą się powtarzać, ale suma ma sufit)
     const CAP = { stlum: .3, ciezki: .25, zreczny: .6, olb: .25, rozp: .6, lowcy: 1.5, lucky: 100, wytrw: .3, brawur: .5, zuch: .08, echa: .25 };
@@ -430,7 +430,7 @@
       ${r(COL.n, 'Normalny', '+0.1x mnożnika')}${r(COL.m, 'Magiczny', '+0.1x mnożnika i 1 afiks')}${r(COL.r, 'Rzadki', '+0.1x mnożnika i 2 afiksy')}${r(COL.u, 'Unikat', '+0.3x mnożnika, 3 losowe afiksy (w tym gwarantowany boski) i unikatowa cecha')}${r(COL.u, 'Hełm Weterana', 'unikatowy hełm: podwaja premię piłeczek osób, którymi grasz, z top 10 z ostatnich 24 godzin')}${r(COL.u, 'Kapcie Moderatora', 'unikatowe buty: raz na grę kliknięcie w dowolne miejsce ekranu liczy się jako podbicie')}
       <h4>Klasy afiksów</h4>
       <div class="lgr"><b class="t-slaby">słaby</b><span>55%</span></div><div class="lgr"><b class="t-dobry">dobry</b><span>35%</span></div><div class="lgr"><b class="t-znakomity">znakomity</b><span>7%</span></div><div class="lgr"><b class="t-boski">boski</b><span>3%</span></div>
-      <h4>Zestaw</h4><div class="lgr"><span>Rzadkie lub unikaty z awatarem tej samej osoby — punkty za każde podbicie piłeczki:</span></div><div class="lgr"><b style="color:#3fd13f">1 szt.</b><span>+0.2 pkt</span></div><div class="lgr"><b style="color:#3fd13f">2 szt.</b><span>+0.4 pkt</span></div><div class="lgr"><b style="color:#3fd13f">3 szt.</b><span>+0.6 pkt</span></div><div class="lgr"><b style="color:#3fd13f">4 szt.</b><span>+0.8 pkt · pełny zestaw</span></div>
+      <h4>Zestaw</h4><div class="lgr"><span>Rzadkie lub unikaty z awatarem tej samej osoby — punkty za każde podbicie piłeczki:</span></div><div class="lgr"><b style="color:#3fd13f">2 szt.</b><span>+0.4 pkt</span></div><div class="lgr"><b style="color:#3fd13f">3 szt.</b><span>+0.6 pkt</span></div><div class="lgr"><b style="color:#3fd13f">4 szt.</b><span>+0.8 pkt · pełny zestaw</span></div>
       <h4>Magic find</h4><div class="lgr"><span>Zwiększa szansę na magiczne i rzadkie kosztem normalnych. Rośnie z wynikiem gry. Afiks Szczęśliwy dodatkowo zwiększa szansę na rzadkie i unikaty o podany procent.</span></div>
       <p class="mute" style="font-size:12px;margin:10px 0 0">Przedmiot może wypaść po grze od 15 pkt — im więcej punktów, tym częściej i tym rzadszy.</p>
       <div class="row" style="margin-top:12px"><button data-a="close">Zamknij</button></div></div>`;
