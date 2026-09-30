@@ -10,6 +10,7 @@
   const css = document.createElement('style');
   css.textContent = `
   #snow{position:fixed;inset:0;pointer-events:none;z-index:40;overflow:hidden}
+  .flake.leader{border:3px solid #f2c94c;box-shadow:0 0 14px rgba(242,201,76,.8)}.flake .lcrown{position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-size:20px;pointer-events:none}
   .flake{position:absolute;top:0;left:0;border-radius:50%;background:var(--card) center/cover no-repeat;border:2px solid;display:grid;place-items:center;font-weight:700;color:var(--ink);pointer-events:auto;cursor:pointer;user-select:none;opacity:.85;will-change:transform;contain:layout}
   .flake:hover{opacity:1}
   .flake .badge{position:absolute;right:-6px;top:-6px;background:#e0a526;color:#141413;font-weight:800;border-radius:999px;padding:1px 6px;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,.4);border:2px solid #141413;line-height:1.3;pointer-events:none}
@@ -98,10 +99,12 @@
   const pickUser = () => {
     const withAv = Object.keys(D.avatars || {}).filter((u) => D.users[u]);
     const pool = withAv.length ? withAv : Object.keys(D.users || {});
-    if (!window.avatarWeight) return pool[Math.floor(Math.random() * pool.length)];
-    const w = pool.map((u) => window.avatarWeight(u)); let r = Math.random() * w.reduce((a, b) => a + b, 0);
-    for (let i = 0; i < pool.length; i++) if ((r -= w[i]) < 0) return pool[i];
-    return pool[pool.length - 1];
+    // bez powtórek: pomijamy awatary, które już lecą; lider dnia (tylko test) wypada w 15% przypadków, reszta po równo
+    const onScreen = new Set([...flakes].map((f) => f.u)), free = pool.filter((u) => !onScreen.has(u));
+    const lead = window.dayLeader?.();
+    if (lead && !onScreen.has(lead) && pool.includes(lead) && Math.random() < .15) return lead;
+    const rest = free.filter((u) => u !== lead);
+    return rest.length ? rest[Math.floor(Math.random() * rest.length)] : free[0];
   };
   function makeEl(u, size) {
     const el = document.createElement('div'); el.className = 'flake';
@@ -117,6 +120,7 @@
     const kind = pickKind(), size = Math.round(80 * kind.p * scaleK() * (TOUCH ? 1.2 : 1) * (1 + B.olb)); // na telefonie o 20% większe
     const f = { u, size, x: (TOUCH ? 0 : arena().l) + Math.random() * ((TOUCH ? W : arena().r - arena().l) - size), y: -size - 10, vy: (28 + Math.random() * 30) * scaleK(), sway: 20 + Math.random() * 30, ph: Math.random() * 6.28, rot: 0, vr: (Math.random() - .5) * 40 };
     f.el = makeEl(u, size); f.base = kind.m;
+    if (window.dayLeader?.() === u) { f.el.classList.add('leader'); const c = document.createElement('span'); c.className = 'lcrown'; c.textContent = '👑'; f.el.appendChild(c); }
     // z Koroną Króla Forum plakietka pokazuje mnożnik piłeczki już z premią za miejsce właściciela awatara w top 10 z 24 h
     const cr = B.korona && window.crownOf ? window.crownOf(u) : 0, bm = Math.round((kind.m + cr) * 10) / 10;
     if (bm > 1) { const b = document.createElement('span'); b.className = 'badge ' + (kind.m > 1 ? kind.cls : ''); b.textContent = 'x' + bm + (cr ? ' 👑' : ''); f.el.appendChild(b); }
