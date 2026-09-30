@@ -15,6 +15,9 @@
   .flake.ball .badge{display:none}
   .flake.ball{opacity:1;z-index:2}
   #hud{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:60;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 18px;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;box-shadow:0 6px 18px rgba(0,0,0,.25);pointer-events:none}
+  #hud{white-space:nowrap;max-width:calc(100vw - 24px)}
+  @media (pointer:coarse){#hud{top:6px;font-size:17px;padding:3px 12px;opacity:.8}#lvlup{top:40px;font-size:16px}}
+  body.playing #snow{z-index:62}
   #hud small{font-size:12px;font-weight:500;color:var(--mute);margin-left:6px}
   #over{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:rgba(0,0,0,.45)}
   #over .box{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;width:min(320px,calc(100vw - 32px));text-align:center}
@@ -162,7 +165,7 @@
     f.vy = -Math.max(JUMP * game.k * .3, Math.min(JUMP * game.k, vMax));
     f.vx = Math.max(-420, Math.min(420, -off * 320 + (Math.random() - .5) * 120)) * game.k;
     f.vr = -off * 360;
-    hud.hidden = false; hud.innerHTML = `${Math.round(game.score)}<small>pkt · ${game.base > 1 ? `x${game.base} more · ` : ''}+${game.lvl * 10}% increased = x${totalMult().toFixed(1)} · ${game.hits} podbić</small>`;
+    hud.hidden = false; hud.innerHTML = `${Math.round(game.score)}<small>pkt${TOUCH ? ` · x${totalMult().toFixed(1)}` : ` · ${game.base > 1 ? `x${game.base} more · ` : ''}+${game.lvl * 10}% increased = x${totalMult().toFixed(1)} · ${game.hits} podbić`}</small>`;
   }
   function endGame() {
     const score = Math.round(game.score), f = game.f, gHits = game.hits, gBase = game.base, gLvl = game.lvl, gMult = totalMult(); game = null; document.body.classList.remove('playing'); hideMult();
