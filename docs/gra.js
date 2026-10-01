@@ -604,7 +604,7 @@
         if (f.y < 0) { f.y = 0; f.vy = Math.max(Math.abs(f.vy) * .8, 260 * game.k); }
         if (!TOUCH && (H < MIN_H || W < H * ASPECT)) { game = null; document.body.classList.remove('playing'); hideMult(); hud.hidden = true; f.el.remove(); flakes.clear(); flash('Okno za małe — gra przerwana'); break; }
         if (f.y > H + 10) {
-          if (game.saves > 0) { game.saves--; f.y = H - f.size; f.vx = 0; f.vy = -Math.sqrt(2 * G * (1 - game.B.ciezki) * game.k * H * .55); game.slow = t + 1600; if (SUFIT) game.hoverArm = true; // wysoko, prosto w górę i wolniej — łatwo kliknąć
+          if (game.saves > 0) { game.saves--; f.y = H - f.size; f.vx = 0; f.vy = -Math.sqrt(2 * G * (1 - game.B.ciezki) * game.k * H * .55); if (SUFIT) game.hoverArm = true; else game.slow = t + 1600; // test: zamiast spowolnienia (szarpało przy powrocie tempa) płynny lot i zawis na szczycie // wysoko, prosto w górę i wolniej — łatwo kliknąć
             flash(`🛡 Odbicie od dołu zużyte! Zostało w tej grze: ${game.saves}`); saveFx(); drawHud(); }
           else { endGame(); break; }
         }
