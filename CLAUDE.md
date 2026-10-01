@@ -22,6 +22,7 @@ Licznik postów z forum d2jsp (sekcja Polska) + gra „Piłeczka”. Strona: htt
 `scripts/collector.mjs` (zbieranie, zakończenie, statusy, scalanie), `scripts/collector.test.mjs` (9 testów regresji), `scripts/sync.mjs`, `scripts/update.mjs` (parser, tempo), `scripts/pc-cron.ps1/.vbs`, `scripts/serwer-cron.sh`, HTML strony głównej i testowej.
 
 ## Inne zasady
+- Boty pushują dane co ~2 h: ZAWSZE `git pull --rebase` przed commitem i przed rozpoczęciem pracy.
 - Każda zmiana strony: podbij wersję w tytule o 0.1 i podaj ją użytkownikowi.
 - Piłeczka: ekwipunek/afiksy tylko na wersji testowej (/test/, pileczka-test); produkcji nie wdrażać bez zgody.
 - Lokalne liczenie postów z X dni: `E:\Vibe coding\_d2jsp-wiadomosci\dane\licz.mjs`.
