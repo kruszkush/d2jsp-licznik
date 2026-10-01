@@ -305,6 +305,19 @@ function computeAll() {
 }
 const until = (ms) => { const l = ms - Date.now(), d = Math.floor(l / day), h = Math.floor(l % day / 3600e3); return `${d ? d + ' d ' : ''}${h} h`; };
 
+function updateNote() {
+  const up = new Date(D.updated), now = Date.now(), today = ymd(now) === ymd(up), yest = ymd(now - day) === ymd(up);
+  const when = `${today ? 'dziś' : yest ? 'wczoraj' : up.toLocaleDateString('pl-PL')} ${up.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}`;
+  const sources = Object.values(D.collection?.sources || {}), notes = [];
+  if (now - up.getTime() > 3 * 3600e3) notes.push('aktualizacja opóźniona');
+  if ((D.complete || 0) < up.getTime() - 15 * 60e3) notes.push('dane mogą być niepełne — trwa uzupełnianie');
+  const paused = sources.filter((s) => s.blockedUntil > now);
+  if (paused.length) notes.push(`przerwa ${paused.length < sources.length ? 'jednego źródła' : 'pobierania'} do ${new Date(Math.min(...paused.map((s) => s.blockedUntil))).toLocaleString('pl-PL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}`);
+  const c = P.w.of(now);
+  $('raceNote').innerHTML = `Koniec: niedziela 21:00 (za ${until(c.end)})<br><b>Ostatnia aktualizacja:</b> ${when}<br>${notes.length ? notes.join(' · ') + '<br>' : ''}Automatyczne sprawdzanie co ok. 2 h.`;
+}
+setInterval(() => { if (D) updateNote(); }, 60000);
+
 function renderCups(R) {
   reign = new Set(R.m.past[0]?.winners || []); // fioletowy nick do czasu kolejnego mistrza miesiąca
   const last = R.w.past[0];
@@ -333,8 +346,7 @@ function renderCups(R) {
   $('race').innerHTML = c.rank.slice(0, 5).map(([u, n], i) => `<li><span class="pos ${i < 3 ? 'p' + (i + 1) : ''}" ${i >= 3 ? 'style="background:var(--line);color:var(--mute)"' : ''}>${i + 1}</span>
     <div class="grow"><div class="nm">${link(u)}</div><div class="track"><i style="width:${n / lead * 100}%"></i></div></div><span class="num">${fmt(n)}</span></li>`).join('')
     || '<li class="empty">Jeszcze nikt nie pisał w tym tygodniu.</li>';
-  const up = new Date(D.updated), today = ymd(Date.now()) === ymd(up), yest = ymd(Date.now() - day) === ymd(up);
-  $('raceNote').innerHTML = `Koniec: niedziela 21:00 (za ${until(c.p.end)})<br><b>Ostatnia aktualizacja:</b> ${today ? 'dziś' : yest ? 'wczoraj' : up.toLocaleDateString('pl-PL')} ${up.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })} · kolejna za ok. 2 h`;
+  updateNote();
 
   const hist = [...R.y.past.map((x) => ['y', x]), ...R.m.past.map((x) => ['m', x]), ...R.w.past.map((x) => ['w', x])].sort((a, b) => b[1].p.end - a[1].p.end || 'ymw'.indexOf(a[0]) - 'ymw'.indexOf(b[0]));
   $('hist').innerHTML = hist.map(([t, x]) => `<li><span class="dt" title="${x.p.label}">${t === 'w' ? x.p.nice.replace(' · ', '<br>') : x.p.label}</span>${cupSvg(t)}<div class="grow"><div class="nm">${x.winners.map(link).join(' & ')}</div></div><span class="num">${fmt(x.rank[0][1])}</span></li>`).join('')

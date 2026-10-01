@@ -5,6 +5,7 @@
 // Użycie: node scripts/update.mjs [forum=230]    Zwykły Chrome z oknem (na serwerze pod xvfb-run), nic nie obchodzimy.
 import puppeteer from 'puppeteer-core';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { sourceState, canFinish, collectTopic } from './collector.mjs';
 
 const F = Number(process.argv[2] || 230);
 const FILE = 'docs/data.json', STATE = 'state.json';
@@ -16,9 +17,18 @@ const FLOOR_OVERLAP = 6 * 3600e3; // dla tematów bez stanu: posty od (ostatni p
 const data = JSON.parse(readFileSync(FILE, 'utf8'));
 const st = existsSync(STATE) ? JSON.parse(readFileSync(STATE, 'utf8')) : { topics: {} };
 const START = Date.now();
-if (st.blockedUntil && START < st.blockedUntil && !process.env.FORCE) {
-  console.log('przerwa po blokadzie do', new Date(st.blockedUntil).toLocaleString('pl-PL')); process.exit(0);
+const SOURCE = process.env.D2_SOURCE || (process.platform === 'win32' ? 'pc' : 'server');
+const src = sourceState(st, SOURCE);
+const report = (status, reason = '') => {
+  Object.assign(src, { lastAttempt: START, status, reason, finishedAt: Date.now() });
+  (data.collection ||= { sources: {} }).sources[SOURCE] = { ...src };
+};
+if (src.blockedUntil && START < src.blockedUntil && !process.env.FORCE) {
+  report('paused');
+  writeFileSync(FILE, JSON.stringify(data)); writeFileSync(STATE, JSON.stringify(st));
+  console.log(SOURCE, 'przerwa po blokadzie do', new Date(src.blockedUntil).toLocaleString('pl-PL')); process.exit(0);
 }
+report('running');
 const known = new Set(data.posts.map((p) => p[0]));
 const num = (id) => Number(id) || 0;
 // ostatnie znane id posta w każdym temacie (z danych) — dla tematów bez stanu
@@ -85,39 +95,19 @@ async function topicPage(t, o) { // o === 'last' → ostatnia strona (link „Go
 
 // Pobiera nowe posty tematu: od ostatniej strony w dół, dopóki na stronie są posty nowsze od granicy.
 async function doTopic(row) {
-  const s = st.topics[row.t];
-  const lastId = s ? s.last : (lastInData[row.t] || 0);
-  const isNew = (p) => lastId ? num(p.id) > lastId : ts(p.date) >= FLOOR;
-  const cap = s && row.r != null && s.r != null ? Math.ceil(Math.max(1, row.r - s.r) / 10) + 2 : 40;
-  let maxId = lastId, title = row.title;
-  // start od prawdziwej ostatniej strony; cofamy się o rozmiar strony wyliczony z odnośników stron (zwykle 20)
-  let o = 'last', step = 20;
-  for (let n = 0; n < cap; n++) {
-    if (pages >= MAX_PAGES) return false;
-    const r = await topicPage(row.t, o); title = r.title || title;
-    if (o === 'last') {
-      const ps = r.pager, diffs = ps.slice(1).map((x, i) => x - ps[i]).filter((d) => d > 0);
-      step = diffs.length ? Math.min(...diffs) : 20;
-      o = ps.length ? Math.max(...ps) + step : 0; // na ostatniej stronie odnośniki prowadzą tylko do wcześniejszych
-    }
-    const fresh = r.posts.filter(isNew);
-    for (const p of fresh) {
+  const result = await collectTopic(row, { st, lastInData, floor: FLOOR, timestamp: ts, read: topicPage,
+    exhausted: () => pages >= MAX_PAGES, save, started: START, consume(p, topic) {
       if (p.uid) { data.users[p.uid] = p.user; if (p.av) (data.avatars ||= {})[p.uid] = p.av; }
-      maxId = Math.max(maxId, num(p.id));
-      if (known.has(p.id)) continue;
+      if (known.has(p.id)) return;
       known.add(p.id); added++;
-      data.posts.push([p.id, row.t, p.uid || p.user, Math.round(ts(p.date) / 1000)]);
-    }
-    if (fresh.length < r.posts.length || !r.posts.length) break; // doszliśmy do starszych postów
-    o -= step; if (o < 0) break;
-  }
-  if (!maxId) for (const [id, t] of data.posts) if (t === row.t) maxId = Math.max(maxId, num(id));
-  data.topics[row.t] = title;
-  st.topics[row.t] = { r: row.r, lp: row.lp, last: maxId };
-  return true;
+      data.posts.push([p.id, topic, p.uid || p.user, Math.round(ts(p.date) / 1000)]);
+    } });
+  data.topics[row.t] = row.title;
+  if (!result.current) unfinished = true;
+  return result.done;
 }
 
-let complete = false, reason = '';
+let complete = false, unfinished = false, reason = '';
 try {
   for (let o = 0; o < 1000; o += 25) {
     const rows = await list(o);
@@ -134,21 +124,23 @@ try {
       const a = agoMs(x.ago);
       if (!st.topics[x.t] && a != null && a < FLOOR - 864e5) st.topics[x.t] = { r: x.r, lp: x.lp, last: lastInData[x.t] || 0 };
     }
-    const changed = rows.filter((x) => { const s = st.topics[x.t]; return !s || x.r == null || s.r !== x.r || s.lp !== x.lp; });
+    const changed = rows.filter((x) => { const s = st.topics[x.t]; return !s || s.pending || x.r == null || s.r !== x.r || s.lp !== x.lp; });
     console.log(`lista o=${o}: zmienionych ${changed.length}/${rows.length}`);
-    if (!changed.length) { complete = true; break; }
+    if (!changed.length && canFinish(rows, st.topics, FLOOR, agoMs)) { complete = !unfinished; break; }
     for (const row of changed) {
       if (!(await doTopic(row))) { reason = `limit ${MAX_PAGES} podstron`; break; }
       save();
     }
     if (reason) break;
   }
-  if (complete) { data.complete = START; st.backoff = 0; st.blockedUntil = 0; }
+  if (complete) { data.complete = START; src.backoff = 0; src.blockedUntil = 0; }
 } catch (e) {
   if (!(e instanceof Blocked)) throw e;
-  st.backoff = Math.min(8, (st.backoff || 1) * 2); st.blockedUntil = Date.now() + st.backoff * 3600e3;
-  reason = `${e.message} — przerwa ${st.backoff} h`;
+  src.backoff = Math.min(8, (src.backoff || 1) * 2); src.blockedUntil = Date.now() + src.backoff * 3600e3;
+  reason = `${e.message} — przerwa ${src.backoff} h`;
 }
+if (!complete && !reason) reason = 'pozostały tematy do uzupełnienia';
+report(complete ? 'complete' : src.blockedUntil > Date.now() ? 'blocked' : 'partial', reason);
 const day = new Date().toISOString().slice(0, 10); (st.pagesByDay ||= {})[day] = (st.pagesByDay[day] || 0) + pages;
 save(); await browser.close();
 console.log(`${complete ? 'KOMPLET' : 'NIEDOKOŃCZONE: ' + reason} · podstron ${pages} · dodano ${added} · razem ${data.posts.length}`);
