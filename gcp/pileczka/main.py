@@ -1,4 +1,4 @@
-# Ranking gry "piłeczka": GET -> top 20, POST {nick, score} -> jeden wpis na adres IP (najlepszy wynik, ostatni nick).
+# Ranking gry "piłeczka": GET [?nick=] -> top 10 + ostatni + miejsce gracza + liczba graczy, POST {nick, score} -> jeden wpis na adres IP (najlepszy wynik, ostatni nick).
 # IP nie jest zapisywane wprost — tylko jego skrót (sha256 z solą).
 import hashlib, math, ipaddress, os, random, re, secrets, time
 import functions_framework
@@ -17,9 +17,31 @@ def cors(req, body, status=200):
          "Access-Control-Allow-Methods": "GET, POST", "Access-Control-Allow-Headers": "Content-Type", "Vary": "Origin"}
     return body, status, h
 
-def top():
-    return [{"nick": d.get("nick"), "score": d.get("score"), "hits": d.get("hits"), "ball": d.get("ball"), "ballUid": d.get("ballUid"), "dev": d.get("dev"), "eq": d.get("eq"), "plays": d.get("plays")} for d in
-            (x.to_dict() for x in COL.order_by("score", direction=firestore.Query.DESCENDING).limit(20).stream())]
+def row(d):
+    return {"nick": d.get("nick"), "score": d.get("score"), "hits": d.get("hits"), "ball": d.get("ball"), "ballUid": d.get("ballUid"), "dev": d.get("dev"), "eq": d.get("eq"), "plays": d.get("plays")}
+
+def nick_low(nick):  # ten sam gracz mimo emotek/spacji/znaków: porównujemy tylko litery i cyfry
+    return re.sub(r"[^0-9a-ząćęłńóśźż]", "", nick.lower()) or nick.lower()
+
+def nick_ref(nick):
+    return COL.document(hashlib.sha256(("nick:" + nick_low(nick)).encode()).hexdigest()[:32])
+
+def ranking(nick=""):
+    """Top 10 + ostatnie miejsce + miejsce gracza (po nicku) + liczba graczy. Miejsce = 1 + liczba lepszych wyników."""
+    q = COL.order_by("score", direction=firestore.Query.DESCENDING)
+    out = {"top": [row(x.to_dict()) for x in q.limit(10).stream()]}
+    total = COL.count().get()[0][0].value
+    out["total"] = total
+    rank = lambda s: COL.where(filter=firestore.FieldFilter("score", ">", s)).count().get()[0][0].value + 1
+    if total > 10:
+        last = next(iter(COL.order_by("score").limit(1).stream()), None)
+        if last:
+            out["last"] = {**row(last.to_dict()), "rank": rank(last.to_dict().get("score", 0))}
+    if nick:
+        me = nick_ref(nick).get()
+        if me.exists and me.to_dict().get("score"):
+            out["you"] = {**row(me.to_dict()), "rank": rank(me.to_dict()["score"])}
+    return out
 
 def ip_key(req):
     ip = (req.headers.get("X-Forwarded-For", "") or req.remote_addr or "").split(",")[0].strip()
@@ -256,7 +278,7 @@ def pileczka(req):
             print("ekwipunek:", repr(e))
             return cors(req, {"error": "błąd ekwipunku"}, 500)
     if req.method == "GET":
-        return cors(req, {"top": top()})
+        return cors(req, ranking(str(req.args.get("nick", ""))[:20]))
     if req.method == "POST":
         j = req.get_json(silent=True) or {}
         nick = re.sub(r"\s+", " ", str(j.get("nick", ""))).strip()[:20]
@@ -270,8 +292,8 @@ def pileczka(req):
         key = ip_key(req)
         eqk = j.get("key") if isinstance(j.get("key"), str) and KEY_RE.match(j.get("key")) else None
         # ten sam gracz mimo emotek/spacji/znaków: porównujemy tylko litery i cyfry
-        nl = re.sub(r"[^0-9a-ząćęłńóśźż]", "", nick.lower()) or nick.lower()
-        ref = COL.document(hashlib.sha256(("nick:" + nl).encode()).hexdigest()[:32])  # jeden wpis na nick
+        nl = nick_low(nick)
+        ref = nick_ref(nick)  # jeden wpis na nick
 
         @firestore.transactional
         def save(tx):
@@ -286,5 +308,5 @@ def pileczka(req):
             return {"best": max(score, prev.get("score", 0)), "plays": doc["plays"], "record": score >= prev.get("score", 0)}
         me = save(db.transaction())
         # (bez kasowania wpisów „z tego samego adresu”: telefony w sieci komórkowej dzielą jeden adres między wielu ludzi)
-        return cors(req, {"top": top(), "me": me})
+        return cors(req, {**ranking(nick), "me": me})
     return cors(req, {"error": "metoda"}, 405)

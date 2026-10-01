@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Licznik postów d2jsp 6.6</title>
+<title>Licznik postów d2jsp 6.7</title>
 <style>
 :root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e4e2dc;--acc:#b4441f;--bar:#d9825f;
  --gold:#c9961a;--gold2:#f3d46b;--goldbg:#fff8e3;--goldline:#efd89a;--silver:#9aa0a6;--bronze:#b3713f}
@@ -183,7 +183,7 @@ aside{position:sticky;top:16px}
 </svg>
 <div class="wrap">
 <main>
-<h1>Licznik postów — d2jsp Polska <span class="ver">6.6</span></h1>
+<h1>Licznik postów — d2jsp Polska <span class="ver">6.7</span></h1>
 <p class="sub" id="sub">Ładowanie danych…</p>
 
 <div class="ranges" id="ranges">
@@ -264,6 +264,8 @@ const P = {
   y: { of(ms) { const y = plInfo(shift(ms)).date.slice(0, 4); const s = y === START.slice(0, 4) ? START : y + '-01-01';
          return { key: y, start: edge(s), end: edge(`${+y + 1}-01-01`), label: s === START ? `${y} (od ${dm(START)})` : y }; }, ok: (p) => p.key >= START.slice(0, 4) },
 };
+// bufor okresów po pełnej godzinie — granice tygodni/miesięcy i strefa PL zmieniają się tylko na pełnych godzinach; wynik jest tylko do odczytu
+for (const t of Object.keys(P)) { const of = P[t].of, memo = new Map(); P[t].of = (ms) => { const h = Math.floor(ms / 3600e3); let v = memo.get(h); if (!v) memo.set(h, v = of(ms)); return v; }; }
 const TYPE = { w: { name: 'tygodnia', sym: 'cup' }, m: { name: 'miesiąca', sym: 'cupM' }, y: { name: 'roku', sym: 'cupY' } };
 const cupSvg = (t = 'w', cls = 'cup') => `<svg class="${cls}"><use href="#${TYPE[t].sym}"/></svg>`;
 
@@ -523,6 +525,6 @@ function render() {
       <span class="d">${show ? `${dt.getDate()}.${String(dt.getMonth() + 1).padStart(2, '0')}${many ? '' : `<i>${WD[dt.getDay()]}</i>`}` : '&nbsp;'}</span></div>`; }).join('');
 }
 </script>
-<script src="gra.js?v=1790795650"></script>
+<script src="gra.js?v=1790893706"></script>
 </body>
 </html>

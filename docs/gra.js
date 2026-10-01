@@ -50,7 +50,7 @@
   #over .row{display:flex;gap:8px;justify-content:center}
   #over button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
   #over .msg{font-size:12px;color:var(--mute);min-height:16px;margin-top:8px}
-  #mult{will-change:transform,opacity;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:39;pointer-events:none;font-weight:900;font-size:min(20vw,220px);white-space:nowrap;line-height:1;opacity:0;transition:opacity .4s;font-variant-numeric:tabular-nums;letter-spacing:-.04em}
+  #mult{will-change:transform,opacity;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(4);z-index:39;pointer-events:none;font-weight:900;font-size:min(5vw,55px);white-space:nowrap;line-height:1;opacity:0;transition:opacity .4s;font-variant-numeric:tabular-nums;letter-spacing:-.04em}
   #mult.on{opacity:.13}
   #mult .bs{display:inline-block;font-size:.3em;color:#fff;border-radius:999px;padding:.05em .45em;margin-left:.15em;vertical-align:-.1em;letter-spacing:0;opacity:.9}
   
@@ -77,7 +77,7 @@
   .pil .pn small i{width:14px;height:14px;border-radius:50%;background:center/cover;flex:none}
   .pil .dev{font-size:12px;margin-right:5px;opacity:.8;font-weight:400}
   .pil .plays{display:block;font-size:10.5px;color:var(--mute);font-weight:400;text-align:right}
-  .pil li:last-child{border:0}.pil{margin:0;padding:0}.pil .me{color:var(--acc);font-weight:700}`;
+  .pil li:last-child{border:0}.pil{margin:0;padding:0}.pil .me{color:var(--acc);font-weight:700}.pil .gap{justify-content:center;color:var(--mute);padding:0;border:0;line-height:1}.pil .total{justify-content:center;color:var(--mute);font-size:12px;border:0;padding-top:8px}`;
   document.head.appendChild(css);
 
   const snow = document.createElement('div'); snow.id = 'snow'; document.body.appendChild(snow);
@@ -94,14 +94,20 @@
   if (EQON) card.querySelector('#pilLeg').onclick = (e) => { e.preventDefault(); openLegend(); };
   fameCard?.after(card);
   const ballAv = (r) => { const a = r.ballUid && D?.avatars?.[r.ballUid]; return a ? `<i style="background-image:url('${esc(a)}')"></i>` : ''; };
-  function showRank(top) {
+  // j: { top, total?, last?, you? } (nowy serwer: top 10 + ostatnie miejsce + Twoje miejsce) albo sama tablica (stary serwer)
+  function showRank(j) {
     card.hidden = false;
-    const me = (ls.get('pilNick') || '').toLowerCase();
-    document.getElementById('pil').innerHTML = top.length ? top.map((r, i) => `<li class="${r.nick.toLowerCase() === me ? 'me' : ''}${EQON && r.eq ? ' clk' : ''}"${EQON && r.eq ? ` data-eq="${esc(r.eq)}" data-nick="${esc(r.nick)}" title="Zobacz ekwipunek"` : ''}><span style="width:22px;color:var(--mute)">${i + 1}.</span><span class="pn"><span>${esc(r.nick)}</span>${r.hits ? `<small>${ballAv(r)}${r.hits}× ${esc(r.ball || '')}</small>` : ''}</span><b>${r.dev ? `<span class="dev" title="${r.dev === 'm' ? 'telefon' : 'komputer'}">${r.dev === 'm' ? '📱' : '🖥️'}</span>` : ''}${r.score}${EQON && r.plays ? `<small class="plays">${r.plays} ${r.plays === 1 ? 'gra' : r.plays % 10 >= 2 && r.plays % 10 <= 4 && (r.plays % 100 < 12 || r.plays % 100 > 14) ? 'gry' : 'gier'}</small>` : ''}</b></li>`).join('') : '<li class="empty">Jeszcze nikt nie zagrał.</li>';
+    const top = Array.isArray(j) ? j : j.top || [], me = (ls.get('pilNick') || '').toLowerCase();
+    const li = (r, i) => `<li class="${r.nick.toLowerCase() === me ? 'me' : ''}${EQON && r.eq ? ' clk' : ''}"${EQON && r.eq ? ` data-eq="${esc(r.eq)}" data-nick="${esc(r.nick)}" title="Zobacz ekwipunek"` : ''}><span style="width:22px;color:var(--mute)">${i + 1}.</span><span class="pn"><span>${esc(r.nick)}</span>${r.hits ? `<small>${ballAv(r)}${r.hits}× ${esc(r.ball || '')}</small>` : ''}</span><b>${r.dev ? `<span class="dev" title="${r.dev === 'm' ? 'telefon' : 'komputer'}">${r.dev === 'm' ? '📱' : '🖥️'}</span>` : ''}${r.score}${EQON && r.plays ? `<small class="plays">${r.plays} ${r.plays === 1 ? 'gra' : r.plays % 10 >= 2 && r.plays % 10 <= 4 && (r.plays % 100 < 12 || r.plays % 100 > 14) ? 'gry' : 'gier'}</small>` : ''}</b></li>`;
+    const gap = '<li class="gap">…</li>', rows = top.map((r, i) => li(r, i));
+    const inTop = (x) => top.some((r) => r.nick === x.nick);
+    if (j.you && !inTop(j.you)) rows.push(gap, li(j.you, j.you.rank - 1));
+    if (j.last && !inTop(j.last) && j.last.nick !== j.you?.nick) rows.push(j.you && !inTop(j.you) && j.last.rank === j.you.rank + 1 ? '' : gap, li(j.last, j.last.rank - 1));
+    document.getElementById('pil').innerHTML = rows.length ? rows.join('') + (j.total ? `<li class="total">Zagrało łącznie: <b>${j.total}</b> ${j.total === 1 ? 'osoba' : j.total % 10 >= 2 && j.total % 10 <= 4 && (j.total % 100 < 12 || j.total % 100 > 14) ? 'osoby' : 'osób'}</li>` : '') : '<li class="empty">Jeszcze nikt nie zagrał.</li>';
   }
-  const loadRank = (n = 0) => fetch(API).then((r) => { if (!r.ok) throw 0; return r.json(); }).then((j) => showRank(j.top || []))
+  const loadRank = (n = 0) => fetch(API + (ls.get('pilNick') ? (API.includes('?') ? '&' : '?') + 'nick=' + encodeURIComponent(ls.get('pilNick')) : '')).then((r) => { if (!r.ok) throw 0; return r.json(); }).then(showRank)
     .catch(() => { card.hidden = false; document.getElementById('pil').innerHTML = '<li class="empty">Ranking chwilowo niedostępny, ponawiam…</li>'; if (n < 5) setTimeout(() => loadRank(n + 1), 15000); });
-  if (ls.get('pilGral')) loadRank();
+  if (TEST || ls.get('pilGral')) loadRank(); // test: ranking widoczny zawsze, także przed pierwszą grą
 
   // --- płatki ---
   const flakes = new Set();
@@ -204,7 +210,7 @@
     if (!TOUCH) { const A = arena(), css = `display:block;left:${A.l}px;width:${A.r - A.l}px`; if (edgesEl.style.cssText !== css) edgesEl.style.cssText = css; }
     multEl.classList.add('on'); edgeEl.style.opacity = String(heat * .9);
     // animacje przez Web Animations (bez wymuszania przeliczenia układu strony w trakcie gry)
-    if (pulse) multEl.animate([{ opacity: .13, transform: 'translate(-50%,-50%) scale(1)' }, { opacity: .4, transform: 'translate(-50%,-50%) scale(1.12)', offset: .25 }, { opacity: .13, transform: 'translate(-50%,-50%) scale(1)' }], { duration: 900, easing: 'ease-out' });
+    if (pulse) multEl.animate([{ opacity: .13, transform: 'translate(-50%,-50%) scale(4)' }, { opacity: .4, transform: 'translate(-50%,-50%) scale(4.48)', offset: .25 }, { opacity: .13, transform: 'translate(-50%,-50%) scale(4)' }], { duration: 900, easing: 'ease-out' });
   }
   const edgesEl = document.createElement('div'); edgesEl.id = 'arenaEdges'; document.body.appendChild(edgesEl);
   const hideMult = () => { edgesEl.style.display = 'none'; multEl.classList.remove('on', 'pulse'); edgeEl.style.opacity = '0'; };
@@ -296,7 +302,7 @@
       ls.set('pilNick', nick); ls.set('pilGral', '1');
       ov.querySelector('#pilMsg').textContent = 'Zapisuję…';
       fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nick, score, dev: TOUCH ? 'm' : 'd', hits: gHits, ball: D.users[f.u] || '', ballUid: /^\d+$/.test(f.u) ? f.u : '', ...(EQON ? { key: getKey() } : {}) }) })
-        .then((r) => r.json()).then((j) => { if (j.top) { showRank(j.top); const m = j.me; if (EQON && m) { ov.querySelector('#pilMsg').innerHTML = `✔ <b>${esc(nick)}</b> · ${m.record ? '<b style="color:var(--acc)">nowy rekord!</b>' : `rekord ${m.best}`} · gra nr ${m.plays} · <a href="#" data-a="chg">zmień nick</a>`; const ch = ov.querySelector('#pilMsg [data-a="chg"]'); if (ch) ch.onclick = (e) => { e.preventDefault(); window.__chgNick?.(); }; return; } if (dropOpen) ov.querySelector('#pilMsg').textContent = 'Wynik zapisany. Rozstrzygnij przedmiot poniżej.'; else { close(); card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } } else ov.querySelector('#pilMsg').textContent = j.error || 'Błąd zapisu.'; })
+        .then((r) => r.json()).then((j) => { if (j.top) { showRank(j); const m = j.me; if (EQON && m) { ov.querySelector('#pilMsg').innerHTML = `✔ <b>${esc(nick)}</b> · ${m.record ? '<b style="color:var(--acc)">nowy rekord!</b>' : `rekord ${m.best}`} · gra nr ${m.plays} · <a href="#" data-a="chg">zmień nick</a>`; const ch = ov.querySelector('#pilMsg [data-a="chg"]'); if (ch) ch.onclick = (e) => { e.preventDefault(); window.__chgNick?.(); }; return; } if (dropOpen) ov.querySelector('#pilMsg').textContent = 'Wynik zapisany. Rozstrzygnij przedmiot poniżej.'; else { close(); card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } } else ov.querySelector('#pilMsg').textContent = j.error || 'Błąd zapisu.'; })
         .catch(() => { ov.querySelector('#pilMsg').textContent = 'Nie udało się zapisać, spróbuj jeszcze raz.'; });
     };
     ov.querySelector('#pilSave').onclick = save;
@@ -593,8 +599,10 @@
       if (game && game.f === f) {
         const sd = dt * speedOf(game.lvl, game.B.wytrw) * (game.slow > t ? .45 : 1); // po odbiciu od dołu chwilowe spowolnienie
         // test: po odbiciu od dołu piłeczka zatrzymuje się na szczycie i czeka na kliknięcie (chwila przerwy); po 1.5 s dymek :mellow:
-        if (game.rise) { const p = Math.min(1, (t - game.rise.t0) / 3000); f.y = game.rise.y0 - game.rise.dy * (1 - (1 - p) ** 3); f.rot *= .97; // wznoszenie coraz wolniej (ease-out)
-          if (p >= 1) { game.rise = null; game.hover = t; f.vx = 0; f.vy = 0; f.vr = 0; } }
+        if (game.rise) { const p = Math.min(1, (t - game.rise.t0) / 3000); f.y = game.rise.y0 - game.rise.dy * (1 - (1 - p) ** 3); f.rot += f.vr * dt * (1 - p); // wznoszenie coraz wolniej (ease-out); obrót swobodny, wygasa razem z lotem
+          if (p >= 1) { game.rise = null; game.hover = t; f.vx = 0; f.vy = 0; f.vr = 0; game.rot0 = f.rot; game.rotTo = Math.round(f.rot / 360) * 360; } }
+        // w bezruchu przez 1.5 s piłeczka płynnie obraca się do pionu, potem dymek :mellow:
+        if (game.hover) { const k = Math.min(1, (t - game.hover) / 1500), e = k < .5 ? 2 * k * k : 1 - (2 - 2 * k) ** 2 / 2; f.rot = game.rot0 + (game.rotTo - game.rot0) * e; }
         if (game.hover || game.rise) { if (game.hover && !game.bubble && t - game.hover > 1500) { game.bubble = document.createElement('div'); game.bubble.className = 'mellow'; game.bubble.innerHTML = '<img src="' + MELLOW + '" alt=":mellow:">'; f.el.appendChild(game.bubble); } }
         else { f.vy += G * (1 - game.B.ciezki) * game.k * sd; f.x += f.vx * sd; f.y += f.vy * sd; f.rot += f.vr * sd; }
         const A = TOUCH ? { l: 0, r: W } : arena();
