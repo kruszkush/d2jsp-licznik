@@ -2,6 +2,7 @@
 (() => {
   // Wersja testowa (/test/): osobna funkcja i kolekcje; ekwipunek włączony tylko tam
   const TEST = location.pathname.includes('/test/');
+  const SUFIT = location.pathname.includes('/test/'); // test: sufit wysadza piłeczkę (koniec gry) — zamiast łagodnego odbicia
   const EQON = true; // ekwipunek i przedmioty włączone także na oficjalnej stronie (narzędzie testowe tylko na /test/)
   const API = TEST ? 'https://pileczka-test-i3odn44x6q-ue.a.run.app' : 'https://pileczka-i3odn44x6q-ue.a.run.app';
   const COLORS = ['#e0a526', '#5b8def', '#d9667a', '#4fb286', '#9b5de5', '#e07a3f'];
@@ -53,6 +54,9 @@
   @keyframes mpulse{0%{opacity:.13;transform:translate(-50%,-50%) scale(1)}25%{opacity:.4;transform:translate(-50%,-50%) scale(1.12)}100%{opacity:.13;transform:translate(-50%,-50%) scale(1)}}
   #edge{position:fixed;inset:0;z-index:38;pointer-events:none;opacity:0;transition:opacity .6s;will-change:opacity;background:radial-gradient(ellipse at center,transparent 55%,rgba(255,90,20,.45) 100%)}
   #arenaEdges{display:none;position:fixed;top:0;bottom:0;z-index:38;pointer-events:none;border-left:2px dashed rgba(255,140,60,.25);border-right:2px dashed rgba(255,140,60,.25)}
+  #sufit{display:none;position:fixed;left:0;right:0;top:0;height:4px;z-index:38;pointer-events:none;background:repeating-linear-gradient(90deg,#e5484d 0 14px,transparent 14px 24px);box-shadow:0 0 10px rgba(229,72,77,.7)}body.playing #sufit{display:block}
+  .boomfx{position:fixed;z-index:61;pointer-events:none;border-radius:50%;background:radial-gradient(#fff3b0,#ff7a1a 45%,rgba(229,72,77,0) 70%);transform:translate(-50%,-50%);animation:boom .6s ease-out forwards}
+  @keyframes boom{from{width:20px;height:20px;opacity:1}to{width:220px;height:220px;opacity:0}}
   .savefx{position:fixed;left:0;right:0;bottom:0;height:40vh;z-index:61;pointer-events:none;background:linear-gradient(transparent,rgba(199,134,74,.55));animation:svf .9s ease-out forwards}
   @keyframes svf{from{opacity:1}to{opacity:0}}
   #lvlup{position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:60;font-weight:800;font-size:20px;color:#ff7a1a;text-shadow:0 0 10px rgba(255,120,30,.6);opacity:0;pointer-events:none}
@@ -199,6 +203,8 @@
   const edgesEl = document.createElement('div'); edgesEl.id = 'arenaEdges'; document.body.appendChild(edgesEl);
   const hideMult = () => { edgesEl.style.display = 'none'; multEl.classList.remove('on', 'pulse'); edgeEl.style.opacity = '0'; };
   // błysk przy zużyciu odbicia od dołu
+  const sufitEl = document.createElement('div'); sufitEl.id = 'sufit'; sufitEl.title = 'Sufit — dotknięcie wysadza piłeczkę'; if (SUFIT) document.body.appendChild(sufitEl);
+  function boomFx(x, y) { const e = document.createElement('div'); e.className = 'boomfx'; e.style.left = x + 'px'; e.style.top = y + 'px'; document.body.appendChild(e); setTimeout(() => e.remove(), 700); }
   function saveFx() { const e = document.createElement('div'); e.className = 'savefx'; document.body.appendChild(e); setTimeout(() => e.remove(), 900); }
   const flashEl = document.createElement('div'); flashEl.id = 'lvlup'; document.body.appendChild(flashEl);
   let lastFlash = 0; const BRAV_MAX = 1.5, ZUCH_MAX = 0.6; // sufity premii z serii Brawurowego i nabitego Zuchwałego
@@ -216,7 +222,7 @@
     flakes.clear(); flakes.add(f);
     game = { f, score: 0, hits: 0, lvl: 0, k: scaleK(), base: f.base || 1, B, per: PER_LEVEL, saves: B.guardian, lowRun: 0, zuchAcc: 0, bans: B.kapcie, topB: f.top || 0, crown: B.korona ? f.top || 0 : 0 }; f.el.classList.add('ball'); showMult(0, false);
     document.body.classList.add('playing'); getSelection()?.removeAllRanges(); const pie = document.getElementById('pie'); if (pie) pie.hidden = true; f.vx = 0; f.vy = 0;
-    hit(f, e);
+    hit(f, e); if (SUFIT) flash('Uwaga: sufit wysadza piłeczkę 💥');
   }
   // Kapcie Moderatora: raz na grę pudło (kliknięcie obok piłeczki) liczy się jako podbicie
   document.addEventListener('pointerdown', (e) => {
@@ -240,18 +246,18 @@
     const r = f.el.getBoundingClientRect(), off = ((e.clientX - (r.left + r.width / 2)) / (r.width / 2)) || 0;
     // podbicie nie wyrzuca ponad górną krawędź: siła ograniczona tak, żeby szczyt lotu był ok. 12 px pod górą ekranu
     const room = Math.max(0, f.y - 12), vMax = Math.sqrt(2 * G * (1 - game.B.ciezki) * game.k * room), jump = JUMP * (1 - game.B.stlum);
-    f.vy = -Math.max(jump * game.k * .3, Math.min(jump * game.k, vMax));
+    f.vy = SUFIT && game.hits > 1 ? -jump * game.k : -Math.max(jump * game.k * .3, Math.min(jump * game.k, vMax)); // test: pełna siła, sufit = wybuch (poza pierwszym podbiciem — grę można zacząć tuż pod sufitem)
     f.vx = Math.max(-420, Math.min(420, -off * 320 + (Math.random() - .5) * 120)) * game.k * (1 - game.B.zreczny);
     f.vr = -off * 360;
     const P = partsOf(game);
     hud.hidden = false; hud.innerHTML = `${game.saves ? `<span title="odbicia od dołu" style="margin-right:8px">🛡${game.saves}</span>` : ''}${game.bans ? `<span title="Kapcie Moderatora: pudło liczy się jako podbicie" style="margin-right:8px">🔨${game.bans}</span>` : ''}${Math.round(game.score)}<small>pkt${TOUCH ? ` · x${fm(P.total)}` : ` · ${P.b > 1 ? `x${fm(P.b)} more · ` : ''}+${Math.round((P.lv - 1) * 100)}% increased${P.items ? ` + ${fm(P.items)} przedmioty` : ''} = x${fm(P.total)} · ${game.hits} podbić`}</small>`;
   }
   function endGame() {
-    const gLvlN = game.lvl + 1, score = Math.round(game.score), f = game.f, gHits = game.hits, gZuch = game.zuchAcc || 0, P = partsOf(game); game = null; document.body.classList.remove('playing'); hideMult();
+    const boom = game.boom, gLvlN = game.lvl + 1, score = Math.round(game.score), f = game.f, gHits = game.hits, gZuch = game.zuchAcc || 0, P = partsOf(game); game = null; document.body.classList.remove('playing'); hideMult();
     f.el.remove(); flakes.clear(); hud.hidden = true;
     const ov = document.createElement('div'); ov.id = 'over';
     const av = D.avatars?.[f.u], who = D.users[f.u] || '?', hits = gHits;
-    ov.innerHTML = `<div class="box"><h3>Koniec gry!</h3>
+    ov.innerHTML = `<div class="box"><h3>${boom ? '💥 Piłeczka uderzyła w sufit!' : 'Koniec gry!'}</h3>
       <div class="ball" style="border-color:${f.el.style.borderColor};${av ? `background-image:url('${esc(av)}')` : ''}">${av ? '' : esc(who[0].toUpperCase())}</div>
       <div class="txt"><b style="color:var(--ink)">${esc(who)}</b> · ${hits} ${hits === 1 ? 'podbicie' : hits % 10 >= 2 && hits % 10 <= 4 && (hits % 100 < 12 || hits % 100 > 14) ? 'podbicia' : 'podbić'}</div>
       <div class="sc">${score}<small> pkt</small></div>
@@ -430,7 +436,7 @@
       ${r(COL.n, 'Normalny', '+0.1x mnożnika')}${r(COL.m, 'Magiczny', '+0.1x mnożnika i 1 afiks')}${r(COL.r, 'Rzadki', '+0.1x mnożnika i 2 afiksy')}${r(COL.u, 'Unikat', '+0.3x mnożnika, 3 losowe afiksy (w tym gwarantowany boski) i unikatowa cecha')}
       <h4>Klasy afiksów</h4>
       <div class="lgr"><b class="t-slaby">słaby</b><span>55%</span></div><div class="lgr"><b class="t-dobry">dobry</b><span>35%</span></div><div class="lgr"><b class="t-znakomity">znakomity</b><span>7%</span></div><div class="lgr"><b class="t-boski">boski</b><span>3%</span></div>
-      <h4>Zestaw</h4><div class="lgr"><span>Rzadkie lub unikaty z awatarem tej samej osoby — punkty za każde podbicie piłeczki:</span></div><div class="lgr"><b style="color:#3fd13f">2 szt.</b><span>+0.2 pkt</span></div><div class="lgr"><b style="color:#3fd13f">3 szt.</b><span>+0.4 pkt</span></div><div class="lgr"><b style="color:#3fd13f">4 szt.</b><span>+0.6 pkt · pełny zestaw</span></div>
+      ${SUFIT ? '<h4>Sufit</h4><div class="lgr"><span>Czerwona linia u góry ekranu: piłeczka, która w nią uderzy, wybucha i gra się kończy. Nie podbijaj jej tuż pod sufitem.</span></div>' : ''}<h4>Zestaw</h4><div class="lgr"><span>Rzadkie lub unikaty z awatarem tej samej osoby — punkty za każde podbicie piłeczki:</span></div><div class="lgr"><b style="color:#3fd13f">2 szt.</b><span>+0.2 pkt</span></div><div class="lgr"><b style="color:#3fd13f">3 szt.</b><span>+0.4 pkt</span></div><div class="lgr"><b style="color:#3fd13f">4 szt.</b><span>+0.6 pkt · pełny zestaw</span></div>
       <h4>Magic find</h4><div class="lgr"><span>Zwiększa szansę na magiczne i rzadkie kosztem normalnych. Rośnie z wynikiem gry. Afiks Szczęśliwy dodatkowo zwiększa szansę na rzadkie i unikaty o podany procent.</span></div>
       <p class="mute" style="font-size:12px;margin:10px 0 0">Przedmiot może wypaść po grze od 15 pkt — im więcej punktów, tym częściej i tym rzadszy.</p>
       <div class="row" style="margin-top:12px"><button data-a="close">Zamknij</button></div></div>`;
@@ -579,6 +585,8 @@
         // mocne odbicie od boków i sufitu (z minimalną prędkością), żeby nie dało się trzymać piłeczki w rogu
         if (f.x < A.l) { f.x = A.l; f.vx = Math.max(Math.abs(f.vx), 180 * game.k); }
         if (f.x > A.r - f.size) { f.x = A.r - f.size; f.vx = -Math.max(Math.abs(f.vx), 180 * game.k); }
+        // przed drugim podbiciem sufit jeszcze odbija — start tuż pod górą jest bezpieczny
+        if (f.y < 0 && SUFIT && game.hits > 1) { boomFx(f.x + f.size / 2, f.size / 2); game.boom = true; endGame(); break; }
         if (f.y < 0) { f.y = 0; f.vy = Math.max(Math.abs(f.vy) * .8, 260 * game.k); }
         if (!TOUCH && (H < MIN_H || W < H * ASPECT)) { game = null; document.body.classList.remove('playing'); hideMult(); hud.hidden = true; f.el.remove(); flakes.clear(); flash('Okno za małe — gra przerwana'); break; }
         if (f.y > H + 10) {
