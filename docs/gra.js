@@ -66,7 +66,7 @@
   #mult .bs{display:inline-block;font-size:.3em;color:#fff;border-radius:999px;padding:.05em .45em;margin-left:.15em;vertical-align:-.1em;letter-spacing:0;opacity:.9}
   
   @keyframes mpulse{0%{opacity:.13;transform:translate(-50%,-50%) scale(1)}25%{opacity:.4;transform:translate(-50%,-50%) scale(1.12)}100%{opacity:.13;transform:translate(-50%,-50%) scale(1)}}
-  #edge{position:fixed;inset:0;z-index:38;pointer-events:none;opacity:0;transition:opacity .6s;will-change:opacity;background:radial-gradient(ellipse at center,transparent 55%,rgba(255,90,20,.45) 100%)}
+  #edge{position:fixed;left:0;top:0;width:160px;height:160px;transform-origin:0 0;z-index:38;pointer-events:none;opacity:0;transition:opacity .6s;will-change:opacity,transform;background:radial-gradient(ellipse at center,transparent 55%,rgba(255,90,20,.45) 100%)}
   #arenaEdges{display:none;position:fixed;top:0;bottom:0;z-index:38;pointer-events:none;border-left:2px dashed rgba(255,140,60,.25);border-right:2px dashed rgba(255,140,60,.25)}
   #sufit{display:none;position:fixed;left:0;right:0;top:0;height:4px;z-index:38;pointer-events:none;background:repeating-linear-gradient(90deg,#e5484d 0 14px,transparent 14px 24px);box-shadow:0 0 10px rgba(229,72,77,.7)}body.playing #sufit{display:block}
   .boomfx{position:fixed;z-index:61;pointer-events:none;border-radius:50%;background:radial-gradient(#fff3b0,#ff7a1a 45%,rgba(229,72,77,0) 70%);transform:translate(-50%,-50%);animation:boom .6s ease-out forwards}
@@ -219,7 +219,7 @@
     const html = `<span class="lv">x${lv}</span>` + (bEff > 1 ? `<span class="bs" style="background:${BADGE[b] || '#d9264a'}">×${fm(bEff)}</span>` : ''); if (multEl.innerHTML !== html) multEl.innerHTML = html; // bez zbędnego przerysowania dużego napisu
     multEl.style.color = `hsl(${45 - heat * 45}, 95%, ${60 - heat * 10}%)`;
     if (!TOUCH) { const A = arena(), css = `display:block;left:${A.l}px;width:${A.r - A.l}px`; if (edgesEl.style.cssText !== css) edgesEl.style.cssText = css; }
-    multEl.classList.add('on'); edgeEl.style.opacity = String(heat * .9);
+    multEl.classList.add('on'); const es = `scale(${innerWidth / 160},${innerHeight / 160})`; if (edgeEl.style.transform !== es) edgeEl.style.transform = es; edgeEl.style.opacity = String(heat * .9); // poświata rysowana 160×160 i rozciągana — tanio przy każdej zmianie poziomu
     // animacje przez Web Animations (bez wymuszania przeliczenia układu strony w trakcie gry)
     if (pulse) multEl.animate([{ opacity: .13, transform: 'translate(-50%,-50%) scale(4)' }, { opacity: .4, transform: 'translate(-50%,-50%) scale(4.48)', offset: .25 }, { opacity: .13, transform: 'translate(-50%,-50%) scale(4)' }], { duration: 900, easing: 'ease-out' });
   }
