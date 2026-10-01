@@ -25,5 +25,20 @@ Licznik postów z forum d2jsp (sekcja Polska) + gra „Piłeczka”. Strona: htt
 ## Inne zasady
 - Boty pushują dane co ~2 h: ZAWSZE `git pull --rebase` przed commitem i przed rozpoczęciem pracy.
 - Każda zmiana strony: podbij wersję w tytule o 0.1 i podaj ją użytkownikowi.
-- Piłeczka: ekwipunek/afiksy tylko na wersji testowej (/test/, pileczka-test); produkcji nie wdrażać bez zgody.
 - Lokalne liczenie postów z X dni: `E:\Vibe coding\_d2jsp-wiadomosci\dane\licz.mjs`.
+- Przed zmianą wytykaj nielogiczne liczby/zasady w prośbie (np. „zestaw” z 1 sztuki). Pytanie „czemu?” = wyjaśnij, nie zmieniaj.
+
+## Gra „Piłeczka” (stan na 1.10.2026)
+- Kod: `docs/gra.js` (wspólny dla obu stron; `TEST` = ścieżka `/test/`, `EQON = true`), serwer: Cloud Function `gcp/pileczka/main.py` (gen2, us-east1, python312, entry `pileczka`). Funkcje: `pileczka` (prod, kolekcje `pileczka`, `ekwipunek`) i `pileczka-test` (`SUFFIX=_test`). Firestore w tym samym projekcie.
+- Wdrożenie (reguły allow są w `E:\Vibe coding\.claude\settings.local.json`): `gcloud functions deploy pileczka-test --gen2 --region=us-east1 --runtime=python312 --entry-point=pileczka --source=<gcp/pileczka> --trigger-http --allow-unauthenticated --update-env-vars SUFFIX=_test --quiet`, prod to samo bez env. Najpierw test; prod gdy użytkownik napisze „daj na official”. Wdrożenia czasem wiszą na DEPLOYING kilkanaście minut (409 „unable to queue” = poczekaj).
+- Zmiany robimy najpierw na /test/ (wersja `x.y-test` w `docs/test/index.html`), potem przenosimy na prod (`docs/index.html`). Prod index = test index bez paska „WERSJA TESTOWA”, ścieżki `data.json`/`gra.js` bez `../`.
+- Ekwipunek i przedmioty są już na prod; „Narzędzie testowe” (/grant) tylko na /test/ (serwer też odrzuca poza testem).
+- Punkty za podbicie = (piłeczka + Łowcy + premia top10 [+ Hełm]) × mnożnik poziomu + przedmioty (implicit, Ostry, zestaw, Serii, nabity Zuchwały). Wynik pokazywany w pełnych liczbach, liczony z ułamkami.
+- Piłeczki: 3 rozmiary x1.0 / x1.3 / x1.7; do 9 naraz, nowa co 1,75 s; bez powtórek awatarów. Lider 24 h: 15% szans, może lecieć 2× naraz, złota ramka + korona.
+- Premia top 10 z 24 h do mnożnika piłeczki dla wszystkich: 1. +0.6x, 2. +0.4x, 3. +0.3x, 4–10 +0.1x (dopiski w tabeli tylko w widoku 24 h). Strona domyślnie pokazuje 24 h; wykres godzinowy dla zakresu ≤ 2 dni.
+- Rzadkości: normalny/magiczny(1 afiks)/rzadki(2)/unikat (+0.3x, 1 boski + 2 losowe + unikatowa cecha). Unikaty tylko: Hełm Weterana (podwaja premię top10, fioletowa korona na plakietce) i Kapcie Moderatora (raz na grę pudło = podbicie). Opisów unikatów NIE pokazywać w legendzie (bez spoilerów).
+- Szanse (serwer `R_PTS/M_PTS/U_PTS`, klient `chances()` — muszą być zgodne): rzadki 0.25→1→2→4→6→10→15% przy 15/50/100/200/300/600/1000 pkt, magiczny 14→45%, unikat 0.3% od 50 pkt do 1.8% przy 1000. Drop = wynik/80.
+- Klasy afiksów: słaby 55 / dobry 35 / znakomity 7 / boski 3 (waga dzielona na afiksy klasy). Boskie: Ostry, Serii, Stróża (odbicie od dołu). Szczęśliwy 30–60% względnie do szans na rzadki i unikat (max +100%). Wytrwałości: piłeczka przyspiesza 5–15% wolniej. Brak afiksów z minusami (użytkownik nie chce).
+- Zestaw (rzadkie/unikaty z awatarem tej samej osoby): 2/3/4 szt. = +0.2/+0.4/+0.6 pkt za podbicie (+ ukryte odbicie przy 4).
+- Decyzja o dropie tylko w oknie końca gry (zamknięcie = przepada; normalny bez pytania); normalny przy lepszym założonym odrzucany automatycznie; pending wygasa po 10 min.
+- Ranking: najlepsza pojedyncza gra na nick (nie suma), nick min. 3 znaki, emoji urządzenia z rekordu, klik w gracza = ekwipunek z gry rekordowej.
