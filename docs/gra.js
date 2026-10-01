@@ -3,6 +3,8 @@
   // Wersja testowa (/test/): osobna funkcja i kolekcje; ekwipunek włączony tylko tam
   const TEST = location.pathname.includes('/test/');
   const SUFIT = location.pathname.includes('/test/'); // test: sufit wysadza piłeczkę (koniec gry) — zamiast łagodnego odbicia
+  const SAFE_HITS = 3; // test: pierwsze 3 podbicia lekkie i sufit wtedy tylko odbija
+  const TEST_SAVES = SUFIT ? Math.min(20, Number(new URLSearchParams(location.search).get('odbicia')) || 0) : 0; // test: ?odbicia=3 na start
   const EQON = true; // ekwipunek i przedmioty włączone także na oficjalnej stronie (narzędzie testowe tylko na /test/)
   const API = TEST ? 'https://pileczka-test-i3odn44x6q-ue.a.run.app' : 'https://pileczka-i3odn44x6q-ue.a.run.app';
   const COLORS = ['#e0a526', '#5b8def', '#d9667a', '#4fb286', '#9b5de5', '#e07a3f'];
@@ -220,7 +222,7 @@
     }
     for (const o of flakes) if (o !== f) o.el.remove();
     flakes.clear(); flakes.add(f);
-    game = { f, score: 0, hits: 0, lvl: 0, k: scaleK(), base: f.base || 1, B, per: PER_LEVEL, saves: B.guardian, lowRun: 0, zuchAcc: 0, bans: B.kapcie, saveGap: 50, nextSave: SUFIT ? 50 : Infinity, topB: f.top || 0, crown: B.korona ? f.top || 0 : 0 }; f.el.classList.add('ball'); showMult(0, false);
+    game = { f, score: 0, hits: 0, lvl: 0, k: scaleK(), base: f.base || 1, B, per: PER_LEVEL, saves: B.guardian + TEST_SAVES, lowRun: 0, zuchAcc: 0, bans: B.kapcie, saveGap: 50, nextSave: SUFIT ? 50 : Infinity, topB: f.top || 0, crown: B.korona ? f.top || 0 : 0 }; f.el.classList.add('ball'); showMult(0, false);
     document.body.classList.add('playing'); getSelection()?.removeAllRanges(); const pie = document.getElementById('pie'); if (pie) pie.hidden = true; f.vx = 0; f.vy = 0;
     hit(f, e); if (SUFIT) flash('Uwaga: sufit wysadza piłeczkę 💥');
   }
@@ -248,7 +250,7 @@
     const r = f.el.getBoundingClientRect(), off = ((e.clientX - (r.left + r.width / 2)) / (r.width / 2)) || 0;
     // podbicie nie wyrzuca ponad górną krawędź: siła ograniczona tak, żeby szczyt lotu był ok. 12 px pod górą ekranu
     const room = Math.max(0, f.y - 12), vMax = Math.sqrt(2 * G * (1 - game.B.ciezki) * game.k * room), jump = JUMP * (1 - game.B.stlum);
-    f.vy = SUFIT && game.hits > 1 ? -jump * game.k : -Math.max(jump * game.k * .3, Math.min(jump * game.k, vMax)); // test: pełna siła, sufit = wybuch (poza pierwszym podbiciem — grę można zacząć tuż pod sufitem)
+    f.vy = SUFIT && game.hits > SAFE_HITS ? -jump * game.k : -Math.max(jump * game.k * .3, Math.min(jump * game.k, vMax)); // test: pełna siła, sufit = wybuch (poza pierwszymi SAFE_HITS podbiciami)
     f.vx = Math.max(-420, Math.min(420, -off * 320 + (Math.random() - .5) * 120)) * game.k * (1 - game.B.zreczny);
     f.vr = -off * 360;
     const P = partsOf(game);
@@ -587,8 +589,8 @@
         // mocne odbicie od boków i sufitu (z minimalną prędkością), żeby nie dało się trzymać piłeczki w rogu
         if (f.x < A.l) { f.x = A.l; f.vx = Math.max(Math.abs(f.vx), 180 * game.k); }
         if (f.x > A.r - f.size) { f.x = A.r - f.size; f.vx = -Math.max(Math.abs(f.vx), 180 * game.k); }
-        // przed drugim podbiciem sufit jeszcze odbija — start tuż pod górą jest bezpieczny
-        if (f.y < 0 && SUFIT && game.hits > 1) { boomFx(f.x + f.size / 2, f.size / 2); game.boom = true; endGame(); break; }
+        // przez pierwsze SAFE_HITS podbić sufit jeszcze odbija — start tuż pod górą jest bezpieczny
+        if (f.y < 0 && SUFIT && game.hits > SAFE_HITS) { boomFx(f.x + f.size / 2, f.size / 2); game.boom = true; endGame(); break; }
         if (f.y < 0) { f.y = 0; f.vy = Math.max(Math.abs(f.vy) * .8, 260 * game.k); }
         if (!TOUCH && (H < MIN_H || W < H * ASPECT)) { game = null; document.body.classList.remove('playing'); hideMult(); hud.hidden = true; f.el.remove(); flakes.clear(); flash('Okno za małe — gra przerwana'); break; }
         if (f.y > H + 10) {
