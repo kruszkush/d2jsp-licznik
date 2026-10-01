@@ -21,7 +21,7 @@ const SOURCE = process.env.D2_SOURCE || (process.platform === 'win32' ? 'pc' : '
 const src = sourceState(st, SOURCE);
 const report = (status, reason = '') => {
   Object.assign(src, { lastAttempt: START, status, reason, finishedAt: Date.now() });
-  (data.collection ||= { sources: {} }).sources[SOURCE] = { ...src };
+  data.collection = { sources: structuredClone(st.sources) };
 };
 if (src.blockedUntil && START < src.blockedUntil && !process.env.FORCE) {
   report('paused');

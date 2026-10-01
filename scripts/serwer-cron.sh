@@ -3,8 +3,8 @@
 # Chrome ma trwały profil (~/.chrome-d2jsp), więc zapamiętuje przejście sprawdzenia przeglądarki jak u zwykłego użytkownika.
 set -u
 cd "$HOME/d2jsp-licznik" || exit 1
-# GitHub jest źródłem prawdy: przed przebiegiem serwer dostaje dokładnie to, co w repo (dane, stan, ten skrypt),
-# niezależnie od lokalnych śmieci. Potem uruchamiamy świeżą wersję skryptu.
+# Przed przebiegiem pobieramy świeży kod i scalamy lokalny postęp z GitHubem,
+# zachowując posty oraz osobne przerwy obu źródeł. Potem uruchamiamy świeży skrypt.
 if [ -z "${D2_SYNCED:-}" ]; then
   exec 9>/tmp/d2jsp.lock; flock -n 9 || exit 0
   node scripts/sync.mjs prepare || exit 1

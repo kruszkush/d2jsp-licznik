@@ -1,5 +1,5 @@
 # Pobieranie z domowego komputera (zaplanowane zadanie Windows „d2jsp-licznik”). Osobny klon repo w E:\Vibe coding\d2jsp-licznik-bot,
-# żeby reset do GitHuba nie ruszał roboczej kopii. Chrome startuje poza ekranem, więc nic nie wyskakuje.
+# żeby automatyczna synchronizacja nie ruszała roboczej kopii. Chrome startuje poza ekranem.
 $ErrorActionPreference = 'Continue'
 $PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'  # log w UTF-8, nie UTF-16
 $dir = 'E:\Vibe coding\d2jsp-licznik-bot'
