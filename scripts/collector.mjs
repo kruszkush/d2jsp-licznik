@@ -27,7 +27,8 @@ export function topicChanged(row, previous, agoMs) {
 // ukończonego last do najnowszego posta, zanim ten fragment zostanie odczytany.
 export async function collectTopic(row, { st, lastInData, floor, timestamp, read, consume, exhausted, save, started }) {
   const old = st.topics[row.t], p = old?.pending;
-  const last = p ? p.last : (old?.last || lastInData[row.t] || 0);
+  const last = p ? p.last : (old?.last ?? lastInData[row.t] ?? 0);
+  const generation = old?.recoveryAt ? { recoveryAt: old.recoveryAt } : {};
   let max = p?.max || last, o = p?.o ?? 'last', step = p?.step || 20, title = p?.title || row.title;
   const target = { r: p ? p.r : row.r, lp: p ? p.lp : row.lp };
   while (!exhausted()) {
@@ -41,11 +42,11 @@ export async function collectTopic(row, { st, lastInData, floor, timestamp, read
     for (const post of fresh) { consume(post, row.t); max = Math.max(max, Number(post.id)); }
     o -= step;
     if (fresh.length < result.posts.length || !result.posts.length || o < 0) {
-      st.topics[row.t] = { ...target, last: max, checkedAt: started };
+      st.topics[row.t] = { ...generation, ...target, last: max, checkedAt: started };
       save();
       return { done: true, current: target.r === row.r && target.lp === row.lp };
     }
-    st.topics[row.t] = { r: old?.r ?? null, lp: old?.lp ?? null, last, checkedAt: started,
+    st.topics[row.t] = { ...generation, r: old?.r ?? null, lp: old?.lp ?? null, last, checkedAt: started,
       pending: { o, step, last, max, ...target, title } };
     save();
   }
@@ -76,8 +77,10 @@ export function mergeState(a, b) {
   const topics = { ...a.topics };
   for (const [id, v] of Object.entries(b.topics || {})) {
     const old = topics[id];
-    if (!old || Number(v.last || 0) > Number(old.last || 0) ||
-        (Number(v.last || 0) === Number(old.last || 0) && (v.checkedAt || 0) >= (old.checkedAt || 0))) topics[id] = v;
+    const newerRecovery = (v.recoveryAt || 0) > (old?.recoveryAt || 0);
+    const sameRecovery = (v.recoveryAt || 0) === (old?.recoveryAt || 0);
+    if (!old || newerRecovery || (sameRecovery && (Number(v.last || 0) > Number(old.last || 0) ||
+        (Number(v.last || 0) === Number(old.last || 0) && (v.checkedAt || 0) >= (old.checkedAt || 0))))) topics[id] = v;
   }
   const pagesByDay = { ...a.pagesByDay };
   for (const [d, n] of Object.entries(b.pagesByDay || {})) pagesByDay[d] = Math.max(pagesByDay[d] || 0, n);

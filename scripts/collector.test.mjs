@@ -60,6 +60,18 @@ test('nowe posty podczas kończenia luki wymagają kolejnego odczytu tematu', as
   assert.equal(r.done, true); assert.equal(r.current, false); assert.equal(st.topics.a.r, 9);
 });
 
+test('ponowne sprawdzanie zakresu zachowuje zerową granicę mimo nowszych postów w danych', async () => {
+  const st={topics:{a:{last:0,r:null,recoveryAt:100}}}, ids=[];
+  await collectTopic({t:'a',r:'2',lp:'u'}, {st,lastInData:{a:200},floor:10,timestamp:Number,started:101,
+    exhausted:()=>false,save(){},consume:p=>ids.push(p.id),read:async()=>({posts:[{id:'100',date:20},{id:'200',date:30}],pager:[]})});
+  assert.deepEqual(ids,['100','200']); assert.equal(st.topics.a.recoveryAt,100);
+});
+
+test('scalanie nie cofa jawnego wznowienia pobierania do starej zawyżonej granicy', () => {
+  const result=mergeState({topics:{a:{last:0,recoveryAt:100}}},{topics:{a:{last:200,checkedAt:99}}});
+  assert.equal(result.topics.a.last,0); assert.equal(result.topics.a.recoveryAt,100);
+});
+
 test('równoczesne wyniki zachowują wszystkie posty i niezależne źródła', () => {
   const data = (ids, updated, sources) => ({ posts: ids.map((id) => [String(id), 't', 'u', id]),
     users: { u: 'nick' }, topics: {}, avatars: {}, from: 1, complete: 1, updated, collection: { sources } });
