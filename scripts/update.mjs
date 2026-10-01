@@ -10,7 +10,7 @@ import { sourceState, canFinish, collectTopic, topicChanged } from './collector.
 const F = Number(process.argv[2] || 230);
 const FILE = 'docs/data.json', STATE = 'state.json';
 const B = 'https://forums.d2jsp.org/';
-const GAP = () => 5000 + Math.random() * 7000; // odstęp między podstronami: losowo 5–12 s, spokojne tempo
+const GAP = () => SOURCE === 'pc' ? 3000 + Math.random() * 3000 : 5000 + Math.random() * 7000; // PC: 3–6 s, serwer: 5–12 s
 const MAX_PAGES = 70;       // limit podstron na przebieg (reszta w następnym)
 const FLOOR_OVERLAP = 6 * 3600e3; // dla tematów bez stanu: posty od (ostatni pełny przebieg − 6 h)
 
