@@ -8,7 +8,7 @@
   const MELLOW = new URL('mellow.png', document.currentScript?.src || location.href).href; // emotka :mellow: z d2jsp (kopia w docs/)
   // test: diagnostyka płynności — ?perf=1 pokazuje na końcu gry pomiar klatek; ?bez=mult,edge,flash,hud wyłącza wybrane efekty
   const QS = new URLSearchParams(location.search), PERF = SUFIT && QS.has('perf'), BEZ = SUFIT ? (QS.get('bez') || '').split(',') : [];
-  if (BEZ.length) { const st = document.createElement('style'); st.textContent = BEZ.map((x) => ({ mult: '#mult', edge: '#edge,#arenaEdges', flash: '#lvlup', hud: '#hud' })[x]).filter(Boolean).map((x) => x + '{display:none!important}').join(''); document.head.appendChild(st); }
+  if (BEZ.length) { const st = document.createElement('style'); st.textContent = BEZ.map((x) => ({ mult: '#mult', edge: '#edge,#arenaEdges', glow: '#edge', linie: '#arenaEdges', flash: '#lvlup', hud: '#hud' })[x]).filter(Boolean).map((x) => x + '{display:none!important}').join(''); document.head.appendChild(st); }
   const perf = { frames: [], loaf: [], lvlT: [] };
   if (PERF && window.PerformanceObserver?.supportedEntryTypes?.includes('long-animation-frame')) new PerformanceObserver((l) => { if (game) for (const e of l.getEntries()) perf.loaf.push(e); }).observe({ type: 'long-animation-frame' }); // zgłasza klatki > 50 ms
   const sortedLong = () => perf.frames.filter((x) => x.d > 20).sort((a, b) => b.d - a.d).slice(0, 5).map((x) => Math.round(x.d) + (perf.lvlT.some((t) => x.t - t >= -50 && x.t - t < 400) ? ' (Szybciej)' : ''));
