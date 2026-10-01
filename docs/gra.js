@@ -50,10 +50,10 @@
   #over .row{display:flex;gap:8px;justify-content:center}
   #over button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
   #over .msg{font-size:12px;color:var(--mute);min-height:16px;margin-top:8px}
-  #mult{will-change:transform,opacity;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:39;pointer-events:none;font-weight:900;font-size:min(20vw,220px);white-space:nowrap;line-height:1;opacity:0;transition:opacity .4s,color .6s;font-variant-numeric:tabular-nums;letter-spacing:-.04em}
+  #mult{will-change:transform,opacity;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:39;pointer-events:none;font-weight:900;font-size:min(20vw,220px);white-space:nowrap;line-height:1;opacity:0;transition:opacity .4s;font-variant-numeric:tabular-nums;letter-spacing:-.04em}
   #mult.on{opacity:.13}
   #mult .bs{display:inline-block;font-size:.3em;color:#fff;border-radius:999px;padding:.05em .45em;margin-left:.15em;vertical-align:-.1em;letter-spacing:0;opacity:.9}
-  #mult.pulse{animation:mpulse .9s ease-out}
+  
   @keyframes mpulse{0%{opacity:.13;transform:translate(-50%,-50%) scale(1)}25%{opacity:.4;transform:translate(-50%,-50%) scale(1.12)}100%{opacity:.13;transform:translate(-50%,-50%) scale(1)}}
   #edge{position:fixed;inset:0;z-index:38;pointer-events:none;opacity:0;transition:opacity .6s;will-change:opacity;background:radial-gradient(ellipse at center,transparent 55%,rgba(255,90,20,.45) 100%)}
   #arenaEdges{display:none;position:fixed;top:0;bottom:0;z-index:38;pointer-events:none;border-left:2px dashed rgba(255,140,60,.25);border-right:2px dashed rgba(255,140,60,.25)}
@@ -65,7 +65,7 @@
   .savefx{position:fixed;left:0;right:0;bottom:0;height:40vh;z-index:61;pointer-events:none;background:linear-gradient(transparent,rgba(199,134,74,.55));animation:svf .9s ease-out forwards}
   @keyframes svf{from{opacity:1}to{opacity:0}}
   #lvlup{position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:60;font-weight:800;font-size:20px;color:#ff7a1a;text-shadow:0 0 10px rgba(255,120,30,.6);opacity:0;pointer-events:none}
-  #lvlup.go{animation:lvl 1.1s ease-out}
+  #lvlup{will-change:transform,opacity}
   @keyframes lvl{0%{opacity:0;transform:translate(-50%,10px) scale(.8)}20%{opacity:1;transform:translate(-50%,0) scale(1.1)}100%{opacity:0;transform:translate(-50%,-18px) scale(1)}}
   #snowBtn{position:fixed;left:12px;bottom:12px;z-index:45;font-size:12px;padding:4px 10px;opacity:.75}
   body.playing{user-select:none;-webkit-user-select:none}
@@ -199,11 +199,12 @@
   function showMult(lvl, pulse) {
     const m = totalMult(), heat = Math.min(1, (m - 1) / 3);
     const lv = fm(multOf(lvl, game ? game.B : B)), b = game ? game.base : 1, bEff = game ? partsOf(game).b : 1;
-    multEl.innerHTML = `<span class="lv">x${lv}</span>` + (bEff > 1 ? `<span class="bs" style="background:${BADGE[b] || '#d9264a'}">×${fm(bEff)}</span>` : '');
+    const html = `<span class="lv">x${lv}</span>` + (bEff > 1 ? `<span class="bs" style="background:${BADGE[b] || '#d9264a'}">×${fm(bEff)}</span>` : ''); if (multEl.innerHTML !== html) multEl.innerHTML = html; // bez zbędnego przerysowania dużego napisu
     multEl.style.color = `hsl(${45 - heat * 45}, 95%, ${60 - heat * 10}%)`;
-    if (!TOUCH) { const A = arena(); edgesEl.style.cssText = `display:block;left:${A.l}px;width:${A.r - A.l}px`; }
+    if (!TOUCH) { const A = arena(), css = `display:block;left:${A.l}px;width:${A.r - A.l}px`; if (edgesEl.style.cssText !== css) edgesEl.style.cssText = css; }
     multEl.classList.add('on'); edgeEl.style.opacity = String(heat * .9);
-    if (pulse) { multEl.classList.remove('pulse'); void multEl.offsetWidth; multEl.classList.add('pulse'); }
+    // animacje przez Web Animations (bez wymuszania przeliczenia układu strony w trakcie gry)
+    if (pulse) multEl.animate([{ opacity: .13, transform: 'translate(-50%,-50%) scale(1)' }, { opacity: .4, transform: 'translate(-50%,-50%) scale(1.12)', offset: .25 }, { opacity: .13, transform: 'translate(-50%,-50%) scale(1)' }], { duration: 900, easing: 'ease-out' });
   }
   const edgesEl = document.createElement('div'); edgesEl.id = 'arenaEdges'; document.body.appendChild(edgesEl);
   const hideMult = () => { edgesEl.style.display = 'none'; multEl.classList.remove('on', 'pulse'); edgeEl.style.opacity = '0'; };
@@ -213,7 +214,7 @@
   function saveFx() { const e = document.createElement('div'); e.className = 'savefx'; document.body.appendChild(e); setTimeout(() => e.remove(), 900); }
   const flashEl = document.createElement('div'); flashEl.id = 'lvlup'; document.body.appendChild(flashEl);
   let lastFlash = 0; const BRAV_MAX = 1.5, ZUCH_MAX = 0.6; // sufity premii z serii Brawurowego i nabitego Zuchwałego
-  function flash(t) { lastFlash = performance.now(); flashEl.textContent = t; flashEl.classList.remove('go'); void flashEl.offsetWidth; flashEl.classList.add('go'); }
+  function flash(t) { lastFlash = performance.now(); flashEl.textContent = t; flashEl.animate([{ opacity: 0, transform: 'translate(-50%,10px) scale(.8)' }, { opacity: 1, transform: 'translate(-50%,0) scale(1.1)', offset: .2 }, { opacity: 0, transform: 'translate(-50%,-18px) scale(1)' }], { duration: 1100, easing: 'ease-out' }); }
   // Na komputerze gra tylko w dużym oknie — w małym/wąskim oknie jest dużo łatwiej (mało miejsca na ucieczkę piłeczki)
   // Pole gry ma stałe proporcje (szerokość = 1,5 × wysokość, wyśrodkowane), więc na każdym monitorze jest tak samo trudno
   const ASPECT = 1.5, MIN_H = 600;
@@ -236,7 +237,7 @@
   });
   function hit(f, e) {
     if (!game || game.f !== f) return;
-    if (game.hover || game.hoverArm) { game.hover = 0; game.hoverArm = false; game.bubble?.remove(); game.bubble = null; }
+    if (game.hover || game.rise) { game.hover = 0; game.rise = null; game.bubble?.remove(); game.bubble = null; }
     game.hits++;
     const up = game.hits % game.per === 0 && game.hits > 0;
     // Brawurowy: podbicie w dolnych 15% ekranu daje dodatkowy mnożnik; Echa: szansa, że podbicie liczy się podwójnie
@@ -590,10 +591,11 @@
     acc += dt; if (acc > 1.75) { acc = 0; spawn(); } // o 25% częściej niż dawniej (2.2 s)
     for (const f of flakes) {
       if (game && game.f === f) {
-        const sd = dt * speedOf(game.lvl, game.B.wytrw) * (game.slow > t || game.hoverArm ? .45 : 1); // po odbiciu od dołu chwilowe spowolnienie
+        const sd = dt * speedOf(game.lvl, game.B.wytrw) * (game.slow > t ? .45 : 1); // po odbiciu od dołu chwilowe spowolnienie
         // test: po odbiciu od dołu piłeczka zatrzymuje się na szczycie i czeka na kliknięcie (chwila przerwy); po 1.5 s dymek :mellow:
-        if (game.hoverArm && f.vy >= 0) { game.hoverArm = false; game.hover = t; f.vx = 0; f.vy = 0; f.vr = 0; f.rot = 0; }
-        if (game.hover) { if (!game.bubble && t - game.hover > 1500) { game.bubble = document.createElement('div'); game.bubble.className = 'mellow'; game.bubble.innerHTML = '<img src="' + MELLOW + '" alt=":mellow:">'; f.el.appendChild(game.bubble); } }
+        if (game.rise) { const p = Math.min(1, (t - game.rise.t0) / 3000); f.y = game.rise.y0 - game.rise.dy * (1 - (1 - p) ** 3); f.rot *= .97; // wznoszenie coraz wolniej (ease-out)
+          if (p >= 1) { game.rise = null; game.hover = t; f.vx = 0; f.vy = 0; f.vr = 0; } }
+        if (game.hover || game.rise) { if (game.hover && !game.bubble && t - game.hover > 1500) { game.bubble = document.createElement('div'); game.bubble.className = 'mellow'; game.bubble.innerHTML = '<img src="' + MELLOW + '" alt=":mellow:">'; f.el.appendChild(game.bubble); } }
         else { f.vy += G * (1 - game.B.ciezki) * game.k * sd; f.x += f.vx * sd; f.y += f.vy * sd; f.rot += f.vr * sd; }
         const A = TOUCH ? { l: 0, r: W } : arena();
         // mocne odbicie od boków i sufitu (z minimalną prędkością), żeby nie dało się trzymać piłeczki w rogu
@@ -604,7 +606,7 @@
         if (f.y < 0) { f.y = 0; f.vy = Math.max(Math.abs(f.vy) * .8, 260 * game.k); }
         if (!TOUCH && (H < MIN_H || W < H * ASPECT)) { game = null; document.body.classList.remove('playing'); hideMult(); hud.hidden = true; f.el.remove(); flakes.clear(); flash('Okno za małe — gra przerwana'); break; }
         if (f.y > H + 10) {
-          if (game.saves > 0) { game.saves--; f.y = H - f.size; f.vx = 0; f.vy = -Math.sqrt(2 * G * (1 - game.B.ciezki) * game.k * H * .55); if (SUFIT) game.hoverArm = true; else game.slow = t + 1600; // test: wolny lot aż do kliknięcia lub zawisu (bez nagłego powrotu tempa w locie) // wysoko, prosto w górę i wolniej — łatwo kliknąć
+          if (game.saves > 0) { game.saves--; f.y = H - f.size; f.vx = 0; f.vy = -Math.sqrt(2 * G * (1 - game.B.ciezki) * game.k * H * .55); if (SUFIT) { game.rise = { t0: t, y0: f.y, dy: H * .55 }; f.vy = 0; } else game.slow = t + 1600; // test: wznoszenie przez 3 s coraz wolniej, potem zawis; kliknięcie w trakcie = normalne podbicie // wysoko, prosto w górę i wolniej — łatwo kliknąć
             flash(`🛡 Odbicie od dołu zużyte! Zostało w tej grze: ${game.saves}`); saveFx(); drawHud(); }
           else { endGame(); break; }
         }
