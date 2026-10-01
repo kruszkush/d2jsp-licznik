@@ -590,7 +590,7 @@
     acc += dt; if (acc > 1.75) { acc = 0; spawn(); } // o 25% częściej niż dawniej (2.2 s)
     for (const f of flakes) {
       if (game && game.f === f) {
-        const sd = dt * speedOf(game.lvl, game.B.wytrw) * (game.slow > t ? .45 : 1); // po odbiciu od dołu chwilowe spowolnienie
+        const sd = dt * speedOf(game.lvl, game.B.wytrw) * (game.slow > t || game.hoverArm ? .45 : 1); // po odbiciu od dołu chwilowe spowolnienie
         // test: po odbiciu od dołu piłeczka zatrzymuje się na szczycie i czeka na kliknięcie (chwila przerwy); po 1.5 s dymek :mellow:
         if (game.hoverArm && f.vy >= 0) { game.hoverArm = false; game.hover = t; f.vx = 0; f.vy = 0; f.vr = 0; f.rot = 0; }
         if (game.hover) { if (!game.bubble && t - game.hover > 1500) { game.bubble = document.createElement('div'); game.bubble.className = 'mellow'; game.bubble.innerHTML = '<img src="' + MELLOW + '" alt=":mellow:">'; f.el.appendChild(game.bubble); } }
@@ -604,7 +604,7 @@
         if (f.y < 0) { f.y = 0; f.vy = Math.max(Math.abs(f.vy) * .8, 260 * game.k); }
         if (!TOUCH && (H < MIN_H || W < H * ASPECT)) { game = null; document.body.classList.remove('playing'); hideMult(); hud.hidden = true; f.el.remove(); flakes.clear(); flash('Okno za małe — gra przerwana'); break; }
         if (f.y > H + 10) {
-          if (game.saves > 0) { game.saves--; f.y = H - f.size; f.vx = 0; f.vy = -Math.sqrt(2 * G * (1 - game.B.ciezki) * game.k * H * .55); if (SUFIT) game.hoverArm = true; else game.slow = t + 1600; // test: zamiast spowolnienia (szarpało przy powrocie tempa) płynny lot i zawis na szczycie // wysoko, prosto w górę i wolniej — łatwo kliknąć
+          if (game.saves > 0) { game.saves--; f.y = H - f.size; f.vx = 0; f.vy = -Math.sqrt(2 * G * (1 - game.B.ciezki) * game.k * H * .55); if (SUFIT) game.hoverArm = true; else game.slow = t + 1600; // test: wolny lot aż do kliknięcia lub zawisu (bez nagłego powrotu tempa w locie) // wysoko, prosto w górę i wolniej — łatwo kliknąć
             flash(`🛡 Odbicie od dołu zużyte! Zostało w tej grze: ${game.saves}`); saveFx(); drawHud(); }
           else { endGame(); break; }
         }
