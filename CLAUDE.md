@@ -7,6 +7,7 @@ Licznik postów z forum d2jsp (sekcja Polska) + gra „Piłeczka”. Strona: htt
 - `E:\Vibe coding\d2jsp-licznik-bot` — celowo osobny klon dla zadania Windows `d2jsp-licznik` (`scripts/pc-cron.vbs` → `pc-cron.ps1`); sync przed każdym przebiegiem, nie edytować ręcznie. Log: `E:\Vibe coding\_logi\d2jsp-licznik-bot.log`.
 - Serwer GCP: projekt `rich-chimera-344319`, VM `d2jsp`, strefa `us-east1-b`, użytkownik `d2jsp-licznik`, repo `/home/d2jsp-licznik/d2jsp-licznik`, skrypt `scripts/serwer-cron.sh`.
 - Oba źródła (`pc`, `server`) publikują do tego samego repo; automat co ok. 2 h.
+- PC = główne źródło. Serwer (IP chmury → częste wyzwania Cloudflare) to zapas: `serwer-cron.sh` pomija przebieg, gdy `pcHealthy` (PC bez blokady i `okAt` < 4 h; `scripts/pc-zdrowy.mjs`). `FORCE=1` wymusza. Serwer po blokadzie: stała przerwa 1,5 h.
 
 ## Zasady, których nie łamać (naprawy Codexa, 1.10.2026)
 - Blokada/backoff/status są osobne per źródło w `state.json.sources` — blokada Cloudflare serwera nie może zatrzymywać PC (wcześniej wspólny stan zatrzymał oba).

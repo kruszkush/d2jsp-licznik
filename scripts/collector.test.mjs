@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { sourceState, canFinish, collectTopic, mergeData, mergeState, topicChanged } from './collector.mjs';
+import { sourceState, canFinish, collectTopic, mergeData, mergeState, topicChanged, pcHealthy } from './collector.mjs';
 
 test('blokada serwera nie zatrzymuje komputera; migracja zachowuje przerwę', () => {
   const st = { topics: {}, blockedUntil: 123456, backoff: 8 };
@@ -82,4 +82,13 @@ test('równoczesne wyniki zachowują wszystkie posty i niezależne źródła', (
   const state = mergeState({ topics: { t: { last: 3 } }, sources: { pc: { lastAttempt: 2, blockedUntil: 0 } } },
     { topics: { t: { last: 2 } }, sources: { server: { lastAttempt: 3, blockedUntil: 99 } } });
   assert.equal(state.topics.t.last, 3); assert.equal(state.sources.pc.blockedUntil, 0); assert.equal(state.sources.server.blockedUntil, 99);
+});
+
+test('serwer pomija przebieg tylko przy sprawnym, świeżym PC', () => {
+  const now = 10 * 3600e3, st = (pc) => ({ sources: { pc } });
+  assert.equal(pcHealthy(st({ okAt: now - 3600e3, blockedUntil: 0 }), now), true);
+  assert.equal(pcHealthy(st({ okAt: now - 3600e3, blockedUntil: now + 1 }), now), false, 'PC zablokowany');
+  assert.equal(pcHealthy(st({ okAt: now - 5 * 3600e3, blockedUntil: 0 }), now), false, 'PC nieaktualny');
+  assert.equal(pcHealthy(st({ finishedAt: now, status: 'blocked' }), now), false, 'brak okAt');
+  assert.equal(pcHealthy({ sources: {} }, now), false);
 });

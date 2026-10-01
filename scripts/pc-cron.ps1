@@ -7,6 +7,9 @@ $log = 'E:\Vibe coding\_logi\d2jsp-licznik-bot.log'
 New-Item -ItemType Directory -Force (Split-Path $log) | Out-Null
 if (-not (Test-Path $dir)) { git clone -q https://github.com/kruszkush/d2jsp-licznik.git $dir *>> $log }
 Set-Location $dir
+# Jeden przebieg naraz (harmonogram + start po włączeniu komputera mogą się nałożyć)
+$mutex = New-Object System.Threading.Mutex($false, 'Globald2jsp-licznik')
+if (-not $mutex.WaitOne(0)) { exit 0 }
 git config user.name 'kruszkush'; git config user.email 'kruszkush@users.noreply.github.com'
 node scripts/sync.mjs prepare *>> $log
 if ($LASTEXITCODE -ne 0) { "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') błąd synchronizacji" | Out-File -Append -Encoding utf8 $log; exit 1 }

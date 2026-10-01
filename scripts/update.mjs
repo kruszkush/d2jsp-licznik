@@ -137,11 +137,13 @@ try {
   if (complete) { data.complete = START; src.backoff = 0; src.blockedUntil = 0; }
 } catch (e) {
   if (!(e instanceof Blocked)) throw e;
-  src.backoff = Math.min(8, (src.backoff || 1) * 2); src.blockedUntil = Date.now() + src.backoff * 3600e3;
+  // serwer jest tylko zapasem (rusza, gdy PC nie działa) — stała krótka przerwa zamiast eskalacji do 8 h
+  src.backoff = SOURCE === 'server' ? 1.5 : Math.min(8, (src.backoff || 1) * 2); src.blockedUntil = Date.now() + src.backoff * 3600e3;
   reason = `${e.message} — przerwa ${src.backoff} h`;
 }
 if (!complete && !reason) reason = 'pozostały tematy do uzupełnienia';
 report(complete ? 'complete' : src.blockedUntil > Date.now() ? 'blocked' : 'partial', reason);
+if (src.status !== 'blocked') src.okAt = Date.now(); // udana próba bez blokady (patrz pcHealthy)
 const day = new Date().toISOString().slice(0, 10); (st.pagesByDay ||= {})[day] = (st.pagesByDay[day] || 0) + pages;
 save(); await browser.close();
 console.log(`${complete ? 'KOMPLET' : 'NIEDOKOŃCZONE: ' + reason} · podstron ${pages} · dodano ${added} · razem ${data.posts.length}`);

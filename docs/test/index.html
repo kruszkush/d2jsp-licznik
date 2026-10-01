@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Licznik postów d2jsp 8.0-test</title>
+<title>Licznik postów d2jsp 8.1-test</title>
 <style>
 :root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e4e2dc;--acc:#b4441f;--bar:#d9825f;
  --gold:#c9961a;--gold2:#f3d46b;--goldbg:#fff8e3;--goldline:#efd89a;--silver:#9aa0a6;--bronze:#b3713f}
@@ -184,7 +184,7 @@ aside{position:sticky;top:16px}
 </svg>
 <div class="wrap">
 <main>
-<h1>Licznik postów — d2jsp Polska <span class="ver">8.0-test</span></h1>
+<h1>Licznik postów — d2jsp Polska <span class="ver">8.1-test</span></h1>
 <p class="sub" id="sub">Ładowanie danych…</p>
 
 <div class="ranges" id="ranges">
@@ -312,8 +312,10 @@ function updateNote() {
   const sources = Object.values(D.collection?.sources || {}), notes = [];
   if (now - up.getTime() > 3 * 3600e3) notes.push('aktualizacja opóźniona');
   if ((D.complete || 0) < up.getTime() - 15 * 60e3) notes.push('dane mogą być niepełne — trwa uzupełnianie');
+  // ostrzeżenie tylko, gdy żadne źródło nie działa (PC nieaktualny > 4 h też się nie liczy)
+  const alive = sources.filter((s) => !(s.blockedUntil > now) && now - (s.okAt || s.finishedAt || 0) < 4 * 3600e3);
   const paused = sources.filter((s) => s.blockedUntil > now);
-  if (paused.length) notes.push(`przerwa ${paused.length < sources.length ? 'jednego źródła' : 'pobierania'} do ${new Date(Math.min(...paused.map((s) => s.blockedUntil))).toLocaleString('pl-PL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}`);
+  if (sources.length && !alive.length) notes.push(paused.length ? `przerwa pobierania do ${new Date(Math.min(...paused.map((s) => s.blockedUntil))).toLocaleString('pl-PL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}` : 'pobieranie wstrzymane');
   const c = P.w.of(now);
   $('raceNote').innerHTML = `Koniec: niedziela 21:00 (za ${until(c.end)})<br><b>Ostatnia aktualizacja:</b> ${when}<br>${notes.length ? notes.join(' · ') + '<br>' : ''}Automatyczne sprawdzanie co ok. 2 h.`;
 }

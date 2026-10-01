@@ -8,6 +8,13 @@ export function sourceState(st, source) {
   return st.sources[source] ||= { blockedUntil: 0, backoff: 0 };
 }
 
+// PC jest głównym źródłem; serwer (IP chmury, częste wyzwania Cloudflare) rusza tylko, gdy PC
+// nie miał udanej próby bez blokady w ciągu `within` ms albo jest teraz w przerwie po blokadzie.
+export function pcHealthy(st, now = Date.now(), within = 4 * 3600e3) {
+  const pc = st.sources?.pc;
+  return !!pc && !(pc.blockedUntil > now) && now - (pc.okAt || 0) < within;
+}
+
 export function canFinish(rows, topics, floor, agoMs) {
   return rows.every((r) => topics[r.t] && !topics[r.t].pending && agoMs(r.ago) != null && agoMs(r.ago) < floor);
 }
