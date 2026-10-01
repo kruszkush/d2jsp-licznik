@@ -159,7 +159,7 @@
         else if (a.id === 'zreczny') b.zreczny += v / 100; else if (a.id === 'szczesliwy') b.lucky += v; else if (a.id === 'rozpedzony') b.rozp += v / 100;
         else if (a.id === 'wytrwalosci') b.wytrw += v / 100; else if (a.id === 'olbrzyma') b.olb += v / 100;
         else if (a.id === 'mrozu') b.mrozu += v; else if (a.id === 'lowcy') b.lowcy += v; else if (a.id === 'serii') b.serii += v;
-        else if (a.id === 'brawurowy') b.brawur += v; else if (a.id === 'zuchwaly') b.zuch += v; else if (a.id === 'echa') b.echa += v / 100; else if (a.id === 'stroza') b.guardian += v;
+        else if (a.id === 'brawurowy') b.brawur += v; else if (a.id === 'zuchwaly') b.zuch += v; else if (a.id === 'echa') b.echa += v / 100; else if (a.id === 'stroza') b.guardian += v * (SUFIT ? 3 : 1); // test: Stróża = 3 odbicia
       }
     }
     // zestaw: przedmioty z awatarem tej samej osoby — +0.2 pkt za sztukę, przy 4 szt. dodatkowo jedno odbicie od dołu
@@ -320,7 +320,7 @@
     olbrzyma: ['s', 'Olbrzyma', 5, 10, 1, 'Olbrzyma', (v) => `Większa piłeczka o ${v}%`],
     lowcy: ['s', 'Łowcy', 0.2, 0.5, 0.1, 'Łowcy', (v) => `+${v.toFixed(1)}x do mnożnika piłeczki`],
     echa: ['s', 'Echa', 10, 20, 1, 'Echa', (v) => `+${v}% szansy na podwójne punkty za podbicie`],
-    stroza: ['s', 'Stróża', 1, 1, 1, 'Stróża', () => 'Raz na grę: odbicie od dołu zamiast końca gry'],
+    stroza: ['s', 'Stróża', 1, 1, 1, 'Stróża', () => SUFIT ? '3 razy na grę: odbicie od dołu zamiast końca gry' : 'Raz na grę: odbicie od dołu zamiast końca gry'],
     serii: ['s', 'Serii', 0.10, 0.25, 0.01, 'Serii', (v) => `+${v.toFixed(2)}x mnożnika za każde 10 podbić`],
   };
   const itemName = (it) => {
