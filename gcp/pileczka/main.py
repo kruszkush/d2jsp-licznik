@@ -118,7 +118,10 @@ def roll_item(score, uid, nick, luck=0):
     if rarity == "u":  # unikat: +0.3x, jeden gwarantowany boski afiks (równe szanse w klasie) + 2 losowe wg zwykłych wag
         gods = [i for i in ids if TIER[i] == "boski"]
         picks = [random.choice(gods)] + random.choices(ids, weights=[TIER_W[TIER[i]] for i in ids], k=2)
-        return make_item(slot, rarity, [{"id": a, "v": roll_val(a)} for a in picks], uid, nick, score, mult=0.3)
+        item = make_item(slot, rarity, [{"id": a, "v": roll_val(a)} for a in picks], uid, nick, score, mult=0.3)
+        if slot == "boots":
+            item["bans"] = random.randint(2, 4)  # Kapcie Moderatora: 2–4 kliknięcia na grę (starsze egzemplarze bez pola = 1)
+        return item
     else:
         n_aff = {"m": 1, "r": 2}.get(rarity, 0)
         aff = [{"id": a, "v": roll_val(a)} for a in random.choices(ids, weights=[TIER_W[TIER[i]] for i in ids], k=n_aff)]

@@ -154,7 +154,7 @@
       if (!it) continue;
       b.impl += it.implicit?.mult || 0;
       if (it.rarity === 'u' && it.slot === 'helm') b.korona = 1; // Hełm Weterana
-      if (it.rarity === 'u' && it.slot === 'boots') b.kapcie = 1; // Kapcie Moderatora
+      if (it.rarity === 'u' && it.slot === 'boots') b.kapcie = it.bans || 1; // Kapcie Moderatora (nowe: 2–4, starsze: 1)
       for (const a of it.affixes || []) {
         const v = a.v || 0;
         if (a.id === 'ostry') b.ostry += v; else if (a.id === 'stlumiony') b.stlum += v / 100; else if (a.id === 'ciezki') b.ciezki += v / 100;
@@ -339,7 +339,7 @@
   // zakres rolla afiksu w nawiasie (min–max), żeby było widać, jak blisko maksimum jest przedmiot
   const rng = (id) => { const [, , lo, hi, st] = AFF[id]; if (lo === hi) return ''; const f = (v) => st >= 1 ? v : v.toFixed(st < .1 ? 2 : 1); return ` <span class="rng">(${f(lo)}–${f(hi)})</span>`; };
   const tipHtml = (it) => `<div class="tn" style="color:${COL[it.rarity]}">${esc(itemName(it))}</div><div class="ts">${SLOT[it.slot][0]} · ${RAR[it.rarity]}</div><div class="ts">Poziom przedmiotu: ${it.ilvl ?? 0}</div>
-    <div class="tg">+${(it.implicit?.mult ?? 0.1).toFixed(1)}x mnożnika</div>${(it.affixes || []).filter((a) => AFF[a.id]).map((a) => `<div class="tb">${esc(AFF[a.id][6](a.v))}${rng(a.id)}<small class="tier t-${TIER[a.id]}">(${TIERN[TIER[a.id]]})</small></div>`).join('')}${it.rarity === 'u' && it.slot === 'boots' ? '<div class="tb">Raz na grę: kliknięcie w dowolne miejsce ekranu liczy się jako podbicie</div>' : ''}${it.rarity === 'u' && it.slot === 'helm' ? '<div class="tb">Podwaja premię piłeczek osób, którymi grasz, z top 10 z ostatnich 24 godzin</div>' : ''}`;
+    <div class="tg">+${(it.implicit?.mult ?? 0.1).toFixed(1)}x mnożnika</div>${(it.affixes || []).filter((a) => AFF[a.id]).map((a) => `<div class="tb">${esc(AFF[a.id][6](a.v))}${rng(a.id)}<small class="tier t-${TIER[a.id]}">(${TIERN[TIER[a.id]]})</small></div>`).join('')}${it.rarity === 'u' && it.slot === 'boots' ? `<div class="tb">${it.bans > 1 ? `${it.bans} razy` : 'Raz'} na grę: kliknięcie w dowolne miejsce ekranu liczy się jako podbicie</div>` : ''}${it.rarity === 'u' && it.slot === 'helm' ? '<div class="tb">Podwaja premię piłeczek osób, którymi grasz, z top 10 z ostatnich 24 godzin</div>' : ''}`;
   const sumHtml = (b) => {
     const L = [], pct = (x) => Math.round(x * 100);
     const mult = r3(b.impl + b.ostry); if (mult) L.push(`+${fm(mult)}x mnożnika`);
@@ -356,7 +356,7 @@
     if (b.zreczny) L.push(`Odbicie w bok mniejsze o ${pct(b.zreczny)}%`);
     if (b.olb) L.push(`Większa piłeczka o ${pct(b.olb)}%`);
     if (b.lucky) L.push(`+${b.lucky}% większa szansa na rzadkie i unikalne przedmioty`);
-    if (b.kapcie) L.push('Kapcie Moderatora: raz na grę kliknięcie w dowolne miejsce ekranu liczy się jako podbicie');
+    if (b.kapcie) L.push(`Kapcie Moderatora: ${b.kapcie > 1 ? b.kapcie + ' razy' : 'raz'} na grę kliknięcie w dowolne miejsce ekranu liczy się jako podbicie`);
     if (b.korona) L.push('Hełm Weterana: podwaja premię piłeczek osób, którymi grasz, z top 10 z ostatnich 24 godzin');
     if (b.guardian) L.push(`Anioł Stróż: ${b.guardian}× ratunek na grę`);
     return `<div class="eqsum"><h4>Łączne bonusy</h4>${L.length ? L.map((x) => `<div>${esc(x)}</div>`).join('') : '<div class="mute">brak</div>'}</div>`;
