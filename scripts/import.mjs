@@ -1,4 +1,4 @@
-// Jednorazowe zasilenie historii danymi pobranymi lokalnie (D2jsp Wiadomosci/dane/licz.mjs -> posty_<f>_<dni>d.json).
+// Jednorazowe zasilenie historii danymi pobranymi lokalnie (_d2jsp-wiadomosci/dane/licz.mjs -> posty_<f>_<dni>d.json).
 // Użycie: node scripts/import.mjs ścieżka/posty_230_30d.json <dni> <chwila_pobrania_ISO>
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 const [src, days, at] = process.argv.slice(2);

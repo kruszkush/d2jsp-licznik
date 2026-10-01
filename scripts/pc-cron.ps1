@@ -3,7 +3,8 @@
 $ErrorActionPreference = 'Continue'
 $PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'  # log w UTF-8, nie UTF-16
 $dir = 'E:\Vibe coding\d2jsp-licznik-bot'
-$log = 'E:\Vibe coding\d2jsp-licznik-bot.log'
+$log = 'E:\Vibe coding\_logi\d2jsp-licznik-bot.log'
+New-Item -ItemType Directory -Force (Split-Path $log) | Out-Null
 if (-not (Test-Path $dir)) { git clone -q https://github.com/kruszkush/d2jsp-licznik.git $dir *>> $log }
 Set-Location $dir
 git config user.name 'kruszkush'; git config user.email 'kruszkush@users.noreply.github.com'
