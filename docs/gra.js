@@ -6,6 +6,16 @@
   const SAFE_HITS = 3; // test: pierwsze 3 podbicia lekkie i sufit wtedy tylko odbija
   const TEST_SAVES = SUFIT ? Math.min(20, Number(new URLSearchParams(location.search).get('odbicia')) || 0) : 0; // test: ?odbicia=3 na start
   const MELLOW = new URL('mellow.png', document.currentScript?.src || location.href).href; // emotka :mellow: z d2jsp (kopia w docs/)
+  // test: diagnostyka płynności — ?perf=1 pokazuje na końcu gry pomiar klatek; ?bez=mult,edge,flash,hud wyłącza wybrane efekty
+  const QS = new URLSearchParams(location.search), PERF = SUFIT && QS.has('perf'), BEZ = SUFIT ? (QS.get('bez') || '').split(',') : [];
+  if (BEZ.length) { const st = document.createElement('style'); st.textContent = BEZ.map((x) => ({ mult: '#mult', edge: '#edge,#arenaEdges', flash: '#lvlup', hud: '#hud' })[x]).filter(Boolean).map((x) => x + '{display:none!important}').join(''); document.head.appendChild(st); }
+  const perf = { frames: [], loaf: [], lvlT: [] };
+  if (PERF && window.PerformanceObserver?.supportedEntryTypes?.includes('long-animation-frame')) new PerformanceObserver((l) => { if (game) for (const e of l.getEntries()) perf.loaf.push(e); }).observe({ type: 'long-animation-frame' });
+  function perfHtml() {
+    const F = perf.frames, long = F.filter((x) => x.d > 40), nearLvl = long.filter((x) => perf.lvlT.some((t) => x.t - t >= -50 && x.t - t < 400));
+    const top = perf.loaf.sort((a, b) => b.duration - a.duration).slice(0, 3).map((e) => { const js = e.scripts.reduce((a, x) => a + x.duration, 0), sl = e.startTime + e.duration - e.styleAndLayoutStart; return `${Math.round(e.duration)} ms (js ${Math.round(js)}, styl+układ+rysowanie ${Math.round(sl)})`; });
+    return `<div class="mf" style="text-align:left;font-size:11.5px">⏱ Klatek: ${F.length} · średnio ${F.length ? (F.reduce((a, x) => a + x.d, 0) / F.length).toFixed(1) : 0} ms · dłuższych niż 40 ms: <b>${long.length}</b> (przy „Szybciej!”: <b>${nearLvl.length}</b>) · najdłuższa: <b>${Math.round(Math.max(0, ...F.map((x) => x.d)))} ms</b>${top.length ? '<br>Najdłuższe: ' + top.join(' · ') : ''}${BEZ.length ? '<br>Wyłączone: ' + BEZ.join(', ') : ''}<br><small>Skopiuj ten tekst i wyślij.</small></div>`;
+  }
   const EQON = true; // ekwipunek i przedmioty włączone także na oficjalnej stronie (narzędzie testowe tylko na /test/)
   const API = TEST ? 'https://pileczka-test-i3odn44x6q-ue.a.run.app' : 'https://pileczka-i3odn44x6q-ue.a.run.app';
   const COLORS = ['#e0a526', '#5b8def', '#d9667a', '#4fb286', '#9b5de5', '#e07a3f'];
@@ -230,6 +240,7 @@
       flash(`Powiększ lub poszerz okno, żeby zagrać`);
       return;
     }
+    if (PERF) { perf.frames = []; perf.loaf = []; perf.lvlT = []; }
     for (const o of flakes) if (o !== f) o.el.remove();
     flakes.clear(); flakes.add(f);
     game = { f, score: 0, hits: 0, lvl: 0, k: scaleK(), base: f.base || 1, B, per: PER_LEVEL, saves: B.guardian + TEST_SAVES, lowRun: 0, zuchAcc: 0, bans: B.kapcie, saveGap: 50, nextSave: SUFIT ? 50 : Infinity, topB: f.top || 0, crown: B.korona ? f.top || 0 : 0 }; f.el.classList.add('ball'); showMult(0, false);
@@ -257,6 +268,7 @@
     while (game.score >= game.nextSave) { game.saves++; game.saveGap *= 2; game.nextSave += game.saveGap; flash('🛡 +1 odbicie od dołu!'); lastFlash = performance.now() + 800; }
     if (low && game.B.zuch && game.lvl > 0) game.zuchAcc = r3(Math.min(ZUCH_MAX, game.zuchAcc + game.B.zuch));
     if (!up && performance.now() - lastFlash > 1200) if (echo) flash('Echo! x2'); else if (brav) flash(`Brawura x${game.lowRun}! +${fm(brav)}x`);
+    if (up && PERF) perf.lvlT.push(performance.now());
     if (up) { game.lvl++; flash(`Szybciej! x${fm(totalMult())}`); showMult(game.lvl, true); }
     const r = f.el.getBoundingClientRect(), off = ((e.clientX - (r.left + r.width / 2)) / (r.width / 2)) || 0;
     // podbicie nie wyrzuca ponad górną krawędź: siła ograniczona tak, żeby szczyt lotu był ok. 12 px pod górą ekranu
@@ -280,7 +292,7 @@
       <div class="txt"><b style="color:var(--ink)">${esc(who)}</b> · ${hits} ${hits === 1 ? 'podbicie' : hits % 10 >= 2 && hits % 10 <= 4 && (hits % 100 < 12 || hits % 100 > 14) ? 'podbicia' : 'podbić'}</div>
       <div class="sc">${score}<small> pkt</small></div>
       <div class="eq">${P.b > 1 ? `<span class="ch" style="background:${BADGE[f.base] || '#d9264a'};color:#fff"><b>×${fm(P.b)}</b><i>piłeczka</i></span><span class="op">×</span>` : ''}<span class="ch"><b>×${fm(P.lv)}</b><i>poziom ${gLvlN}</i></span>${P.items ? `<span class="op">+</span><span class="ch"><b>+${fm(P.items)}${gZuch ? `<sup class="zsup" title="w tym nabite podbiciami tuż nad dołem ekranu">+${fm(gZuch)}</sup>` : ''}</b><i>przedmioty</i></span>` : ''}<span class="op">=</span><span class="ch tot"><b>×${fm(P.total)}</b><i>na koniec</i></span></div>
-      ${EQON ? chancesHtml(score) : ''}
+      ${PERF ? perfHtml() : ''}${EQON ? chancesHtml(score) : ''}
       <input id="pilNick" minlength="3" maxlength="20" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Twój nick" value="${esc(ls.get('pilNick') || '')}">
       <div class="row"><button class="pri" id="pilSave">Zapisz wynik</button></div><div class="msg" id="pilMsg"></div><div id="pilDrop"></div><button id="pilClose" class="closebig">Zamknij</button></div>`;
     document.body.appendChild(ov);
@@ -593,6 +605,7 @@
   // --- pętla ---
   let last = performance.now(), acc = 0;
   function loop(t) {
+    if (PERF && game) perf.frames.push({ t, d: t - last });
     const dt = Math.min(.05, (t - last) / 1000); last = t;
     acc += dt; if (acc > 1.75) { acc = 0; spawn(); } // o 25% częściej niż dawniej (2.2 s)
     for (const f of flakes) {
