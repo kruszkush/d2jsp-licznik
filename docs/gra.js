@@ -23,7 +23,9 @@
   .flake .b2{background:#ff8a3d}.flake .b3{background:#ff5a3d;color:#fff}.flake .b4{background:#d9264a;color:#fff}
   .flake.ball .badge{display:none}
   .flake.ball{opacity:1;z-index:2}
-  #hud{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:60;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 18px;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;box-shadow:0 6px 18px rgba(0,0,0,.25);pointer-events:none}
+  #hud .cnt{font-size:.62em;font-weight:700;opacity:.85;margin-right:10px;padding-right:10px;border-right:1px solid var(--line);vertical-align:.15em}#hud .cnt{pointer-events:auto;cursor:help;position:relative}#hud .cnt:hover::after,#hud .cnt.tip::after{content:attr(data-tip);position:absolute;top:calc(100% + 10px);left:0;width:250px;white-space:normal;font-size:12.5px;font-weight:500;line-height:1.35;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:7px 9px;box-shadow:0 6px 18px rgba(0,0,0,.35);z-index:61}
+  #hud .cnt small{font-size:.8em;opacity:.7;margin-left:3px}
+  #hud{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:61;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 18px;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;box-shadow:0 6px 18px rgba(0,0,0,.25);pointer-events:none}
   #hud{white-space:nowrap;max-width:calc(100vw - 24px)}
   @media (pointer:coarse){#hud{top:6px;font-size:17px;padding:3px 12px;opacity:.8}#lvlup{top:40px;font-size:16px}}
   body.playing #snow{z-index:62}
@@ -239,6 +241,7 @@
   }
   // Kapcie Moderatora: raz na grę pudło (kliknięcie obok piłeczki) liczy się jako podbicie
   document.addEventListener('pointerdown', (e) => {
+    const cnt = e.target.closest?.('#hud .cnt'); if (cnt) { const on = !cnt.classList.contains('tip'); hud.querySelectorAll('.cnt.tip').forEach((x) => x.classList.remove('tip')); if (on) cnt.classList.add('tip'); return; }
     if (!game || !game.bans || e.target.closest?.('.ball, button, a, input, #over')) return;
     game.bans--; flash('🔨 Ban! Kapcie Moderatora uratowały piłeczkę'); hit(game.f, { clientX: game.f.el.getBoundingClientRect().left + game.f.size / 2 });
   });
@@ -269,7 +272,7 @@
   }
   function drawHud() {
     const P = partsOf(game);
-    hud.hidden = false; hud.innerHTML = `${game.saves || SUFIT ? `<span title="odbicia od dołu${SUFIT ? ` · następne przy ${game.nextSave} pkt` : ''}" style="margin-right:8px">🛡${game.saves}${SUFIT ? `<small style="opacity:.7;margin-left:3px">(→${game.nextSave})</small>` : ''}</span>` : ''}${game.bans ? `<span title="Kapcie Moderatora: pudło liczy się jako podbicie" style="margin-right:8px">🔨${game.bans}</span>` : ''}${Math.round(game.score)}<small>pkt${TOUCH ? ` · x${fm(P.total)}` : ` · ${P.b > 1 ? `x${fm(P.b)} more · ` : ''}+${Math.round((P.lv - 1) * 100)}% increased${P.items ? ` + ${fm(P.items)} przedmioty` : ''} = x${fm(P.total)} · ${game.hits} podbić`}</small>`;
+    hud.hidden = false; hud.innerHTML = `${game.saves || SUFIT ? `<span class="cnt" data-tip="🛡 Odbicia od dołu: gdy piłeczka spadnie, odbije się wysoko zamiast końca gry. Masz ${game.saves}.${SUFIT ? ` Kolejne dostaniesz przy ${game.nextSave} pkt.` : ''}">🛡${game.saves}${SUFIT ? `<small>→${game.nextSave}</small>` : ''}</span>` : ''}${game.bans ? `<span class="cnt" data-tip="🔨 Kapcie Moderatora: kliknięcie obok piłeczki (pudło) liczy się jako podbicie. Zostało: ${game.bans}.">🔨${game.bans}</span>` : ''}${Math.round(game.score)}<small>pkt${TOUCH ? ` · x${fm(P.total)}` : ` · ${P.b > 1 ? `x${fm(P.b)} more · ` : ''}+${Math.round((P.lv - 1) * 100)}% increased${P.items ? ` + ${fm(P.items)} przedmioty` : ''} = x${fm(P.total)} · ${game.hits} podbić`}</small>`;
   }
   function endGame() {
     const boom = game.boom, gLvlN = game.lvl + 1, score = Math.round(game.score), f = game.f, gHits = game.hits, gZuch = game.zuchAcc || 0, P = partsOf(game); game = null; document.body.classList.remove('playing'); hideMult();
