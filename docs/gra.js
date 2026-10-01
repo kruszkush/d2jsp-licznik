@@ -10,11 +10,12 @@
   const QS = new URLSearchParams(location.search), PERF = SUFIT && QS.has('perf'), BEZ = SUFIT ? (QS.get('bez') || '').split(',') : [];
   if (BEZ.length) { const st = document.createElement('style'); st.textContent = BEZ.map((x) => ({ mult: '#mult', edge: '#edge,#arenaEdges', flash: '#lvlup', hud: '#hud' })[x]).filter(Boolean).map((x) => x + '{display:none!important}').join(''); document.head.appendChild(st); }
   const perf = { frames: [], loaf: [], lvlT: [] };
-  if (PERF && window.PerformanceObserver?.supportedEntryTypes?.includes('long-animation-frame')) new PerformanceObserver((l) => { if (game) for (const e of l.getEntries()) perf.loaf.push(e); }).observe({ type: 'long-animation-frame' });
+  if (PERF && window.PerformanceObserver?.supportedEntryTypes?.includes('long-animation-frame')) new PerformanceObserver((l) => { if (game) for (const e of l.getEntries()) perf.loaf.push(e); }).observe({ type: 'long-animation-frame' }); // zgłasza klatki > 50 ms
+  const sortedLong = () => perf.frames.filter((x) => x.d > 20).sort((a, b) => b.d - a.d).slice(0, 5).map((x) => Math.round(x.d) + (perf.lvlT.some((t) => x.t - t >= -50 && x.t - t < 400) ? ' (Szybciej)' : ''));
   function perfHtml() {
-    const F = perf.frames, long = F.filter((x) => x.d > 40), nearLvl = long.filter((x) => perf.lvlT.some((t) => x.t - t >= -50 && x.t - t < 400));
+    const F = perf.frames, long = F.filter((x) => x.d > 20), nearLvl = long.filter((x) => perf.lvlT.some((t) => x.t - t >= -50 && x.t - t < 400));
     const top = perf.loaf.sort((a, b) => b.duration - a.duration).slice(0, 3).map((e) => { const js = e.scripts.reduce((a, x) => a + x.duration, 0), sl = e.startTime + e.duration - e.styleAndLayoutStart; return `${Math.round(e.duration)} ms (js ${Math.round(js)}, styl+układ+rysowanie ${Math.round(sl)})`; });
-    return `<div class="mf" style="text-align:left;font-size:11.5px">⏱ Klatek: ${F.length} · średnio ${F.length ? (F.reduce((a, x) => a + x.d, 0) / F.length).toFixed(1) : 0} ms · dłuższych niż 40 ms: <b>${long.length}</b> (przy „Szybciej!”: <b>${nearLvl.length}</b>) · najdłuższa: <b>${Math.round(Math.max(0, ...F.map((x) => x.d)))} ms</b>${top.length ? '<br>Najdłuższe: ' + top.join(' · ') : ''}${BEZ.length ? '<br>Wyłączone: ' + BEZ.join(', ') : ''}<br><small>Skopiuj ten tekst i wyślij.</small></div>`;
+    return `<div class="mf" style="text-align:left;font-size:11.5px">⏱ Klatek: ${F.length} · średnio ${F.length ? (F.reduce((a, x) => a + x.d, 0) / F.length).toFixed(1) : 0} ms · dłuższych niż 20 ms: <b>${long.length}</b> (przy „Szybciej!”: <b>${nearLvl.length}</b>) · najdłuższa: <b>${Math.round(Math.max(0, ...F.map((x) => x.d)))} ms</b><br>Najdłuższe klatki: ${sortedLong().join(', ') || '—'} ms${top.length ? '<br>Szczegóły: ' + top.join(' · ') : ''}${BEZ.length ? '<br>Wyłączone: ' + BEZ.join(', ') : ''}<br><small>Skopiuj ten tekst i wyślij.</small></div>`;
   }
   const EQON = true; // ekwipunek i przedmioty włączone także na oficjalnej stronie (narzędzie testowe tylko na /test/)
   const API = TEST ? 'https://pileczka-test-i3odn44x6q-ue.a.run.app' : 'https://pileczka-i3odn44x6q-ue.a.run.app';
