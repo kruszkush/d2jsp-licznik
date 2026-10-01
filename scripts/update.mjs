@@ -5,7 +5,7 @@
 // Użycie: node scripts/update.mjs [forum=230]    Zwykły Chrome z oknem (na serwerze pod xvfb-run), nic nie obchodzimy.
 import puppeteer from 'puppeteer-core';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
-import { sourceState, canFinish, collectTopic } from './collector.mjs';
+import { sourceState, canFinish, collectTopic, topicChanged } from './collector.mjs';
 
 const F = Number(process.argv[2] || 230);
 const FILE = 'docs/data.json', STATE = 'state.json';
@@ -37,7 +37,7 @@ for (const [id, t] of data.posts) if (num(id) > (lastInData[t] || 0)) lastInData
 const FLOOR = (data.complete || data.from) - FLOOR_OVERLAP;
 // "26 minutes ago" / "3 hours ago" / "2 days ago" → przybliżona chwila ostatniego posta (null = nie wiadomo → traktuj jako świeży)
 const UNIT = { second: 1e3, minute: 6e4, hour: 36e5, day: 864e5, week: 6048e5, month: 2592e6, year: 31536e6 };
-const agoMs = (txt) => { const m = String(txt).match(/(\d+)\s*(second|minute|hour|day|week|month|year)s?\s+ago/i); if (m) return START - m[1] * UNIT[m[2].toLowerCase()]; const d = pd(txt); return isNaN(d) ? null : d; };
+const agoMs = (txt, at = Date.now()) => { const m = String(txt).match(/(\d+)\s*(second|minute|hour|day|week|month|year)s?\s+ago/i); if (m) return at - m[1] * UNIT[m[2].toLowerCase()]; const d = pd(txt); return isNaN(d) ? null : d + (OFFSET || st.offset || 0); };
 // d2jsp pokazuje daty w strefie zależnej od profilu/ciasteczka — kalibrujemy przesunięcie z „x minutes ago” na liście
 let OFFSET = null; // ms do dodania do sparsowanej daty
 const ts = (s) => pd(s) + (OFFSET || 0);
@@ -73,10 +73,11 @@ async function list(o) {
     const td = tr.querySelectorAll('td');
     const t = (a.getAttribute('href').match(/t=(\d+)/) || [])[1];
     let maxO = 0; for (const l of tr.querySelectorAll('a[href*="topic.php?t="]')) { const m = l.getAttribute('href').match(new RegExp(`t=${t}&f=${F}&o=(\\d+)`)); if (m) maxO = Math.max(maxO, +m[1]); }
-    const r = td[3] ? td[3].textContent.replace(/\D/g, '') : '';
+    // Pierwsza kolumna to odpowiedzi; td[3] to wyświetlenia, rosnące również przez nasze odczyty.
+    const r = td[0]?.textContent.trim().replace(/\s+/g, '') || null;
     const lp = td[4]?.querySelector('a[href^="user.php"]')?.getAttribute('href').split('=')[1] || '';
     const ago = td[4]?.querySelector('.desc')?.textContent.trim() || '';
-    return { t, title: a.textContent.trim(), maxO, r: r === '' ? null : +r, lp, ago };
+    return { t, title: a.textContent.trim(), maxO, r, lp, ago, seenAt: Date.now() };
   }).filter((x) => x.t), F);
   if (!rows.length) throw new Blocked(`pusta lista tematów (o=${o})`);
   return rows;
@@ -124,7 +125,7 @@ try {
       const a = agoMs(x.ago);
       if (!st.topics[x.t] && a != null && a < FLOOR - 864e5) st.topics[x.t] = { r: x.r, lp: x.lp, last: lastInData[x.t] || 0 };
     }
-    const changed = rows.filter((x) => { const s = st.topics[x.t]; return !s || s.pending || x.r == null || s.r !== x.r || s.lp !== x.lp; });
+    const changed = rows.filter((x) => topicChanged(x, st.topics[x.t], agoMs));
     console.log(`lista o=${o}: zmienionych ${changed.length}/${rows.length}`);
     if (!changed.length && canFinish(rows, st.topics, FLOOR, agoMs)) { complete = !unfinished; break; }
     for (const row of changed) {

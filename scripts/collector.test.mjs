@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { sourceState, canFinish, collectTopic, mergeData, mergeState } from './collector.mjs';
+import { sourceState, canFinish, collectTopic, mergeData, mergeState, topicChanged } from './collector.mjs';
 
 test('blokada serwera nie zatrzymuje komputera; migracja zachowuje przerwę', () => {
   const st = { topics: {}, blockedUntil: 123456, backoff: 8 };
@@ -8,6 +8,21 @@ test('blokada serwera nie zatrzymuje komputera; migracja zachowuje przerwę', ()
   assert.equal(sourceState(st, 'server').blockedUntil, 123456);
   st.sources.pc.blockedUntil = 123;
   assert.equal(st.sources.server.blockedUntil, 123456);
+});
+
+test('wyświetlenia nie powodują odczytu; odpowiedzi i nowy autor powodują', () => {
+  const row = {r:'30',lp:'user',views:100}, previous = {r:'30',lp:'user',checkedAt:100};
+  assert.equal(topicChanged(row,previous,()=>0),false);
+  assert.equal(topicChanged({...row,views:101},previous,()=>0),false);
+  assert.equal(topicChanged({...row,r:'31'},previous,()=>0),true);
+  assert.equal(topicChanged({...row,lp:'other'},previous,()=>0),true);
+});
+
+test('zaokrąglone odpowiedzi wykrywają nowy post tego samego autora', () => {
+  const row={r:'8.1k',lp:'user',seenAt:200}, previous={r:'8.1k',lp:'user',checkedAt:100};
+  assert.equal(topicChanged(row,previous,()=>110),true);
+  assert.equal(topicChanged(row,previous,()=>90),false);
+  assert.equal(topicChanged(row,previous,()=>null),true);
 });
 
 test('niezmieniona świeża strona nie kończy skanowania starszego zaległego fragmentu', () => {

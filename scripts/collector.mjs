@@ -12,6 +12,17 @@ export function canFinish(rows, topics, floor, agoMs) {
   return rows.every((r) => topics[r.t] && !topics[r.t].pending && agoMs(r.ago) != null && agoMs(r.ago) < floor);
 }
 
+export function topicChanged(row, previous, agoMs) {
+  if (!previous || previous.pending || row.r == null || previous.r !== row.r || previous.lp !== row.lp) return true;
+  // "8.1k" jest zaokrąglone: pojedyncza odpowiedź tego samego autora może nie
+  // zmienić licznika. Wtedy sprawdzamy również czas ostatniej aktywności.
+  if (/[km]$/i.test(String(row.r))) {
+    const lastActivity = agoMs(row.ago, row.seenAt);
+    return lastActivity == null || lastActivity >= (previous.checkedAt || 0);
+  }
+  return false;
+}
+
 // Przy limicie stron zapamiętujemy brakujący starszy fragment tematu. Nie przesuwamy
 // ukończonego last do najnowszego posta, zanim ten fragment zostanie odczytany.
 export async function collectTopic(row, { st, lastInData, floor, timestamp, read, consume, exhausted, save, started }) {
