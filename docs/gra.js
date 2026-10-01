@@ -597,7 +597,9 @@
     acc += dt; if (acc > 1.75) { acc = 0; spawn(); } // o 25% częściej niż dawniej (2.2 s)
     for (const f of flakes) {
       if (game && game.f === f) {
-        const sd = dt * speedOf(game.lvl, game.B.wytrw) * (game.slow > t ? .45 : 1); // po odbiciu od dołu chwilowe spowolnienie
+        // test: prędkość po „Szybciej!” rośnie płynnie (~0.5 s) zamiast skokiem w trakcie lotu — skok wyglądał jak szarpnięcie
+        const spd = speedOf(game.lvl, game.B.wytrw); game.spd = SUFIT && game.spd ? game.spd + (spd - game.spd) * Math.min(1, dt * 6) : spd;
+        const sd = dt * game.spd * (game.slow > t ? .45 : 1); // po odbiciu od dołu chwilowe spowolnienie
         // test: po odbiciu od dołu piłeczka zatrzymuje się na szczycie i czeka na kliknięcie (chwila przerwy); po 1.5 s dymek :mellow:
         if (game.rise) { const p = Math.min(1, (t - game.rise.t0) / 3000); f.y = game.rise.y0 - game.rise.dy * (1 - (1 - p) ** 3); f.rot += f.vr * dt * (1 - p); // wznoszenie coraz wolniej (ease-out); obrót swobodny, wygasa razem z lotem
           if (p >= 1) { game.rise = null; game.hover = t; f.vx = 0; f.vy = 0; f.vr = 0; game.rot0 = f.rot; game.rotTo = Math.round(f.rot / 360) * 360; } }
