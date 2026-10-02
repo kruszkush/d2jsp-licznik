@@ -23,7 +23,7 @@
   .flake .b2{background:#ff8a3d}.flake .b3{background:#ff5a3d;color:#fff}.flake .b4{background:#d9264a;color:#fff}
   .flake.ball .badge{display:none}
   .flake.ball{opacity:1;z-index:2}
-  @media (pointer:coarse){.flake.ball::before{content:'';position:absolute;inset:-14px;border-radius:50%}} /* telefon: większy obszar trafienia kciukiem */
+  @media (pointer:coarse){.flake.ball::before{content:'';position:absolute;inset:-12px;border-radius:50%}} /* telefon: większy obszar trafienia kciukiem */
   .eqnote{margin-top:10px;font-size:12px;line-height:1.4;color:var(--mute);background:rgba(127,127,127,.08);border-radius:8px;padding:7px 9px;text-align:left}
   #hud .cnt{font-size:.62em;font-weight:700;opacity:.85;margin-right:10px;padding-right:10px;border-right:1px solid var(--line);vertical-align:.15em}#hud .cnt{pointer-events:auto;cursor:help;position:relative}#hud .cnt:hover::after,#hud .cnt.tip::after{content:attr(data-tip);position:absolute;top:calc(100% + 10px);left:0;width:250px;white-space:normal;font-size:12.5px;font-weight:500;line-height:1.35;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:7px 9px;box-shadow:0 6px 18px rgba(0,0,0,.35);z-index:61}
   #hud .cnt small{font-size:.8em;opacity:.7;margin-left:3px}
@@ -201,7 +201,7 @@
   const G = 1500, JUMP = 610, PER_LEVEL = 8;
   const TOUCH = matchMedia('(pointer: coarse)').matches; // telefon: większe piłeczki, mocniejsze podbicie i większy obszar trafienia
   // test: na komputerze start od ×1,25 (początek był za wolny); na telefonie bez zmian (tam i tak +20%)
-  const speedOf = (lvl, w = 0) => (1 + lvl * 0.07 * (1 - w) + (SUFIT && !TOUCH ? .25 : 0)) * 1, // telefon: bez dodatkowych +20% (gra była za trudna) // Wytrwałości: wolniejszy przyrost prędkości
+  const speedOf = (lvl, w = 0) => (1 + lvl * 0.07 * (1 - w) + (SUFIT && !TOUCH ? .25 : 0)) * (TOUCH ? 1.2 : 1), // telefon: +20% prędkości (z większym obszarem trafienia i mocniejszym podbiciem) // Wytrwałości: wolniejszy przyrost prędkości
     multOf = (lvl, b = B) => Math.round((1 + b.rozp + lvl * 0.1) * 100) / 100;
   const hud = document.createElement('div'); hud.id = 'hud'; hud.hidden = true; document.body.appendChild(hud);
   const multEl = document.createElement('div'); multEl.id = 'mult'; document.body.appendChild(multEl);
