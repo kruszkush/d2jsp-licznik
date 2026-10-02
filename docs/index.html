@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Licznik postów d2jsp 7.8</title>
+<title>Licznik postów d2jsp 7.9</title>
 <style>
 :root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e4e2dc;--acc:#b4441f;--bar:#d9825f;
  --gold:#c9961a;--gold2:#f3d46b;--goldbg:#fff8e3;--goldline:#efd89a;--silver:#9aa0a6;--bronze:#b3713f}
@@ -13,6 +13,7 @@
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 .wrap{max-width:1200px;margin:0 auto;padding:24px 16px 48px;display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:20px;align-items:start}
 @media (max-width:900px){.wrap{grid-template-columns:minmax(0,1fr)}aside{order:-1}}
+.vtop{display:none}@media (max-width:900px){.vtop{display:block;text-align:right;font-size:11px;color:var(--mute);padding:4px 12px 0}} /* telefon: wersja na samej górze */
 @media (max-width:560px){.crownb{display:block;margin-left:0}td{overflow-wrap:anywhere}} /* telefon: nic nie rozpycha strony w bok */
 h1{font-size:24px;margin:0 0 4px}
 .sub{color:var(--mute);margin:0 0 20px;font-size:13px}
@@ -182,9 +183,10 @@ aside{position:sticky;top:16px}
     </symbol>
   </defs>
 </svg>
+<div class="vtop" id="vtop"></div>
 <div class="wrap">
 <main>
-<h1>Licznik postów — d2jsp Polska <span class="ver">7.8</span></h1>
+<h1>Licznik postów — d2jsp Polska <span class="ver">7.9</span></h1>
 <p class="sub" id="sub">Ładowanie danych…</p>
 
 <div class="ranges" id="ranges">
@@ -527,5 +529,6 @@ function render() {
 }
 </script>
 <script src="gra.js?v=1790959871"></script>
+<script>document.getElementById('vtop').textContent = 'wersja ' + document.querySelector('.ver').textContent;</script>
 </body>
 </html>
