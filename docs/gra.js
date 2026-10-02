@@ -251,7 +251,8 @@
   });
   function hit(f, e) {
     if (!game || game.f !== f) return;
-    if (game.hover || game.rise) { game.hover = 0; game.rise = null; game.bubble?.remove(); game.bubble = null; }
+    // po zawisie/hamowaniu tempo wraca stopniowo przez 2 s
+    if (game.hover || game.rise) { game.warm = performance.now(); game.hover = 0; game.rise = null; game.bubble?.remove(); game.bubble = null; }
     game.hits++;
     const up = game.hits % game.per === 0 && game.hits > 0;
     // Brawurowy: podbicie w dolnych 15% ekranu daje dodatkowy mnożnik; Echa: szansa, że podbicie liczy się podwójnie
@@ -608,7 +609,8 @@
       if (game && game.f === f) {
         // test: prędkość po „Szybciej!” rośnie płynnie (~0.5 s) zamiast skokiem w trakcie lotu — skok wyglądał jak szarpnięcie
         const spd = speedOf(game.lvl, game.B.wytrw); game.spd = SUFIT && game.spd ? game.spd + (spd - game.spd) * Math.min(1, dt * 6) : spd;
-        const sd = dt * game.spd * (game.slow > t ? .45 : 1); // po odbiciu od dołu chwilowe spowolnienie
+        const wk = game.warm ? Math.min(1, (t - game.warm) / 2000) : 1; if (wk >= 1) game.warm = 0;
+        const sd = dt * game.spd * (game.slow > t ? .45 : 1) * (.4 + .6 * wk * wk * (3 - 2 * wk)); // rozpędzanie 40% → 100% (płynnie) // po odbiciu od dołu chwilowe spowolnienie
         // test: po odbiciu od dołu piłeczka zatrzymuje się na szczycie i czeka na kliknięcie (chwila przerwy); po 1.5 s dymek :mellow:
         if (game.rise) { const p = Math.min(1, (t - game.rise.t0) / 3000); f.y = game.rise.y0 - game.rise.dy * (1 - (1 - p) ** 3); f.rot += f.vr * dt * (1 - p); // wznoszenie coraz wolniej (ease-out); obrót swobodny, wygasa razem z lotem
           if (p >= 1) { game.rise = null; game.hover = t; f.vx = 0; f.vy = 0; f.vr = 0; game.rot0 = f.rot; game.rotTo = Math.round(f.rot / 360) * 360; } }
@@ -625,7 +627,8 @@
         if (f.y < 0 && !SUFIT) { f.y = 0; f.vy = Math.max(Math.abs(f.vy) * .8, 260 * game.k); }
         if (!TOUCH && (H < MIN_H || W < H * ASPECT)) { game = null; document.body.classList.remove('playing'); hideMult(); hud.hidden = true; f.el.remove(); flakes.clear(); flash('Okno za małe — gra przerwana'); break; }
         if (f.y > H + 10) {
-          if (game.saves > 0) { game.saves--; f.y = H - f.size; f.vx = 0; f.vy = -Math.sqrt(2 * G * (1 - game.B.ciezki) * game.k * H * .55); if (SUFIT) { game.rise = { t0: t, y0: f.y, dy: H * .55 }; f.vy = 0; } else game.slow = t + 1600; // test: wznoszenie przez 3 s coraz wolniej, potem zawis; kliknięcie w trakcie = normalne podbicie // wysoko, prosto w górę i wolniej — łatwo kliknąć
+          if (game.saves > 0) { game.saves--; f.y = H - f.size - H * (SUFIT ? .08 : 0); // odbicie startuje nad dolną krawędzią (strefa gestów telefonu)
+             f.vx = 0; f.vy = -Math.sqrt(2 * G * (1 - game.B.ciezki) * game.k * H * .55); if (SUFIT) { game.rise = { t0: t, y0: f.y, dy: H * .55 }; f.vy = 0; } else game.slow = t + 1600; // test: wznoszenie przez 3 s coraz wolniej, potem zawis; kliknięcie w trakcie = normalne podbicie // wysoko, prosto w górę i wolniej — łatwo kliknąć
             flash(`🛡 Odbicie od dołu zużyte! Zostało w tej grze: ${game.saves}`); saveFx(); drawHud(); }
           else { endGame(); break; }
         }
