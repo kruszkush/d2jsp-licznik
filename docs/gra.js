@@ -9,7 +9,8 @@
   const EQON = true; // ekwipunek i przedmioty włączone także na oficjalnej stronie (narzędzie testowe tylko na /test/)
   const API = TEST ? 'https://pileczka-test-i3odn44x6q-ue.a.run.app' : 'https://pileczka-i3odn44x6q-ue.a.run.app';
   const COLORS = ['#e0a526', '#5b8def', '#d9667a', '#4fb286', '#9b5de5', '#e07a3f'];
-  const ls = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+  const KONTA = TEST; // konta graczy (nick + hasło): na razie tylko /test/ (funkcja pileczka-test ma env KONTA=1)
+  const ls = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} }, del: (k) => { try { localStorage.removeItem(k); } catch {} } };
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const css = document.createElement('style');
@@ -381,14 +382,16 @@
       <div class="eq">${P.b > 1 ? `<span class="ch" style="background:${BADGE[f.base] || '#d9264a'};color:#fff"><b>×${fm(P.b)}</b><i>piłeczka</i></span><span class="op">×</span>` : ''}<span class="ch"><b>×${fm(P.lv)}</b><i>poziom ${gLvlN}</i></span>${P.items ? `<span class="op">+</span><span class="ch"><b>+${fm(P.items)}${gZuch ? `<sup class="zsup" title="w tym nabite podbiciami tuż nad dołem ekranu">+${fm(gZuch)}</sup>` : ''}</b><i>przedmioty</i></span>` : ''}<span class="op">=</span><span class="ch tot"><b>×${fm(P.total)}</b><i>na koniec</i></span></div>
       ${EQON ? chancesHtml(score) : ''}
       <input id="pilNick" minlength="3" maxlength="20" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Twój nick" value="${esc(ls.get('pilNick') || '')}">
-      <div class="row"><button class="pri" id="pilSave">Zapisz wynik</button></div><div class="msg" id="pilMsg"></div><div id="pilDrop"></div><div class="endrow"><button id="pilAgain" class="closebig">▶ Zagraj jeszcze raz</button><button id="pilClose" class="closesm">Zamknij</button></div></div>`;
+      <div class="row"><button class="pri" id="pilSave">Zapisz wynik</button></div><div class="msg" id="pilMsg"></div><div id="pilAccF"></div><div id="pilDrop"></div><div class="endrow"><button id="pilAgain" class="closebig">▶ Zagraj jeszcze raz</button><button id="pilClose" class="closesm">Zamknij</button></div></div>`;
     document.body.appendChild(ov);
     setTimeout(() => ov.querySelector('.box').classList.remove('lock'), 700); // klikanie z rozpędu tuż po końcu gry nie trafia w przyciski (przez 0,7 s są wyszarzone)
     // decyzja o przedmiocie tylko tutaj: zamknięcie okna bez wyboru = przedmiot przepada (nie da się odłożyć i porównać później)
     let pendId = null, pendN = false; // pendN: normalny przedmiot — zamknięcie bez pytania
+    // ekwipunek tej gry ustalony w chwili końca: logowanie/rejestracja w trakcie decyzji o dropie nie przekieruje jej do innego ekwipunku
+    const auth0 = EQON ? eqAuth() : {};
     const close = () => {
-      if (dropOpen && pendId) { if (!pendN && !confirm('Nie wybrałeś — nowy przedmiot przepadnie. Zamknąć?')) return false; eqPost('/equip', { key: getKey(), id: pendId, action: 'discard' }); }
-      ov.remove(); return true;
+      if (dropOpen && pendId) { if (!pendN && !confirm('Nie wybrałeś — nowy przedmiot przepadnie. Zamknąć?')) return false; eqPost('/equip', { ...auth0, id: pendId, action: 'discard' }); }
+      ov.remove(); if (KONTA) setTimeout(checkMerge, 300); return true;
     };
     let dropOpen = false; // nierozstrzygnięty przedmiot: okno zamyka się tylko przyciskiem
     const closeB = ov.querySelector('#pilClose'), againB = ov.querySelector('#pilAgain'), dropEl = ov.querySelector('#pilDrop');
@@ -396,35 +399,60 @@
     if (EQON && score >= 15) { // drop idzie od razu, niezależnie od zapisu wyniku
       setWait(true); dropEl.innerHTML = '<div class="msg">Losuję przedmiot…</div>';
       const slow = setTimeout(() => { setWait(false); dropEl.innerHTML = '<div class="msg">Serwer długo nie odpowiada — przedmiot pokaże się tutaj, jeśli poczekasz.</div>'; }, 12000);
-      eqPost('/drop', { key: getKey(), gameId: rndHex().slice(0, 16), score, ballUid: /^\d+$/.test(f.u) ? f.u : '', ballNick: D.users[f.u] || '' })
+      eqPost('/drop', { ...auth0, gameId: rndHex().slice(0, 16), score, ballUid: /^\d+$/.test(f.u) ? f.u : '', ballNick: D.users[f.u] || '' })
         .then((r) => {
           clearTimeout(slow); setWait(false); if (!r.ok) throw 0;
-          if (r.j.drop) { pendId = r.j.autoDiscard ? null : r.j.drop.id; pendN = r.j.drop.rarity === 'n'; ov.querySelector('.box').classList.add('wide'); showDrop(dropEl, r.j, (o) => { dropOpen = o; }); }
+          if (r.j.drop) { pendId = r.j.autoDiscard ? null : r.j.drop.id; pendN = r.j.drop.rarity === 'n'; ov.querySelector('.box').classList.add('wide'); showDrop(dropEl, r.j, (o) => { dropOpen = o; }, auth0); }
           else dropEl.innerHTML = `<div class="msg">${r.j.reason === 'pech' ? `Tym razem nic nie wypadło (szansa ${r.j.chance}%).` : r.j.reason === 'za szybko' ? 'Nic nie wypadło: od poprzedniego przedmiotu minęło mniej niż 15 s.' : 'Tym razem nic nie wypadło.'}</div>`;
         }).catch(() => { clearTimeout(slow); setWait(false); dropEl.innerHTML = '<div class="msg">Nie udało się wylosować przedmiotu (błąd sieci lub serwera).</div>'; });
     }
     closeB.onclick = close;
     againB.onclick = () => { if (close()) replay(); };
-    const save = (auto) => {
-      const nick = ov.querySelector('#pilNick').value.trim();
-      if (nick.length < 3) { ov.querySelector('#pilMsg').textContent = 'Nick musi mieć co najmniej 3 znaki.'; return; }
-      ls.set('pilNick', nick); ls.set('pilGral', '1');
-      ov.querySelector('#pilMsg').textContent = 'Zapisuję…';
-      fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nick, score, dev: TOUCH ? 'm' : 'd', hits: gHits, ball: D.users[f.u] || '', ballUid: /^\d+$/.test(f.u) ? f.u : '', okres, ...(EQON ? { key: getKey() } : {}) }) })
-        .then((r) => r.json()).then((j) => { if (j.top) { if (j.me?.best) myBest = j.me.best; showRank(j); const m = j.me; if (EQON && m) { ov.querySelector('#pilMsg').innerHTML = `✔ <b>${esc(nick)}</b> · ${m.record ? '<b style="color:var(--acc)">nowy rekord!</b>' : `rekord ${m.best}`} · gra nr ${m.plays} · <a href="#" data-a="chg">zmień nick</a>`; const ch = ov.querySelector('#pilMsg [data-a="chg"]'); if (ch) ch.onclick = (e) => { e.preventDefault(); window.__chgNick?.(); }; return; } if (dropOpen) ov.querySelector('#pilMsg').textContent = 'Wynik zapisany. Rozstrzygnij przedmiot poniżej.'; else { close(); card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } } else ov.querySelector('#pilMsg').textContent = j.error || 'Błąd zapisu.'; })
-        .catch(() => { ov.querySelector('#pilMsg').textContent = 'Nie udało się zapisać, spróbuj jeszcze raz.'; });
+    const nickEl = ov.querySelector('#pilNick'), saveB = ov.querySelector('#pilSave'), msgEl = ov.querySelector('#pilMsg'), accF = ov.querySelector('#pilAccF');
+    const chgNick = () => { msgEl.textContent = ''; accF.innerHTML = ''; nickEl.style.display = ''; saveB.style.display = ''; saveB.textContent = 'Zapisz pod nowym nickiem'; nickEl.value = ''; nickEl.focus(); };
+    // nick z kontem: logowanie w oknie końca gry, potem ponowny zapis (wynik nie przepada)
+    const loginForm = (nick, why) => {
+      nickEl.style.display = 'none'; saveB.style.display = 'none'; msgEl.textContent = '';
+      accF.innerHTML = `<form class="accf"><div class="accwhy">${why}</div><input type="text" name="username" autocomplete="username" value="${esc(nick)}" hidden><input type="password" name="password" autocomplete="current-password" placeholder="Hasło" required><button class="pri" type="submit">Zaloguj i zapisz</button><div class="msg"></div><div class="accsm">Nie pamiętasz hasła? Zmień je na urządzeniu, na którym jesteś zalogowany (Ekwipunek → Konto), albo napisz PW do kruszkush na d2jsp po jednorazowy kod. · <a href="#" data-a="other">Zapisz pod innym nickiem</a></div></form>`;
+      const fm = accF.querySelector('form'), pw = fm.querySelector('[type=password]'), m = fm.querySelector('.msg');
+      fm.onsubmit = (e) => {
+        e.preventDefault(); m.textContent = 'Loguję…';
+        accPost('/login', { nick, password: pw.value }).then((r) => { if (!r.ok) { m.textContent = r.j?.error || 'Błąd logowania.'; return; } accF.innerHTML = ''; accDone(r.j); save(); })
+          .catch(() => { m.textContent = 'Błąd sieci, spróbuj jeszcze raz.'; });
+      };
+      fm.querySelector('[data-a="other"]').onclick = (e) => { e.preventDefault(); ls.del('pilNick'); chgNick(); };
+      setTimeout(() => pw.focus(), 50);
     };
-    ov.querySelector('#pilSave').onclick = save;
-    ov.querySelector('#pilNick').addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
-    // Wersja testowa: zapamiętany nick → zapis automatyczny (serwer i tak trzyma najlepszy wynik), z opcją zmiany nicku
-    const saved = ls.get('pilNick');
+    const save = () => {
+      const nick = tok() ? accNick() : nickEl.value.trim(); // zalogowany zawsze zapisuje pod nickiem konta
+      if (nick.length < 3) { msgEl.textContent = 'Nick musi mieć co najmniej 3 znaki.'; return; }
+      ls.set('pilNick', nick); ls.set('pilGral', '1');
+      msgEl.textContent = 'Zapisuję…';
+      fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nick, score, dev: TOUCH ? 'm' : 'd', hits: gHits, ball: D.users[f.u] || '', ballUid: /^\d+$/.test(f.u) ? f.u : '', okres, ...(EQON ? (tok() ? { token: tok() } : { key: getKey() }) : {}) }) })
+        .then((r) => r.json()).then((j) => {
+          if (KONTA && j.need === 'login') { loginForm(j.nick || nick, `🔒 Nick <b>${esc(j.nick || nick)}</b> ma konto. Zaloguj się, żeby zapisać wynik na tym urządzeniu:`); return; }
+          if (KONTA && j.relogin) { const n = dropSession() || nick; loginForm(n, `To urządzenie zostało wylogowane. Zaloguj się ponownie, żeby zapisać wynik jako <b>${esc(n)}</b>:`); return; }
+          if (j.top) {
+            if (j.me?.best) myBest = j.me.best; showRank(j); const m = j.me;
+            if (EQON && m) {
+              msgEl.innerHTML = `✔ <b>${esc(nick)}</b>${m.konto ? ' <span title="nick chroniony hasłem">🔒</span>' : ''} · ${m.record ? '<b style="color:var(--acc)">nowy rekord!</b>' : `rekord ${m.best}`} · gra nr ${m.plays}${m.konto ? '' : ' · <a href="#" data-a="chg">zmień nick</a>'}`;
+              const ch = msgEl.querySelector('[data-a="chg"]'); if (ch) ch.onclick = (e) => { e.preventDefault(); chgNick(); };
+              if (m.claim) addNudge(msgEl, `🔒 Nick <b>${esc(nick)}</b> nie jest chroniony — każdy może zapisać wynik pod nim. Konto daje hasło do nicku i ten sam ekwipunek na każdym urządzeniu.`, nick);
+              return;
+            }
+            if (dropOpen) msgEl.textContent = 'Wynik zapisany. Rozstrzygnij przedmiot poniżej.'; else { close(); card.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+          } else msgEl.textContent = j.error || 'Błąd zapisu.';
+        })
+        .catch(() => { msgEl.textContent = 'Nie udało się zapisać, spróbuj jeszcze raz.'; });
+    };
+    saveB.onclick = save;
+    nickEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
+    // zapamiętany nick (albo konto) → zapis automatyczny (serwer i tak trzyma najlepszy wynik), z opcją zmiany nicku
+    const saved = tok() ? accNick() : ls.get('pilNick');
     if (EQON && saved) {
-      const nickEl = ov.querySelector('#pilNick'), btn = ov.querySelector('#pilSave');
-      nickEl.style.display = 'none'; btn.style.display = 'none';
-      const chgNick = () => { ov.querySelector('#pilMsg').textContent = ''; nickEl.style.display = ''; btn.style.display = ''; btn.textContent = 'Zapisz pod nowym nickiem'; nickEl.value = ''; nickEl.focus(); };
-      window.__chgNick = chgNick;
-      save(true);
-    } else setTimeout(() => ov.querySelector('#pilNick').focus(), 50);
+      nickEl.style.display = 'none'; saveB.style.display = 'none';
+      save();
+    } else setTimeout(() => nickEl.focus(), 50);
   }
 
   // --- ekwipunek (tylko wersja testowa: /test/) ---
@@ -506,8 +534,98 @@
   }
   const rndHex = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
   const getKey = () => { let k = ls.get('eqKey'); if (!/^[0-9a-f]{32}$/.test(k || '')) { k = rndHex(); ls.set('eqKey', k); } return k; };
+  // konto: token sesji tego urządzenia (pilTok) zamiast klucza gościa (eqKey); eqKeyOld = klucz gościa czekający na połączenie z kontem
+  const tok = () => KONTA ? ls.get('pilTok') : null, accNick = () => ls.get('pilAcc') || '';
+  const eqAuth = () => tok() ? { token: tok() } : { key: getKey() };
   const eqPost = (path, body) => fetch(API + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-    .then((r) => r.json().then((j) => { if (path !== '/view' && j && j.slots) { B = calcB(j.slots); eqReady = true; if (game?.bWait) lateB(); } return { ok: r.ok, status: r.status, j }; }));
+    .then((r) => r.json().then((j) => {
+      if (KONTA && r.status === 401 && j?.relogin && body.token) dropSession('To urządzenie zostało wylogowane (z innego urządzenia albo po zmianie hasła).');
+      // bonusy liczymy tylko z ekwipunku, którym gra to urządzenie (nie z podglądu ekwipunku gościa przy łączeniu)
+      if (path !== '/view' && j && j.slots && (body.token || !tok())) { B = calcB(j.slots); eqReady = true; if (game?.bWait) lateB(); }
+      return { ok: r.ok, status: r.status, j };
+    }));
+  const accPost = (path, body) => eqPost(path, { ...body, dev: TOUCH ? 'm' : 'd' });
+  const snoozed = () => +(ls.get('pilKontoNie') || 0) > Date.now();
+  // zachęta do konta (po zapisie wyniku pod wolnym nickiem, po dropie magicznego+); „Nie teraz” chowa na 7 dni
+  const nudgeHtml = (txt) => `<div class="accnudge">${txt} <a href="#" data-a="reg">Załóż konto</a> · <a href="#" data-a="later">Nie teraz</a></div>`;
+  function addNudge(host, txt, nick) {
+    const ov = host.closest('#over') || host;
+    if (!KONTA || tok() || snoozed() || ov.querySelector('.accnudge')) return;
+    host.insertAdjacentHTML('beforeend', nudgeHtml(txt));
+    const n = host.querySelector('.accnudge');
+    n.querySelector('[data-a="reg"]').onclick = (e) => { e.preventDefault(); openInv({ konto: 'reg', nick }); };
+    n.querySelector('[data-a="later"]').onclick = (e) => { e.preventDefault(); ls.set('pilKontoNie', String(Date.now() + 7 * 864e5)); n.remove(); };
+  }
+  // po rejestracji / logowaniu / kodzie od admina (j = { token, nick, bound })
+  function accDone(j) {
+    const old = ls.get('eqKey');
+    ls.set('pilTok', j.token); ls.set('pilAcc', j.nick); ls.set('pilNick', j.nick); ls.set('pilGral', '1'); ls.del('eqOwned');
+    // rejestracja przypina ekwipunek klucza do konta (bound) — klucz gościa znika; przy logowaniu czeka na połączenie
+    if (old) { if (!j.bound) ls.set('eqKeyOld', old); ls.del('eqKey'); }
+    document.querySelectorAll('.accnudge').forEach((x) => x.remove());
+    eqPost('/inv', eqAuth()).catch(() => {});
+    loadRank(); accRedraw();
+    if (!document.getElementById('over')) checkMerge();
+  }
+  // wylogowanie lokalne (przycisk albo sesja usunięta z innego urządzenia); zwraca nick konta
+  function dropSession(msg) {
+    const nick = accNick(), old = ls.get('eqKeyOld');
+    ls.del('pilTok'); ls.del('pilAcc'); ls.del('pilNick');
+    if (old) { ls.set('eqKey', old); ls.del('eqKeyOld'); } // niepołączony ekwipunek gościa wraca; po rejestracji — nowy, pusty klucz
+    B = zeroB(); eqReady = true;
+    eqPost('/inv', eqAuth()).catch(() => {});
+    if (msg) flash(msg, 3500);
+    loadRank(); accRedraw();
+    return nick;
+  }
+  let accRedraw = () => {}; // odświeża sekcję „Konto”, gdy Ekwipunek jest otwarty
+  // Łączenie: ekwipunek gościa z tego urządzenia + ekwipunek konta → okno wyboru per slot (domyślnie rzadszy, remis → konto)
+  const RANK = { n: 0, m: 1, r: 2, u: 3 };
+  let merging = false;
+  async function checkMerge() {
+    const old = ls.get('eqKeyOld');
+    if (!KONTA || !tok() || !old || merging || document.getElementById('over') || document.querySelector('.eqmerge')) return;
+    merging = true;
+    try {
+      const g = await eqPost('/inv', { key: old });
+      const gs = g.ok ? g.j.slots || {} : null;
+      if (!gs || !Object.values(gs).some(Boolean)) { if (g.ok || g.status === 403) ls.del('eqKeyOld'); return; } // pusty albo już przypięty do konta
+      const a = await eqPost('/inv', eqAuth()); if (!a.ok) return;
+      const as = a.j.slots || {}, pick = {}, clash = [];
+      for (const s of Object.keys(SLOT)) {
+        const x = as[s], y = gs[s];
+        if (!y || (x && x.id === y.id)) pick[s] = 'acc'; else if (!x) pick[s] = 'dev';
+        else { clash.push(s); pick[s] = RANK[y.rarity] > RANK[x.rarity] ? 'dev' : 'acc'; }
+      }
+      if (!clash.length) { // bez kolizji (konto puste tam, gdzie gość ma przedmiot) — łączymy bez pytania
+        const m = await eqPost('/merge', { ...eqAuth(), key: old, pick });
+        if (m.ok || m.status === 409) ls.del('eqKeyOld');
+        if (m.ok) flash('Przedmioty z tego urządzenia dodane do konta', 2500);
+        return;
+      }
+      openMerge(as, gs, pick, clash, old);
+    } catch {} finally { merging = false; }
+  }
+  function openMerge(as, gs, pick, clash, old) {
+    const ov = document.createElement('div'); ov.className = 'eqo eqmerge';
+    const opt = (s, v, it, tag) => `<label class="mopt"><input type="radio" name="m-${s}" value="${v}"${pick[s] === v ? ' checked' : ''}><span class="tag">${tag}</span>${itemEl(it)}<span class="eqname" style="color:${COL[it.rarity]}">${esc(itemName(it))}</span></label>`;
+    const auto = Object.keys(SLOT).filter((s) => !clash.includes(s) && pick[s] === 'dev');
+    ov.innerHTML = `<div class="eqbox" style="width:min(400px,calc(100vw - 32px))"><h3 style="margin:0 0 6px">Połącz ekwipunek</h3>
+      <div class="eqnote" style="margin:0 0 10px">Na tym urządzeniu są przedmioty z gry bez konta. W każdym slocie wybierz, który przedmiot zostaje na koncie <b>${esc(accNick())}</b> — niewybrany zniknie z gry.${auto.length ? ` Do pustych slotów konta trafią: ${auto.map((s) => coloured(gs[s])).join(', ')}.` : ''}</div>
+      ${clash.map((s) => `<div class="mrow"><div class="mslot">${SLOT[s][0]}</div>${opt(s, 'acc', as[s], 'na koncie')}${opt(s, 'dev', gs[s], 'z tego urządzenia')}</div>`).join('')}
+      <div class="row" style="margin-top:12px"><button class="pri" data-a="ok">Połącz</button><button data-a="later">Później</button></div><div class="msg" style="text-align:center"></div></div>`;
+    document.body.appendChild(ov);
+    const msg = ov.querySelector('.msg');
+    ov.querySelector('[data-a="later"]').onclick = () => ov.remove(); // zapyta znowu przy następnym wejściu
+    ov.querySelector('[data-a="ok"]').onclick = (e) => {
+      for (const s of clash) pick[s] = ov.querySelector(`input[name="m-${s}"]:checked`)?.value || 'acc';
+      e.target.disabled = true; msg.textContent = 'Łączę…';
+      eqPost('/merge', { ...eqAuth(), key: old, pick }).then((r) => {
+        if (r.ok || r.status === 409) { ls.del('eqKeyOld'); ov.remove(); flash(r.ok ? 'Ekwipunek połączony' : 'Ten ekwipunek należy już do innego konta', 2500); }
+        else { msg.textContent = r.j?.error || 'Błąd, spróbuj jeszcze raz.'; e.target.disabled = false; }
+      }).catch(() => { msg.textContent = 'Błąd sieci, spróbuj jeszcze raz.'; e.target.disabled = false; });
+    };
+  }
   // Przedmiot = awatar podbitej osoby + nakładka slotu w kolorze rzadkości
   function itemEl(it) {
     const av = it.uid && D?.avatars?.[it.uid];
@@ -515,7 +633,7 @@
     return `<div class="eqit q-${it.rarity}" data-tid="${esc(it.id)}"><div class="eqav" style="${av ? `background-image:url('${esc(av)}')` : ''}">${av ? '' : esc((it.unick || '?')[0].toUpperCase())}</div><svg class="eqov" style="color:${COL[it.rarity]}"><use href="#eq-${it.slot}"/></svg></div>`;
   }
   // Porównanie „założone → nowy” z przyciskami; done(stan) po rozstrzygnięciu (albo done(null) gdy przedmiot już przepadł)
-  function decideUI(host, item, cur, done) {
+  function decideUI(host, item, cur, done, auth = eqAuth()) {
     host.innerHTML = `<div class="eqcmp">${cur ? `<div class="eqc q-${cur.rarity}"><span class="tag">założone</span>${itemEl(cur)}<div class="eqname" style="color:${COL[cur.rarity]}">${esc(itemName(cur))}</div></div><div class="arr">→</div>` : ''}<div class="eqc q-${item.rarity}"><span class="tag">nowy</span>${itemEl(item)}<div class="eqname" style="color:${COL[item.rarity]}">${esc(itemName(item))}</div></div></div>
       <div class="row"><button class="pri" data-a="equip">Załóż nowy</button><button data-a="discard">Zostaw stary</button></div><div class="msg"></div>`;
     const msg = host.querySelector('.msg');
@@ -523,7 +641,7 @@
       const a = b.dataset.a;
       if (a === 'equip' && cur && !confirm(`Po zamianie ${itemName(cur)} przepadnie na zawsze. Na pewno?`)) return;
       host.querySelectorAll('button').forEach((x) => x.disabled = true);
-      eqPost('/equip', { key: getKey(), id: item.id, action: a }).then((r) => {
+      eqPost('/equip', { ...auth, id: item.id, action: a }).then((r) => {
         if (r.status === 409) { host.innerHTML = '<div class="msg">Ten przedmiot już przepadł.</div>'; done(null); }
         else if (r.ok) { host.innerHTML = `<div class="eqres">${a === 'equip' ? 'Założono' : cur ? 'Zostawiono stary' : 'Odrzucono'}: ${coloured(a === 'equip' || !cur ? item : cur)}</div>`; done(r.j); }
         else throw 0;
@@ -531,15 +649,16 @@
     });
   }
   // Sekcja dropu w oknie końca gry; setOpen(true) dopóki czeka na decyzję (okno się wtedy nie zamyka po zapisie wyniku)
-  function showDrop(host, j, setOpen) {
+  function showDrop(host, j, setOpen, auth) {
     const it = j.drop;
     host.innerHTML = `<div class="eqdrop">${j.equipped || j.autoDiscard ? '' : `<div>Wypadł przedmiot! <b style="color:${COL[it.rarity]}">${RAR[it.rarity]}</b></div>`}<div class="eqbody"></div><a href="#" data-a="seeinv" class="seeinv">Ekwipunek ›</a></div>`;
     host.querySelector('[data-a="seeinv"]').onclick = (e) => { e.preventDefault(); openInv(); };
     const body = host.querySelector('.eqbody');
+    if (it.rarity !== 'n') addNudge(host.querySelector('.eqdrop'), '💾 Przedmioty są zapisane tylko w tej przeglądarce. Z kontem nie zginą i będą na każdym urządzeniu.', ls.get('pilNick') || '');
     if (j.autoDiscard) { body.innerHTML = `<div class="eqres">${itemEl(it)}<span>Wypadł ${coloured(it)} (normalny)<br><small style="color:var(--mute)">gorszy od założonego — odrzucony</small></span></div>`; setOpen(false); return; }
     if (j.equipped) { body.innerHTML = `<div class="eqres">${itemEl(it)}<span>Nowy przedmiot: ${coloured(it)}<br><small style="color:var(--mute)">założony</small></span></div>`; setOpen(false); return; }
     setOpen(true);
-    decideUI(body, it, j.current, () => setOpen(false));
+    decideUI(body, it, j.current, () => setOpen(false), auth);
   }
   const SLOT_POS = { helm: 'left:160px;top:46px;width:100px;height:100px', armor: 'left:150px;top:186px;width:120px;height:150px', gloves: 'left:22px;top:252px;width:100px;height:100px', boots: 'left:298px;top:252px;width:100px;height:100px' };
   function invPanel(st, title = 'EKWIPUNEK') {
@@ -550,7 +669,7 @@
   function openView(eq, nick, dev) {
     const ov = document.createElement('div'); ov.className = 'eqo';
     const z = Math.min(1, (innerWidth - 48) / 420);
-    ov.innerHTML = `<div class="eqbox" style="width:${Math.round(420 * z)}px"><div class="eqz" style="zoom:${z}"><div class="eqmain">Ładowanie…</div></div>${`<div class="eqnote">Ekwipunek z urządzenia, na którym padł rekord${dev ? ` (${dev === 'm' ? '📱 telefon' : '🖥️ komputer'})` : ''}. Każde urządzenie ma osobny ekwipunek — żeby mieć wszędzie ten sam, w „Ekwipunek” skopiuj <b>Kod przenoszenia</b> i wczytaj go na drugim urządzeniu.</div>`}<div class="row" style="margin-top:12px"><button data-a="close">Zamknij</button></div></div>`;
+    ov.innerHTML = `<div class="eqbox" style="width:${Math.round(420 * z)}px"><div class="eqz" style="zoom:${z}"><div class="eqmain">Ładowanie…</div></div>${`<div class="eqnote">Ekwipunek z urządzenia, na którym padł rekord${dev ? ` (${dev === 'm' ? '📱 telefon' : '🖥️ komputer'})` : ''}. ${KONTA ? 'Bez konta każde urządzenie ma osobny ekwipunek — konto (Ekwipunek → Konto) daje ten sam wszędzie.' : 'Każde urządzenie ma osobny ekwipunek — żeby mieć wszędzie ten sam, w „Ekwipunek” skopiuj <b>Kod przenoszenia</b> i wczytaj go na drugim urządzeniu.'}</div>`}<div class="row" style="margin-top:12px"><button data-a="close">Zamknij</button></div></div>`;
     document.body.appendChild(ov);
     ov.onclick = (e) => { if (e.target === ov || e.target.dataset?.a === 'close') ov.remove(); };
     eqPost('/view', { eq }).then((r) => { if (!r.ok) throw 0; ov.querySelector('.eqmain').innerHTML = invPanel(r.j, 'Ekwipunek: ' + nick); })
@@ -566,6 +685,7 @@
       <div class="lgr"><span>Mniejsza piłeczka = trudniej, ale większy mnożnik (plakietka x1.3 lub x1.7). Awatary osób z top 10 forum z ostatnich 24 h dają premię: 1. +0.6x, 2. +0.4x, 3. +0.3x, 4.–10. +0.1x; lider dnia ma złotą ramkę z koroną.</span></div>
       <div class="lgr"><span>Pierwsze 3 podbicia są lekkie. Na komputerze pole gry ma proporcje 1,5 : 1 (przerywane linie). Telefon ma większe piłeczki, mocniejsze podbicie i inne tempo — w rankingu widać, na czym padł wynik (📱/🖥️).</span></div>
       <div class="lgr"><span>W rankingu liczy się Twoja najlepsza pojedyncza gra: ogólnie, w tym tygodniu i dziś.</span></div>
+      ${KONTA ? '<div class="lgr"><span>Konto (Ekwipunek → Konto): nick chroniony hasłem — wynik pod nim zapiszesz tylko na zalogowanym urządzeniu — i ten sam ekwipunek na każdym urządzeniu.</span></div>' : ''}
       <h4>Rzadkość przedmiotów</h4>
       ${r(COL.n, 'Normalny', '+0.1x mnożnika')}${r(COL.m, 'Magiczny', '+0.1x mnożnika i 1 afiks')}${r(COL.r, 'Rzadki', '+0.1x mnożnika i 2 afiksy')}${r(COL.u, 'Unikat', '+0.3x mnożnika, 3 losowe afiksy (w tym gwarantowany boski) i unikatowa cecha')}
       <h4>Klasy afiksów</h4>
@@ -578,11 +698,75 @@
     ov.onclick = (e) => { if (e.target === ov || e.target.dataset?.a === 'close') ov.remove(); };
   }
   const fmtKey = (k) => k.match(/.{4}/g).join('-');
-  function openInv() {
+  // Sekcja „Konto” w Ekwipunku. o.konto: 'reg' | 'login' | 'code' — tryb startowy (np. z zachęty po grze), o.nick — wpisany nick
+  function accSection(host, o, onChange) {
+    let mode = o.konto || 'reg', devs = null;
+    const fmtD = (t) => t ? new Date(t * 1000).toLocaleDateString('pl-PL', { day: 'numeric', month: 'numeric', year: new Date(t * 1000).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' }) : '?';
+    const draw = () => {
+      if (!document.body.contains(host)) return;
+      if (tok()) {
+        host.innerHTML = `<h4>Konto</h4><div>Zalogowany jako <b>${esc(accNick())}</b> 🔒 — ten sam ekwipunek na każdym urządzeniu, na którym się zalogujesz.</div>
+          <ul class="accdev">${devs ? devs.map((d) => `<li><span>${d.dev === 'm' ? '📱' : '🖥️'} ${esc(d.label || 'urządzenie')} <small>· od ${fmtD(d.created)}${d.me ? ' · <b>to urządzenie</b>' : ` · ostatnio ${fmtD(d.seen)}`}</small></span>${d.me ? '' : `<button data-sid="${esc(d.sid)}">Wyloguj</button>`}</li>`).join('') : '<li><span>Ładowanie listy urządzeń…</span></li>'}</ul>
+          <form class="accf"><input type="text" name="username" autocomplete="username" value="${esc(accNick())}" hidden><input type="password" name="new-password" autocomplete="new-password" placeholder="Nowe hasło (min. 6 znaków)" minlength="6" required><button type="submit">Zmień hasło</button><div class="accsm">Zmiana hasła wyloguje pozostałe urządzenia. ⚠ Nie używaj hasła z d2jsp ani z innych stron.</div><div class="msg"></div></form>
+          <div class="row" style="margin-top:8px"><button data-a="logout">Wyloguj to urządzenie</button></div>`;
+        const fm = host.querySelector('form'), m = fm.querySelector('.msg');
+        fm.onsubmit = (e) => {
+          e.preventDefault(); m.textContent = 'Zapisuję…';
+          accPost('/password', { token: tok(), password: fm.querySelector('[type=password]').value }).then((r) => {
+            if (!r.ok) { m.textContent = r.j?.error || 'Błąd.'; return; }
+            fm.querySelector('[type=password]').value = ''; m.textContent = `Hasło zmienione${r.j.loggedOut ? ` · wylogowano urządzenia: ${r.j.loggedOut}` : ''}.`; loadDevs();
+          }).catch(() => { m.textContent = 'Błąd sieci.'; });
+        };
+        host.querySelectorAll('button[data-sid]').forEach((b) => b.onclick = () => {
+          b.disabled = true;
+          accPost('/logout', { token: tok(), sid: b.dataset.sid }).then((r) => { if (r.ok) { devs = r.j.sessions; draw(); } else b.disabled = false; }).catch(() => { b.disabled = false; });
+        });
+        host.querySelector('[data-a="logout"]').onclick = () => {
+          if (!confirm('Wylogować to urządzenie? Tutaj zaczniesz z pustym ekwipunkiem gościa — Twoje przedmioty zostają na koncie.')) return;
+          const t = tok();
+          accPost('/logout', { token: t }).catch(() => {}).finally(() => { if (tok() === t) dropSession('Wylogowano'); onChange(); });
+        };
+        if (!devs) loadDevs();
+        return;
+      }
+      const owned = ls.get('eqOwned');
+      const T = { reg: ['Załóż konto', 'new-password', 'Hasło (min. 6 znaków)'], login: ['Zaloguj się', 'current-password', 'Hasło'], code: ['Ustaw nowe hasło', 'new-password', 'Nowe hasło (min. 6 znaków)'] }[mode];
+      host.innerHTML = `<h4>Konto</h4>${owned ? `<div class="warn" style="margin-bottom:6px">Ekwipunek, który był na tym urządzeniu, jest na koncie <b>${esc(owned)}</b> — zaloguj się, żeby go używać.</div>` : ''}
+        <div class="accsm" style="font-size:12.5px">Konto chroni Twój nick hasłem (nikt inny nie zapisze pod nim wyniku) i daje ten sam ekwipunek na każdym urządzeniu. Bez e-maila.</div>
+        <div class="acctabs">${[['reg', 'Załóż konto'], ['login', 'Zaloguj się'], ['code', 'Mam kod od admina']].map(([k, t]) => `<button type="button" data-m="${k}"${k === mode ? ' class="on"' : ''}>${t}</button>`).join('')}</div>
+        <form class="accf"><input type="text" name="username" autocomplete="username" placeholder="Nick" minlength="3" maxlength="20" autocapitalize="off" spellcheck="false" required value="${esc(o.nick || ls.get('pilNick') || '')}">
+          ${mode === 'code' ? '<input type="text" name="code" autocomplete="one-time-code" placeholder="Kod od admina (np. ABCD-EFGH)" maxlength="12" autocapitalize="characters" spellcheck="false" required>' : ''}
+          <input type="password" name="password" autocomplete="${T[1]}" placeholder="${T[2]}" ${mode === 'login' ? '' : 'minlength="6" '}required>
+          <button class="pri" type="submit">${T[0]}</button>
+          ${mode !== 'login' ? '<div class="warn">⚠ Nie używaj hasła z d2jsp ani z innych stron.</div>' : ''}
+          <div class="msg"></div>
+          <div class="accsm">${mode === 'reg' ? 'Ekwipunek z tego urządzenia przejdzie na konto. Nick, który jest już w rankingu, zarejestrujesz na urządzeniu, na którym padł jego rekord — inaczej napisz PW do kruszkush na d2jsp. Zapomniane hasło zmienisz na urządzeniu, na którym jesteś zalogowany, albo dostaniesz od admina jednorazowy kod.'
+            : mode === 'login' ? 'Nie pamiętasz hasła? Zmień je na urządzeniu, na którym jesteś zalogowany (Ekwipunek → Konto), albo napisz PW do kruszkush na d2jsp po jednorazowy kod.'
+            : 'Kod dostajesz od admina (PW do kruszkush na d2jsp), działa 24 h. Ustawia nowe hasło i wylogowuje wszystkie inne urządzenia tego konta.'}</div></form>`;
+      host.querySelectorAll('[data-m]').forEach((b) => b.onclick = () => { o.nick = host.querySelector('[name=username]').value; mode = b.dataset.m; draw(); });
+      const fm = host.querySelector('form'), m = fm.querySelector('.msg'), v = (n) => fm.querySelector(`[name=${n}]`)?.value || '';
+      fm.onsubmit = (e) => {
+        e.preventDefault(); m.textContent = mode === 'login' ? 'Loguję…' : 'Zapisuję…';
+        const body = { nick: v('username').trim(), password: v('password'), key: getKey(), ...(mode === 'code' ? { code: v('code') } : {}) };
+        accPost({ reg: '/register', login: '/login', code: '/redeem' }[mode], body).then((r) => {
+          if (!r.ok) { m.textContent = r.j?.error || 'Błąd.'; return; }
+          accDone(r.j); devs = null; draw(); onChange();
+          flash(mode === 'reg' ? `Konto ${r.j.nick} założone` : `Zalogowano jako ${r.j.nick}`, 2200);
+        }).catch(() => { m.textContent = 'Błąd sieci, spróbuj jeszcze raz.'; });
+      };
+      if (o.konto) setTimeout(() => { host.scrollIntoView({ block: 'center' }); (v('username') ? fm.querySelector('[name=password]') : fm.querySelector('[name=username]')).focus(); }, 50);
+    };
+    const loadDevs = () => accPost('/sessions', { token: tok() }).then((r) => { if (r.ok) { devs = r.j.sessions; draw(); } else if (!tok()) { draw(); onChange(); } }).catch(() => {});
+    draw();
+    return draw;
+  }
+  function openInv(opts) {
+    const o = opts && opts.konto ? opts : {};
     const ov = document.createElement('div'); ov.className = 'eqo';
     const z = Math.min(1, (innerWidth - 48) / 420);
     ov.innerHTML = `<div class="eqbox" style="width:${Math.round(420 * z)}px"><div class="eqz" style="zoom:${z}"><div class="eqmain">Ładowanie…</div></div>
       <div class="eqpend"></div>
+      ${KONTA ? '<div class="eqacc"></div>' : ''}
       <div class="eqtool"><h4>Narzędzie testowe</h4></div>
       <div class="eqcode"><h4>Kod przenoszenia</h4><div class="kc"><code></code><button data-a="copy">Kopiuj</button></div>
       <div class="warn">Nie pokazuj nikomu — kto zna kod, ma Twój ekwipunek. Wyczyszczenie przeglądarki bez zapisanego kodu = utrata.</div>
@@ -592,12 +776,19 @@
     const $q = (s) => ov.querySelector(s), msg = $q('.eqcode .msg'); let state = null;
     const show = (st) => {
       state = st; $q('.eqmain').innerHTML = invPanel(st);
-      { const k = fmtKey(getKey()), h = Math.ceil(k.length / 2); $q('.eqcode code').textContent = k.slice(0, h) + k.slice(h).replace(/[0-9a-f]/g, '•'); } // druga połowa ukryta; „Kopiuj” kopiuje całość
+      $q('.eqcode').hidden = !!tok(); // kod przenoszenia tylko dla gościa — z kontem ekwipunek jest wszędzie po zalogowaniu
+      if (!tok()) { const k = fmtKey(getKey()), h = Math.ceil(k.length / 2); $q('.eqcode code').textContent = k.slice(0, h) + k.slice(h).replace(/[0-9a-f]/g, '•'); } // druga połowa ukryta; „Kopiuj” kopiuje całość
       const pe = $q('.eqpend');
       pe.innerHTML = ''; // nierozstrzygnięty przedmiot nie trafia do ekwipunku — decyzja tylko w oknie końca gry
     };
-    const load = () => eqPost('/inv', { key: getKey() }).then((r) => { if (!r.ok) throw 0; show(r.j); }).catch(() => { $q('.eqmain').textContent = 'Nie udało się pobrać ekwipunku.'; });
+    let prevKey = null; // kod przenoszenia należący do konta: wracamy do poprzedniego klucza
+    const load = () => eqPost('/inv', eqAuth()).then((r) => {
+      if (KONTA && r.status === 403 && r.j?.konto !== undefined && prevKey) { ls.set('eqKey', prevKey); prevKey = null; msg.innerHTML = `Ten kod należy do konta <b>${esc(r.j.konto)}</b> — zaloguj się w sekcji Konto.`; return load(); }
+      if (KONTA && r.status === 401 && !tok()) return load(); // sesja usunięta — już jako gość
+      if (!r.ok) throw 0; prevKey = null; show(r.j);
+    }).catch(() => { $q('.eqmain').textContent = 'Nie udało się pobrać ekwipunku.'; });
     load();
+    if (KONTA) { const redraw = accSection($q('.eqacc'), o, () => { $q('.eqmain').textContent = 'Ładowanie…'; load(); }); accRedraw = () => { redraw(); }; }
     // narzędzie testowe: zakłada dowolny przedmiot (endpoint /grant działa tylko na funkcji testowej)
     const tool = $q('.eqtool'), opt = (v, t) => `<option value="${v}">${esc(t)}</option>`;
     if (!TEST) tool.remove(); // poza /test/ bez narzędzia testowego
@@ -614,19 +805,20 @@
       const affixes = [1, 2].slice(0, nAff()).map((n) => ({ id: tq('a' + n).value, v: +tq('v' + n).value }));
       if (new Set(affixes.map((a) => a.id)).size < affixes.length) { tool.querySelector('.msg').textContent = 'Afiksy muszą być różne.'; return; }
       tool.querySelector('.msg').textContent = 'Zakładam…';
-      eqPost('/grant', { key: getKey(), slot: tq('slot').value, rarity: tq('rar').value, affixes })
+      eqPost('/grant', { ...eqAuth(), slot: tq('slot').value, rarity: tq('rar').value, affixes })
         .then((r) => { if (!r.ok) throw r.j?.error || 0; tool.querySelector('.msg').textContent = 'Założono.'; show(r.j); }).catch((e) => { tool.querySelector('.msg').textContent = typeof e === 'string' ? e : 'Błąd sieci.'; });
     };
-    ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+    const shut = () => { ov.remove(); accRedraw = () => {}; if (KONTA) checkMerge(); };
+    ov.onclick = (e) => { if (e.target === ov) shut(); };
     ov.querySelectorAll('button[data-a]').forEach((b) => b.addEventListener('click', () => {
-      if (b.dataset.a === 'close') ov.remove();
+      if (b.dataset.a === 'close') shut();
       else if (b.dataset.a === 'copy') { navigator.clipboard?.writeText(fmtKey(getKey())).then(() => msg.textContent = 'Skopiowano.', () => msg.textContent = 'Nie udało się skopiować — zaznacz kod ręcznie.'); }
       else if (b.dataset.a === 'load') {
         const k = $q('.eqcode input').value.toLowerCase().replace(/[\s-]/g, '');
         if (!/^[0-9a-f]{32}$/.test(k)) { msg.textContent = 'Zły kod (32 znaki 0-9, a-f).'; return; }
         if (k === getKey()) { msg.textContent = 'To już ten sam kod.'; return; }
         if (state && (state.pending || Object.values(state.slots || {}).some(Boolean)) && !confirm('Ten ekwipunek ma przedmioty — po wczytaniu kodu przepadną (chyba że masz zapisany jego kod). Na pewno?')) return;
-        ls.set('eqKey', k); $q('.eqcode input').value = ''; msg.textContent = 'Wczytano.'; $q('.eqmain').textContent = 'Ładowanie…'; load();
+        prevKey = getKey(); ls.set('eqKey', k); $q('.eqcode input').value = ''; msg.textContent = 'Wczytano.'; $q('.eqmain').textContent = 'Ładowanie…'; load();
       }
     }));
   }
@@ -671,6 +863,16 @@
     .pil li.clk{cursor:pointer;border-radius:6px;margin:0 -8px;padding-left:8px;padding-right:8px}.pil li.clk:hover{background:var(--bg)}
     #eqtip{position:fixed;z-index:95;pointer-events:none;background:rgba(10,10,9,.95);border:1px solid #56514a;border-radius:4px;padding:8px 12px;font-size:12.5px;line-height:1.4;color:#ecebe6;max-width:260px;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.6)}
     #eqtip .tn{font:700 14px Georgia,serif}#eqtip .ts{color:#9a9892}#eqtip .tg{color:#9a9892;margin-top:4px}#eqtip .tb{color:#8f9bff}
+    .eqacc{margin:14px 0 12px;font-size:13px}.eqacc h4{margin:0 0 6px;font-size:13px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em}.eqacc .warn,.accf .warn{font-size:12px;color:#e0764f}
+    .acctabs{display:flex;gap:4px;margin:8px 0 4px}.acctabs button{flex:1;font-size:12px;padding:4px 6px;border-radius:8px}.acctabs button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+    .accf{display:flex;flex-direction:column;gap:6px;margin-top:6px;text-align:left}.accf input{font:inherit;font-size:14px;padding:6px 9px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);margin:0!important;width:auto!important;text-align:left!important}
+    .accf .msg{font-size:12px;color:var(--mute);min-height:0;margin:0;text-align:left}.accf .msg:empty{display:none}.accf .pri,.eqmerge .pri{background:var(--acc);border-color:var(--acc);color:#fff}
+    .accsm{font-size:11.5px;color:var(--mute);line-height:1.4}.accsm a,.accnudge a{color:var(--acc)}.accwhy{font-size:13px;line-height:1.4}
+    .accdev{list-style:none;margin:8px 0;padding:0}.accdev li{display:flex;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid var(--line);font-size:12.5px}.accdev li span{flex:1;min-width:0}.accdev small{color:var(--mute)}.accdev button{font-size:11.5px;padding:2px 8px}
+    .accnudge{margin-top:8px;font-size:12.5px;line-height:1.45;background:rgba(127,127,127,.1);border-radius:8px;padding:7px 9px;text-align:left;color:var(--ink)}
+    #over #pilAccF:not(:empty){margin-top:8px}
+    .mrow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0;padding-top:6px;border-top:1px solid var(--line)}.mrow .mslot{grid-column:1/-1;font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em}
+    .mopt{display:flex;flex-direction:column;align-items:center;gap:3px;border:1px solid var(--line);border-radius:12px;padding:6px;cursor:pointer;background:var(--bg)}.mopt:has(input:checked){border-color:var(--acc);box-shadow:0 0 0 2px var(--acc)}.mopt .tag{font-size:10.5px;color:var(--mute)}.mopt .eqit{width:60px;height:60px}.mopt input{margin:0}
     .eqslot.q-n{border-color:#6d6a64}.eqslot.q-m{border-color:#4a5fb8;box-shadow:inset 0 0 0 2px #000,inset 0 0 22px rgba(80,110,255,.25)}.eqslot.q-r{border-color:#b89a2c;box-shadow:inset 0 0 0 2px #000,inset 0 0 22px rgba(242,210,75,.22)}`;
     document.head.appendChild(eqCss);
     const defs = document.createElement('div');
@@ -704,7 +906,12 @@
     }
     document.getElementById('pil')?.addEventListener('click', (e) => { const li = e.target.closest('li[data-eq]'); if (li) openView(li.dataset.eq, li.dataset.nick, li.dataset.dev); });
     // bonusy z założonych przedmiotów od razu po wejściu na stronę (ponawiane przy błędzie)
-    const loadInv = (n = 0) => eqPost('/inv', { key: getKey() }).then((r) => { if (!r.ok) throw 0; }).catch(() => {
+    const loadInv = (n = 0) => eqPost('/inv', eqAuth()).then((r) => {
+      if (KONTA && r.status === 403 && r.j?.konto !== undefined && !tok()) { ls.set('eqOwned', r.j.konto); ls.del('eqKey'); return loadInv(n); } // klucz przypięty do konta (np. kod przenoszenia sprzed rejestracji)
+      if (KONTA && r.status === 401 && !tok()) return loadInv(n); // sesja usunięta z innego urządzenia — dalej jako gość
+      if (!r.ok) throw 0;
+      if (KONTA && tok()) { if (r.j.acc?.nick) ls.set('pilAcc', r.j.acc.nick); checkMerge(); }
+    }).catch(() => {
       if (n < 4) setTimeout(() => loadInv(n + 1), 4000);
       else { eqFailed = true; if (game?.bWait) { game.bWait = false; drawHud(); flash('Nie udało się wczytać przedmiotów — ta gra bez nich', 2500); } }
     });

@@ -1,9 +1,10 @@
 # Ranking gry "piłeczka": GET [?nick=] -> top 10 + ostatni + miejsce gracza + liczba graczy, POST {nick, score} -> jeden wpis na adres IP (najlepszy wynik, ostatni nick).
 # IP nie jest zapisywane wprost — tylko jego skrót (sha256 z solą).
-import hashlib, math, ipaddress, os, random, re, secrets, time
+import hashlib, hmac, math, ipaddress, os, random, re, secrets, time
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import functions_framework
+from google.api_core.exceptions import AlreadyExists
 from google.cloud import firestore
 
 db = firestore.Client()
@@ -35,6 +36,9 @@ def row(d):
 
 def nick_low(nick):  # ten sam gracz mimo emotek/spacji/znaków: porównujemy tylko litery i cyfry
     return re.sub(r"[^0-9a-ząćęłńóśźż]", "", nick.lower()) or nick.lower()
+
+def claim_eq(d):  # urządzenie (skrót klucza), z którego można od razu założyć konto na nick z rankingu; bez claimEq = wpis sprzed kont
+    return d["claimEq"] if "claimEq" in d else d.get("eq")
 
 def nick_ref(nick, col=None):
     return (COL if col is None else col).document(hashlib.sha256(("nick:" + nick_low(nick)).encode()).hexdigest()[:32])
@@ -182,21 +186,39 @@ def eq_key(j):
     k = j.get("key")
     return k if isinstance(k, str) and KEY_RE.match(k) else None
 
-def eq_drop(req, j):
+def eq_target(req, j):
+    """(dokument ekwipunku, sesja, odpowiedź z błędem). Zalogowany: ekwipunek konta z sesji; gość: dokument klucza."""
+    if KONTA and "token" in j:
+        s = session_of(j.get("token"))
+        if not s:
+            return None, None, relogin(req)
+        return EQ.document(s["eq"]), s, None
     key = eq_key(j)
+    if not key:
+        return None, None, cors(req, {"error": "zły klucz"}, 400)
+    return eq_ref(key), None, None
+
+def owned(req, d):  # klucz gościa, którego ekwipunek jest już przypięty do konta (rejestracja / łączenie)
+    return cors(req, {"error": f"Ten ekwipunek jest na koncie {d.get('ownerNick') or ''} — zaloguj się.", "konto": d.get("ownerNick") or ""}, 403)
+
+def eq_drop(req, j):
+    ref, ses, bad = eq_target(req, j)
+    if bad:
+        return bad
     gid, score = j.get("gameId"), j.get("score")
-    if not key or not isinstance(gid, str) or not 0 < len(gid) <= 40 or not isinstance(score, int) or isinstance(score, bool) or not 0 <= score <= 100000:
+    if not isinstance(gid, str) or not 0 < len(gid) <= 40 or not isinstance(score, int) or isinstance(score, bool) or not 0 <= score <= 100000:
         return cors(req, {"error": "zły klucz, gra lub wynik"}, 400)
     if score < DROP_MIN:
         return cors(req, {"drop": None})
     uid = str(j.get("ballUid", ""))[:12] if str(j.get("ballUid", "")).isdigit() else None
     nick = str(j.get("ballNick", ""))[:30] or None
-    ref = eq_ref(key)
 
     @firestore.transactional
     def run(tx):
         snap = ref.get(transaction=tx)
         d = snap.to_dict() if snap.exists else {}
+        if not ses and d.get("owner"):
+            return {"_owned": d}
         now = time.time()
         if d.get("lastGameId") == gid:
             return {"drop": None, "reason": "ta gra już była"}
@@ -221,20 +243,27 @@ def eq_drop(req, j):
             out = {"drop": item, "current": d["slots"][item["slot"]], "slots": d["slots"]}
         tx.set(ref, d)
         return out
-    return cors(req, run(db.transaction()))
+    out = run(db.transaction())
+    return owned(req, out["_owned"]) if "_owned" in out else cors(req, out)
 
 def eq_inv(req, j):
-    key = eq_key(j)
-    if not key:
-        return cors(req, {"error": "zły klucz"}, 400)
-    snap = eq_ref(key).get()
-    return cors(req, eq_state(snap.to_dict() if snap.exists else {}))
+    ref, ses, bad = eq_target(req, j)
+    if bad:
+        return bad
+    snap = ref.get()
+    d = snap.to_dict() if snap.exists else {}
+    if not ses and d.get("owner"):
+        return owned(req, d)
+    return cors(req, {**eq_state(d), **({"acc": {"nick": ses["nick"]}} if ses else {})})
 
 def eq_equip(req, j):
-    key, iid, action = eq_key(j), j.get("id"), j.get("action")
-    if not key or not isinstance(iid, str) or action not in ("equip", "discard"):
+    # klucz gościa może rozstrzygnąć pending także po przypięciu ekwipunku do konta (drop sprzed rejestracji; nowe dropy kluczem są wtedy blokowane)
+    ref, ses, bad = eq_target(req, j)
+    if bad:
+        return bad
+    iid, action = j.get("id"), j.get("action")
+    if not isinstance(iid, str) or action not in ("equip", "discard"):
         return cors(req, {"error": "zły klucz lub akcja"}, 400)
-    ref = eq_ref(key)
 
     @firestore.transactional
     def run(tx):
@@ -242,7 +271,7 @@ def eq_equip(req, j):
         d = snap.to_dict() if snap.exists else {}
         st = eq_state(d)
         p = st["pending"]
-        if not p or p.get("id") != iid:
+        if not p or p.get("id") != iid or (not ses and d.get("owner") and d.get("pendingTs", 0) >= d.get("ownerTs", 0)):
             return None
         if action == "equip":
             st["slots"][p["slot"]] = p
@@ -254,8 +283,11 @@ def eq_equip(req, j):
 def eq_grant(req, j):  # narzędzie testowe: tylko funkcja testowa (SUFFIX=_test)
     if SUFFIX != "_test":
         return cors(req, {"error": "niedostępne"}, 403)
-    key, slot, rarity, aff = eq_key(j), j.get("slot"), j.get("rarity"), j.get("affixes") or []
-    if not key or slot not in SLOTS or rarity not in ("n", "m", "r", "u") or not isinstance(aff, list):
+    ref, ses, bad = eq_target(req, j)
+    if bad:
+        return bad
+    slot, rarity, aff = j.get("slot"), j.get("rarity"), j.get("affixes") or []
+    if slot not in SLOTS or rarity not in ("n", "m", "r", "u") or not isinstance(aff, list):
         return cors(req, {"error": "zły klucz, slot lub rzadkość"}, 400)
     if len(aff) > {"n": 0, "m": 1, "r": 2, "u": 0}[rarity]:
         return cors(req, {"error": "za dużo afiksów"}, 400)
@@ -267,8 +299,9 @@ def eq_grant(req, j):  # narzędzie testowe: tylko funkcja testowa (SUFFIX=_test
             return cors(req, {"error": "zły afiks lub wartość"}, 400)
         seen.add(aid)
         out.append({"id": aid, "v": v})
-    ref = eq_ref(key)
     snap = ref.get()
+    if not ses and (snap.to_dict() or {}).get("owner"):
+        return owned(req, snap.to_dict())
     st = eq_state(snap.to_dict() if snap.exists else {})
     st["slots"][slot] = make_item(slot, rarity, out, None, "test", 50)
     ref.set({"slots": st["slots"]}, merge=True)
@@ -281,13 +314,316 @@ def eq_view(req, j):  # publiczny podgląd cudzych slotów (po skrócie z rankin
     snap = EQ.document(eid).get()
     return cors(req, {"slots": eq_state(snap.to_dict() if snap.exists else {})["slots"]})
 
-EQ_ROUTES = {"/drop": eq_drop, "/inv": eq_inv, "/equip": eq_equip, "/grant": eq_grant, "/view": eq_view}
+# --- konta graczy: nick + hasło (scrypt), sesja per urządzenie (losowy token, na serwerze tylko skrót), bez wygasania ---
+ACC = db.collection(f"konta{SUFFIX}")  # id = skrót nicku, ten sam co wpis rankingu
+SES = db.collection(f"sesje{SUFFIX}")  # id = skrót tokenu
+TOK_RE, SID_RE = re.compile(r"^[0-9a-f]{64}$"), re.compile(r"^[0-9a-f]{40}$")
+PW_MIN, PW_MAX, FAIL_MAX, LOCK_S, SEEN_S = 6, 200, 5, 900, 43200
+CODE_ABC, CODE_TTL = "ABCDEFGHJKMNPQRSTUVWXYZ23456789", 86400  # kod od admina: 8 znaków bez mylących (0/O, 1/I/L), ważny 24 h
+KONTA = os.environ.get("KONTA") == "1"  # konta włączone tylko tam, gdzie ustawiono env (na razie pileczka-test) — wdrożenie tego kodu na prod ich nie włącza
+WEAK = {"123456", "1234567", "12345678", "123456789", "1234567890", "654321", "111111", "000000", "666666", "123123", "121212", "112233", "123321",
+        "qwerty", "qwerty1", "qwerty123", "qwertyuiop", "asdfgh", "zxcvbn", "password", "password1", "haslo", "haslo1", "haslo12", "haslo123",
+        "abc123", "abcdef", "zaq12wsx", "qazwsx", "1q2w3e", "1q2w3e4r", "iloveyou", "kochanie", "polska", "diablo", "diablo2", "d2jsp1", "pileczka"}
+_RL = {}
+RL_PW, RL_REG = int(os.environ.get("RL_PW", "20")), int(os.environ.get("RL_REG", "5"))  # prób z hasłem na 10 min / nowych kont na dobę z jednego adresu
+
+def real_ip(req):
+    """Adres do limitów: OSTATNI wpis X-Forwarded-For (dopisuje go Google); pierwszy może podać sam klient. IPv6: cała sieć /64."""
+    xs = [x.strip() for x in req.headers.get("X-Forwarded-For", "").split(",") if x.strip()]
+    ip = xs[-1] if xs else (req.remote_addr or "")
+    try:
+        if ipaddress.ip_address(ip).version == 6:
+            ip = str(ipaddress.ip_network(f"{ip}/64", strict=False))
+    except ValueError:
+        pass
+    return sha(SALT + ip)[:32]
+
+def rate_ok(req, kind, n, per):
+    """Limit na adres IP (w pamięci instancji): chroni CPU przed seriami scrypt i przed masową rejestracją nicków."""
+    k, now = (kind, real_ip(req)), time.time()
+    q = [t for t in _RL.get(k, ()) if now - t < per]
+    ok = len(q) < n
+    _RL[k] = q + [now] if ok else q
+    if len(_RL) > 20000:
+        _RL.clear()
+    return ok
+
+def too_many(req):
+    return cors(req, {"error": "Za dużo prób z tego adresu — odczekaj kilka minut."}, 429)
+
+def clean_nick(x):
+    return re.sub(r"\s+", " ", str(x or "")).strip()[:20]
+
+def pw_hash(pw):
+    s = os.urandom(16)
+    return {"s": s.hex(), "h": hashlib.scrypt(pw.encode(), salt=s, n=2**14, r=8, p=1, dklen=32).hex(), "n": 2**14, "r": 8, "p": 1}
+
+def pw_ok(pw, rec):
+    h = hashlib.scrypt(pw.encode(), salt=bytes.fromhex(rec["s"]), n=rec["n"], r=rec["r"], p=rec["p"], dklen=32).hex()
+    return hmac.compare_digest(h, rec["h"])
+
+def pw_bad(pw, nick=""):
+    """Komunikat, gdy hasło się nie nadaje (None = dobre): długość, najpopularniejsze hasła, hasło = nick."""
+    if not isinstance(pw, str) or not PW_MIN <= len(pw) <= PW_MAX:
+        return f"Hasło musi mieć {PW_MIN}–{PW_MAX} znaków."
+    if pw.lower() in WEAK or len(set(pw)) < 3 or (nick and nick_low(pw) == nick_low(nick)):
+        return "To hasło jest za łatwe do zgadnięcia — wymyśl inne."
+    return None
+
+def sha(x):
+    return hashlib.sha256(x.encode()).hexdigest()
+
+def ua_label(req):  # opis urządzenia na liście sesji, np. „Chrome · Android”
+    ua = req.headers.get("User-Agent", "")
+    b = next((n for p, n in (("Edg/", "Edge"), ("OPR/", "Opera"), ("SamsungBrowser", "Samsung Internet"), ("Firefox/", "Firefox"), ("FxiOS", "Firefox"),
+                             ("CriOS", "Chrome"), ("Chrome/", "Chrome"), ("Safari/", "Safari")) if p in ua), "Przeglądarka")
+    o = next((n for p, n in (("Android", "Android"), ("iPhone", "iPhone"), ("iPad", "iPad"), ("Windows", "Windows"), ("Mac OS", "macOS"), ("CrOS", "ChromeOS"), ("Linux", "Linux")) if p in ua), "")
+    return f"{b} · {o}" if o else b
+
+def new_session(req, acc_id, nick, eq_id, dev):
+    tok, now = secrets.token_hex(32), int(time.time())
+    SES.document(sha(tok)[:40]).set({"acc": acc_id, "nick": nick, "eq": eq_id, "dev": dev if dev in ("m", "d") else None, "label": ua_label(req), "created": now, "seen": now})
+    return tok
+
+def session_of(tok):
+    if not isinstance(tok, str) or not TOK_RE.match(tok):
+        return None
+    ref = SES.document(sha(tok)[:40])
+    s = ref.get()
+    if not s.exists:
+        return None
+    d = {**s.to_dict(), "id": ref.id}
+    if time.time() - d.get("seen", 0) > SEEN_S:  # „ostatnio” na liście urządzeń: zapis najwyżej co 12 h
+        ref.update({"seen": int(time.time())})
+    return d
+
+def relogin(req):
+    return cors(req, {"error": "To urządzenie zostało wylogowane — zaloguj się ponownie.", "relogin": True}, 401)
+
+def sessions_of(acc_id):
+    return list(SES.where(filter=firestore.FieldFilter("acc", "==", acc_id)).stream())
+
+# osobne liczniki dla hasła (p="") i kodu od admina (p="r"): złe hasła wpisywane przez kogoś obcego nie blokują użycia kodu
+def lock_left(d, p=""):
+    return max(0, d.get(p + "lockUntil", 0) - time.time())
+
+def lock_msg(d, p=""):
+    return f"Za dużo błędnych prób — {'logowanie na ten nick' if not p else 'użycie kodu'} zablokowane na 15 min (do {datetime.fromtimestamp(d[p + 'lockUntil'], TZ).strftime('%H:%M')})."
+
+def fail(req, aref, what, p=""):
+    """Błędne hasło/kod: licznik prób (krótka transakcja, scrypt liczony wcześniej); przy 5. blokada na 15 min (jawny komunikat)."""
+    @firestore.transactional
+    def run(tx):
+        d = aref.get(transaction=tx).to_dict() or {}
+        n = d.get(p + "fails", 0) + 1
+        if n >= FAIL_MAX:
+            d = {p + "fails": 0, p + "lockUntil": int(time.time()) + LOCK_S}
+            tx.update(aref, d)
+            return lock_msg(d, p)
+        tx.update(aref, {p + "fails": n})
+        return f"{what}. Zostało prób: {FAIL_MAX - n} (potem blokada na 15 min)."
+    return cors(req, {"error": run(db.transaction())}, 401)
+
+def bind_eq(tx, aref, nick, key):
+    """Ekwipunek konta = dokument klucza tego urządzenia (stary klucz przestaje działać jako gość).
+    Gdy ten dokument należy już do innego konta albo brak klucza — nowy, pusty dokument konta. Odczyt przed zapisami (transakcja)."""
+    eref = eq_ref(key) if key else None
+    if eref is not None and not (eref.get(transaction=tx).to_dict() or {}).get("owner"):
+        return eref
+    return EQ.document(sha("konto:" + aref.id)[:40])
+
+def acc_register(req, j):
+    nick, pw, key = clean_nick(j.get("nick")), j.get("password"), eq_key(j)
+    if len(nick) < 3:
+        return cors(req, {"error": "Nick musi mieć co najmniej 3 znaki."}, 400)
+    if pw_bad(pw, nick):
+        return cors(req, {"error": pw_bad(pw, nick)}, 400)
+    if not key:
+        return cors(req, {"error": "zły klucz"}, 400)
+    if not rate_ok(req, "pw", RL_PW, 600):
+        return too_many(req)
+    aref, rref = nick_ref(nick, ACC), nick_ref(nick)
+    a = aref.get()
+    if a.exists:
+        return cors(req, {"error": "Ten nick ma już konto — zaloguj się." if a.to_dict().get("pw") else "Na ten nick admin wydał kod — użyj „Mam kod od admina”."}, 409)
+    r = rref.get()
+    if r.exists and claim_eq(r.to_dict()) != eq_ref(key).id:  # nick zajęty w rankingu: od razu tylko z urządzenia rekordu (stan sprzed kont, niepodrabialny)
+        return cors(req, {"error": "Ten nick jest już w rankingu. Konto na niego założysz tylko na urządzeniu, na którym padł jego rekord (sprzed wprowadzenia kont) — albo napisz PW do kruszkush na d2jsp.", "admin": True}, 403)
+    if not rate_ok(req, "reg", RL_REG, 86400):  # liczą się tylko udane próby: max 5 nowych kont na dobę z jednego adresu
+        return too_many(req)
+    h, now = pw_hash(pw), int(time.time())
+
+    @firestore.transactional
+    def run(tx):
+        eref = bind_eq(tx, aref, nick, key)
+        tx.create(aref, {"nick": nick, "nickLower": nick_low(nick), "pw": h, "eq": eref.id, "created": now, "fails": 0})
+        tx.set(eref, {"owner": aref.id, "ownerNick": nick, "ownerTs": time.time()}, merge=True)
+        if r.exists and r.to_dict().get("eq") != eref.id:  # podgląd z rankingu ma pokazywać ekwipunek konta
+            tx.update(rref, {"eq": eref.id})
+        return eref.id
+    try:
+        eid = run(db.transaction())
+    except AlreadyExists:
+        return cors(req, {"error": "Ten nick ma już konto — zaloguj się."}, 409)
+    return cors(req, {"token": new_session(req, aref.id, nick, eid, j.get("dev")), "nick": nick, "bound": eid == eq_ref(key).id})
+
+def acc_login(req, j):
+    nick, pw = clean_nick(j.get("nick")), j.get("password")
+    if len(nick) < 3 or not isinstance(pw, str) or not pw:
+        return cors(req, {"error": "Podaj nick i hasło."}, 400)
+    if not rate_ok(req, "pw", RL_PW, 600):
+        return too_many(req)
+    aref = nick_ref(nick, ACC)
+    a = aref.get()
+    d = a.to_dict() if a.exists else {}
+    if not d.get("pw"):
+        return cors(req, {"error": "Ten nick nie ma konta."}, 404)
+    if lock_left(d):
+        return cors(req, {"error": lock_msg(d)}, 429)
+    if not pw_ok(pw[:PW_MAX], d["pw"]):
+        return fail(req, aref, "Złe hasło")
+    if d.get("fails"):
+        aref.update({"fails": 0})
+    return cors(req, {"token": new_session(req, aref.id, d["nick"], d["eq"], j.get("dev")), "nick": d["nick"]})
+
+def sess_rows(s):
+    rows = [{"sid": x.id, **{k: x.to_dict().get(k) for k in ("label", "dev", "created", "seen")}, "me": x.id == s["id"]} for x in sessions_of(s["acc"])]
+    return sorted(rows, key=lambda r: (not r["me"], -(r["seen"] or 0)))
+
+def acc_sessions(req, j):
+    s = session_of(j.get("token"))
+    return cors(req, {"nick": s["nick"], "sessions": sess_rows(s)}) if s else relogin(req)
+
+def acc_logout(req, j):
+    s = session_of(j.get("token"))
+    if not s:
+        return relogin(req)
+    sid = j.get("sid")
+    if sid is None or sid == s["id"]:
+        SES.document(s["id"]).delete()
+        return cors(req, {"ok": True})
+    if not isinstance(sid, str) or not SID_RE.match(sid):
+        return cors(req, {"error": "zła sesja"}, 400)
+    t = SES.document(sid).get()
+    if t.exists and t.to_dict().get("acc") == s["acc"]:
+        t.reference.delete()
+    return cors(req, {"nick": s["nick"], "sessions": sess_rows(s)})
+
+def acc_password(req, j):  # zmiana hasła na zalogowanym urządzeniu (też gdy stare zapomniane) — bez starego hasła
+    s = session_of(j.get("token"))
+    if not s:
+        return relogin(req)
+    if pw_bad(j.get("password"), s["nick"]):
+        return cors(req, {"error": pw_bad(j.get("password"), s["nick"])}, 400)
+    if not rate_ok(req, "pw", RL_PW, 600):
+        return too_many(req)
+    ACC.document(s["acc"]).update({"pw": pw_hash(j["password"]), "fails": 0, "lockUntil": 0})
+    gone = [x for x in sessions_of(s["acc"]) if x.id != s["id"]]
+    for x in gone:  # zmiana hasła wylogowuje pozostałe urządzenia (np. skradziony token)
+        x.reference.delete()
+    return cors(req, {"ok": True, "loggedOut": len(gone)})
+
+def acc_redeem(req, j):
+    """Kod od admina: ustawia nowe hasło i wylogowuje wszystkie urządzenia konta. Nick bez konta (przejęcie z rankingu) = jak rejestracja."""
+    nick, pw, key = clean_nick(j.get("nick")), j.get("password"), eq_key(j)
+    code = re.sub(r"[\s-]", "", str(j.get("code", ""))).upper()[:20]
+    if len(nick) < 3 or not code:
+        return cors(req, {"error": "Podaj nick i kod."}, 400)
+    if pw_bad(pw, nick):
+        return cors(req, {"error": pw_bad(pw, nick)}, 400)
+    if not rate_ok(req, "pw", RL_PW, 600):
+        return too_many(req)
+    aref = nick_ref(nick, ACC)
+    a = aref.get()
+    d = a.to_dict() if a.exists else {}
+    rs = d.get("reset") or {}
+    if rs.get("exp", 0) < time.time():
+        return cors(req, {"error": "Brak ważnego kodu dla tego nicku (kod działa 24 h) — napisz PW do kruszkush na d2jsp."}, 404)
+    if lock_left(d, "r"):
+        return cors(req, {"error": lock_msg(d, "r")}, 429)
+    if not hmac.compare_digest(sha(code), rs.get("h", "")):
+        return fail(req, aref, "Zły kod", "r")
+    h, now = pw_hash(pw), int(time.time())
+
+    @firestore.transactional
+    def run(tx):
+        cur = aref.get(transaction=tx).to_dict() or {}
+        if (cur.get("reset") or {}).get("h") != rs.get("h"):
+            return None  # kod zużyty równolegle
+        eref = EQ.document(cur["eq"]) if cur.get("eq") else bind_eq(tx, aref, cur.get("nick") or nick, key)
+        tx.update(aref, {"pw": h, "reset": firestore.DELETE_FIELD, "fails": 0, "lockUntil": 0, "rfails": 0, "rlockUntil": 0, "eq": eref.id, "created": cur.get("created") or now})
+        if not cur.get("eq"):
+            tx.set(eref, {"owner": aref.id, "ownerNick": cur.get("nick") or nick, "ownerTs": time.time()}, merge=True)
+        return eref.id, cur.get("nick") or nick
+    out = run(db.transaction())
+    if not out:
+        return cors(req, {"error": "Ten kod został już użyty."}, 409)
+    eid, nk = out
+    for x in sessions_of(aref.id):  # wszystkie dotychczasowe urządzenia wylogowane
+        x.reference.delete()
+    return cors(req, {"token": new_session(req, aref.id, nk, eid, j.get("dev")), "nick": nk, "bound": bool(key) and eid == eq_ref(key).id})
+
+def acc_merge(req, j):
+    """Łączenie ekwipunku gościa z tego urządzenia z kontem: pick[slot] = 'dev' bierze przedmiot gościa. Nic nie kasujemy — dokument gościa dostaje znacznik mergedInto."""
+    s, key, pick = session_of(j.get("token")), eq_key(j), j.get("pick")
+    if not s:
+        return relogin(req)
+    if not key or not isinstance(pick, dict):
+        return cors(req, {"error": "zły klucz"}, 400)
+    aref, gref = EQ.document(s["eq"]), eq_ref(key)
+
+    @firestore.transactional
+    def run(tx):
+        ad, gd = aref.get(transaction=tx).to_dict() or {}, gref.get(transaction=tx).to_dict() or {}
+        ast = eq_state(ad)
+        if gref.id == aref.id or gd.get("owner"):  # już połączony / to ten sam ekwipunek / należy do innego konta
+            return ast if gref.id == aref.id or gd.get("owner") == s["acc"] else None
+        gs = eq_state(gd)["slots"]
+        slots = {sl: gs[sl] if pick.get(sl) == "dev" and gs[sl] else ast["slots"][sl] for sl in SLOTS}
+        tx.set(aref, {"slots": slots}, merge=True)
+        tx.set(gref, {"owner": s["acc"], "ownerNick": s["nick"], "mergedInto": aref.id, "mergedTs": int(time.time()),
+                      "mergedPick": {sl: "dev" if slots[sl] is gs[sl] and gs[sl] else "acc" for sl in SLOTS}}, merge=True)
+        return {"slots": slots, "pending": ast["pending"]}
+    out = run(db.transaction())
+    return cors(req, out) if out else cors(req, {"error": "Ten ekwipunek należy do innego konta."}, 409)
+
+def acc_admin(req, j):
+    """Admin (sekret w env ADMIN_SECRET): action=code — jednorazowy kod na 24 h (reset hasła albo przejęcie nicku z rankingu), action=info — stan konta."""
+    sec = os.environ.get("ADMIN_SECRET", "")
+    if not sec or not hmac.compare_digest(str(j.get("secret", "")).encode(), sec.encode()):
+        return cors(req, {"error": "niedostępne"}, 403)
+    nick = clean_nick(j.get("nick"))
+    if len(nick) < 3:
+        return cors(req, {"error": "zły nick"}, 400)
+    aref = nick_ref(nick, ACC)
+    d = aref.get().to_dict() or {}
+    r = nick_ref(nick).get().to_dict() or {}
+    info = {"nick": d.get("nick") or r.get("nick") or nick, "konto": bool(d.get("pw")), "sesje": len(sessions_of(aref.id)) if d else 0,
+            "zablokowane": bool(lock_left(d)), "ranking": {k: r.get(k) for k in ("nick", "score", "eq", "dev")} if r else None,
+            "kod_wazny_do": (d.get("reset") or {}).get("exp")}
+    if j.get("action") == "info":
+        return cors(req, info)
+    if j.get("action") != "code":
+        return cors(req, {"error": "zła akcja"}, 400)
+    code = "".join(secrets.choice(CODE_ABC) for _ in range(8))
+    upd = {"reset": {"h": sha(code), "exp": int(time.time()) + CODE_TTL}}
+    if not d:
+        upd.update(nick=info["nick"], nickLower=nick_low(info["nick"]))
+    aref.set(upd, merge=True)
+    return cors(req, {**info, "kod": code[:4] + "-" + code[4:], "kod_wazny_do": upd["reset"]["exp"]})
+
+ACC_ROUTES = {acc_register, acc_login, acc_logout, acc_sessions, acc_password, acc_redeem, acc_merge, acc_admin}
+EQ_ROUTES = {"/drop": eq_drop, "/inv": eq_inv, "/equip": eq_equip, "/grant": eq_grant, "/view": eq_view,
+             "/register": acc_register, "/login": acc_login, "/logout": acc_logout, "/sessions": acc_sessions,
+             "/password": acc_password, "/redeem": acc_redeem, "/merge": acc_merge, "/admin": acc_admin}
 
 @functions_framework.http
 def pileczka(req):
     if req.method == "OPTIONS":
         return cors(req, "", 204)
     h = EQ_ROUTES.get(req.path.rstrip("/") or "/")
+    if h in ACC_ROUTES and not KONTA:
+        return cors(req, {"error": "niedostępne"}, 404)
     if h:  # ekwipunek: osobna ścieżka, błąd tutaj nie dotyka rankingu
         if req.method != "POST":
             return cors(req, {"error": "metoda"}, 405)
@@ -310,6 +646,16 @@ def pileczka(req):
         dev = j.get("dev") if j.get("dev") in ("m", "d") else None
         key = ip_key(req)
         eqk = j.get("key") if isinstance(j.get("key"), str) and KEY_RE.match(j.get("key")) else None
+        eq_id, ses, acc = (eq_ref(eqk).id if eqk else None), None, {}
+        if KONTA and "token" in j:  # zalogowany: zawsze nick i ekwipunek konta
+            ses = session_of(j.get("token"))
+            if not ses:
+                return relogin(req)
+            nick, eq_id = ses["nick"], ses["eq"]
+        elif KONTA:  # nick z kontem zapisuje wynik tylko z zalogowanego urządzenia (też rankingi dnia i tygodnia)
+            acc = nick_ref(nick, ACC).get().to_dict() or {}
+            if acc.get("pw"):
+                return cors(req, {"error": f"Nick {acc['nick']} ma konto — zaloguj się, żeby zapisać wynik.", "need": "login", "nick": acc["nick"]}, 403)
         # ten sam gracz mimo emotek/spacji/znaków: porównujemy tylko litery i cyfry
         nl = nick_low(nick)
         okres = j.get("okres") if j.get("okres") in ("d", "w") else "a"
@@ -321,14 +667,20 @@ def pileczka(req):
         def save(tx):
             prevs = [(r, (s.to_dict() if s.exists else {})) for r in refs for s in [r.get(transaction=tx)]]  # najpierw wszystkie odczyty, potem zapisy
             out = None
-            for r, prev in prevs:
+            for i, (r, prev) in enumerate(prevs):
                 doc = {"nick": nick, "nickLower": nl, "ip": key, "ts": int(time.time())}
                 if score >= prev.get("score", 0):  # nowy rekord: zapisujemy też, ile podbić, czyim awatarem i ekwipunek z tej gry
                     doc.update(score=score, hits=hits, ball=ball, ballUid=ball_uid, dev=dev)
-                    doc["eq"] = eq_ref(eqk).id if eqk else firestore.DELETE_FIELD  # tylko skrót klucza; rekord bez klucza nie zostawia cudzego ekwipunku
+                    doc["eq"] = eq_id or firestore.DELETE_FIELD  # tylko skrót klucza; rekord bez klucza nie zostawia cudzego ekwipunku
+                if i == 0 and "claimEq" not in prev:
+                    # urządzenie, z którego da się od razu założyć konto na ten nick: zamrożone (urządzenie rekordu sprzed kont albo to, które założyło wpis),
+                    # bo wynik nie jest weryfikowany i fałszywy rekord nie może przenieść prawa do nicku
+                    doc["claimEq"] = (prev.get("eq") or "") if prev else (eq_id or "")
                 doc["plays"] = prev.get("plays", 0) + 1  # licznik rozegranych (zapisanych) gier
                 tx.set(r, doc, merge=True)
-                out = out or {"best": max(score, prev.get("score", 0)), "plays": doc["plays"], "record": score >= prev.get("score", 0)}  # „me” z rankingu ogólnego
+                if i == 0:  # „me” z rankingu ogólnego; claim: to urządzenie gościa może od razu założyć konto na ten nick
+                    out = {"best": max(score, prev.get("score", 0)), "plays": doc["plays"], "record": score >= prev.get("score", 0), "konto": bool(ses),
+                           "claim": bool(KONTA and not ses and not acc and eq_id and doc.get("claimEq", prev.get("claimEq")) == eq_id)}
             return out
         me = save(db.transaction())
         # (bez kasowania wpisów „z tego samego adresu”: telefony w sieci komórkowej dzielą jeden adres między wielu ludzi)
