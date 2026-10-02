@@ -1,6 +1,8 @@
 # Ranking gry "piłeczka": GET [?nick=] -> top 10 + ostatni + miejsce gracza + liczba graczy, POST {nick, score} -> jeden wpis na adres IP (najlepszy wynik, ostatni nick).
 # IP nie jest zapisywane wprost — tylko jego skrót (sha256 z solą).
 import hashlib, math, ipaddress, os, random, re, secrets, time
+from datetime import datetime
+from zoneinfo import ZoneInfo
 import functions_framework
 from google.cloud import firestore
 
@@ -8,6 +10,17 @@ db = firestore.Client()
 SUFFIX = os.environ.get("SUFFIX", "")  # wersja testowa: osobne kolekcje (pileczka_test, ekwipunek_test)
 COL = db.collection(f"pileczka{SUFFIX}")
 EQ = db.collection(f"ekwipunek{SUFFIX}")
+# rankingi okresowe (dzień i tydzień, czas polski; tydzień od poniedziałku): pileczka_okres/{d2026-10-03 | w2026-40}/gracze/{nick}
+OKRES = db.collection(f"pileczka{SUFFIX}_okres")
+TZ = ZoneInfo("Europe/Warsaw")
+
+def period_keys():
+    d = datetime.now(TZ)
+    y, w, _ = d.isocalendar()
+    return {"d": "d" + d.strftime("%Y-%m-%d"), "w": f"w{y}-{w:02d}"}
+
+def col_of(okres, keys=None):
+    return OKRES.document((keys or period_keys())[okres]).collection("gracze") if okres in ("d", "w") else COL
 SALT = os.environ.get("SALT", "d2jsp-pileczka")
 ORIGINS = {"https://kruszkush.github.io", "http://localhost:8765"}
 
@@ -23,24 +36,30 @@ def row(d):
 def nick_low(nick):  # ten sam gracz mimo emotek/spacji/znaków: porównujemy tylko litery i cyfry
     return re.sub(r"[^0-9a-ząćęłńóśźż]", "", nick.lower()) or nick.lower()
 
-def nick_ref(nick):
-    return COL.document(hashlib.sha256(("nick:" + nick_low(nick)).encode()).hexdigest()[:32])
+def nick_ref(nick, col=None):
+    return (COL if col is None else col).document(hashlib.sha256(("nick:" + nick_low(nick)).encode()).hexdigest()[:32])
 
-def ranking(nick=""):
-    """Top 10 + ostatnie miejsce + miejsce gracza (po nicku) + liczba graczy. Miejsce = 1 + liczba lepszych wyników."""
-    q = COL.order_by("score", direction=firestore.Query.DESCENDING)
-    out = {"top": [row(x.to_dict()) for x in q.limit(10).stream()]}
-    total = COL.count().get()[0][0].value
+def ranking(nick="", okres="a"):
+    """Top 10 + ostatnie miejsce + miejsce gracza (po nicku) + liczba graczy. Miejsce = 1 + liczba lepszych wyników.
+    okres: a = ogólny, w = ten tydzień, d = dziś. best = rekord ogólny gracza (do HUD w grze)."""
+    okres = okres if okres in ("d", "w") else "a"
+    col = col_of(okres)
+    q = col.order_by("score", direction=firestore.Query.DESCENDING)
+    out = {"okres": okres, "top": [row(x.to_dict()) for x in q.limit(10).stream()]}
+    total = col.count().get()[0][0].value
     out["total"] = total
-    rank = lambda s: COL.where(filter=firestore.FieldFilter("score", ">", s)).count().get()[0][0].value + 1
+    rank = lambda s: col.where(filter=firestore.FieldFilter("score", ">", s)).count().get()[0][0].value + 1
     if total > 10:
-        last = next(iter(COL.order_by("score").limit(1).stream()), None)
+        last = next(iter(col.order_by("score").limit(1).stream()), None)
         if last:
             out["last"] = {**row(last.to_dict()), "rank": rank(last.to_dict().get("score", 0))}
     if nick:
-        me = nick_ref(nick).get()
+        me = nick_ref(nick, col).get()
         if me.exists and me.to_dict().get("score"):
             out["you"] = {**row(me.to_dict()), "rank": rank(me.to_dict()["score"])}
+        best = me if okres == "a" else nick_ref(nick).get()
+        if best.exists:
+            out["best"] = best.to_dict().get("score") or 0
     return out
 
 def ip_key(req):
@@ -278,7 +297,7 @@ def pileczka(req):
             print("ekwipunek:", repr(e))
             return cors(req, {"error": "błąd ekwipunku"}, 500)
     if req.method == "GET":
-        return cors(req, ranking(str(req.args.get("nick", ""))[:20]))
+        return cors(req, ranking(str(req.args.get("nick", ""))[:20], str(req.args.get("okres", ""))))
     if req.method == "POST":
         j = req.get_json(silent=True) or {}
         nick = re.sub(r"\s+", " ", str(j.get("nick", ""))).strip()[:20]
@@ -293,20 +312,25 @@ def pileczka(req):
         eqk = j.get("key") if isinstance(j.get("key"), str) and KEY_RE.match(j.get("key")) else None
         # ten sam gracz mimo emotek/spacji/znaków: porównujemy tylko litery i cyfry
         nl = nick_low(nick)
-        ref = nick_ref(nick)  # jeden wpis na nick
+        okres = j.get("okres") if j.get("okres") in ("d", "w") else "a"
+        keys = period_keys()
+        # jeden wpis na nick: ranking ogólny + ranking dnia i tygodnia (w każdym najlepsza gra z danego okresu)
+        refs = [nick_ref(nick)] + [nick_ref(nick, col_of(o, keys)) for o in ("d", "w")]
 
         @firestore.transactional
         def save(tx):
-            old = ref.get(transaction=tx)
-            prev = old.to_dict() if old.exists else {}
-            doc = {"nick": nick, "nickLower": nl, "ip": key, "ts": int(time.time())}
-            if score >= prev.get("score", 0):  # nowy rekord: zapisujemy też, ile podbić, czyim awatarem i ekwipunek z tej gry
-                doc.update(score=score, hits=hits, ball=ball, ballUid=ball_uid, dev=dev)
-                doc["eq"] = eq_ref(eqk).id if eqk else firestore.DELETE_FIELD  # tylko skrót klucza; rekord bez klucza nie zostawia cudzego ekwipunku
-            doc["plays"] = prev.get("plays", 0) + 1  # licznik rozegranych (zapisanych) gier
-            tx.set(ref, doc, merge=True)
-            return {"best": max(score, prev.get("score", 0)), "plays": doc["plays"], "record": score >= prev.get("score", 0)}
+            prevs = [(r, (s.to_dict() if s.exists else {})) for r in refs for s in [r.get(transaction=tx)]]  # najpierw wszystkie odczyty, potem zapisy
+            out = None
+            for r, prev in prevs:
+                doc = {"nick": nick, "nickLower": nl, "ip": key, "ts": int(time.time())}
+                if score >= prev.get("score", 0):  # nowy rekord: zapisujemy też, ile podbić, czyim awatarem i ekwipunek z tej gry
+                    doc.update(score=score, hits=hits, ball=ball, ballUid=ball_uid, dev=dev)
+                    doc["eq"] = eq_ref(eqk).id if eqk else firestore.DELETE_FIELD  # tylko skrót klucza; rekord bez klucza nie zostawia cudzego ekwipunku
+                doc["plays"] = prev.get("plays", 0) + 1  # licznik rozegranych (zapisanych) gier
+                tx.set(r, doc, merge=True)
+                out = out or {"best": max(score, prev.get("score", 0)), "plays": doc["plays"], "record": score >= prev.get("score", 0)}  # „me” z rankingu ogólnego
+            return out
         me = save(db.transaction())
         # (bez kasowania wpisów „z tego samego adresu”: telefony w sieci komórkowej dzielą jeden adres między wielu ludzi)
-        return cors(req, {**ranking(nick), "me": me})
+        return cors(req, {**ranking(nick, okres), "me": me})
     return cors(req, {"error": "metoda"}, 405)
