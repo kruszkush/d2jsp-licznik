@@ -9,7 +9,7 @@
   const EQON = true; // ekwipunek i przedmioty włączone także na oficjalnej stronie (narzędzie testowe tylko na /test/)
   const API = TEST ? 'https://pileczka-test-i3odn44x6q-ue.a.run.app' : 'https://pileczka-i3odn44x6q-ue.a.run.app';
   const COLORS = ['#e0a526', '#5b8def', '#d9667a', '#4fb286', '#9b5de5', '#e07a3f'];
-  const KONTA = TEST; // konta graczy (nick + hasło): na razie tylko /test/ (funkcja pileczka-test ma env KONTA=1)
+  const KONTA = true; // konta graczy (nick + hasło) na obu stronach; serwer: env KONTA=1 (pileczka i pileczka-test)
   const ls = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} }, del: (k) => { try { localStorage.removeItem(k); } catch {} } };
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
