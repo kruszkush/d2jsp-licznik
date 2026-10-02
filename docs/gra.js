@@ -265,7 +265,7 @@
     if (up) { game.lvl++; flash(`Szybciej! x${fm(totalMult())}`); showMult(game.lvl, true); }
     const r = f.el.getBoundingClientRect(), off = ((e.clientX - (r.left + r.width / 2)) / (r.width / 2)) || 0;
     // podbicie nie wyrzuca ponad górną krawędź: siła ograniczona tak, żeby szczyt lotu był ok. 12 px pod górą ekranu
-    const room = Math.max(0, f.y - 12), vMax = Math.sqrt(2 * G * (1 - game.B.ciezki) * game.k * room), jump = JUMP * (1 - game.B.stlum);
+    const room = Math.max(0, f.y - 12), vMax = Math.sqrt(2 * G * (1 - game.B.ciezki) * game.k * room), jump = JUMP * (1 - game.B.stlum) * (TOUCH ? 1.3 : 1); // telefon: podbicie ~1,7× wyżej (dłuższy lot, mniej gorączkowe klikanie)
     f.vy = SUFIT && game.hits > SAFE_HITS ? -jump * game.k : -Math.max(jump * game.k * .3, Math.min(jump * game.k, vMax)); // test: pełna siła, sufit = wybuch (poza pierwszymi SAFE_HITS podbiciami)
     f.vx = Math.max(-420, Math.min(420, -off * 320 + (Math.random() - .5) * 120)) * game.k * (1 - game.B.zreczny);
     f.vr = -off * 360;
