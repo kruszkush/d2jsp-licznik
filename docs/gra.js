@@ -258,7 +258,7 @@
   const hud = document.createElement('div'); hud.id = 'hud'; hud.hidden = true; document.body.appendChild(hud);
   const multEl = document.createElement('div'); multEl.id = 'mult'; document.body.appendChild(multEl);
   const edgeEl = document.createElement('div'); edgeEl.id = 'edge'; edgeEl.innerHTML = '<i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i>'; // poświata tylko w pasach przy krawędziach (pełnoekranowa warstwa zacinała na 144 Hz)
-  if (TEST) document.body.appendChild(edgeEl); // na razie tylko /test/ — do sprawdzenia płynności na 144 Hz, potem także oficjalna
+  // poświata wyłączona: nawet w pasach przy krawędziach laguje na 144 Hz (sprawdzone 3.10.2026) — edgeEl nie trafia na stronę
   // Duży, półprzezroczysty mnożnik w tle + poświata na brzegach ekranu rosnąca z poziomem
   function showMult(lvl, pulse) {
     const m = totalMult(), heat = Math.min(1, (m - 1) / 3);
@@ -311,13 +311,14 @@
     if (e) hit(f, e); else { game.hover = performance.now(); game.rot0 = f.rot; game.rotTo = Math.round(f.rot / 360) * 360; drawHud(); }
     return true;
   }
-  // „Zagraj jeszcze raz”: losowa piłeczka (jak spadające) wisi w górnej części pola i czeka na pierwsze kliknięcie
+  // „Zagraj jeszcze raz”: od razu kilka spadających awatarów w górnej części ekranu (bez czekania) — piłeczkę wybiera gracz
   function replay() {
     if (!D?.users) return;
-    const u = pickUser(); if (!u) return;
-    const f = newFlake(u), A = TOUCH ? { l: 0, r: W } : arena();
-    f.x = (A.l + A.r - f.size) / 2; f.y = H * .3; f.sway = 0; flakes.add(f);
-    startGame(f, null);
+    for (let n = 0; flakes.size < 7; n++) {
+      const u = pickUser(); if (!u) break;
+      const f = newFlake(u); f.y = -f.size * .3 + n * H * .065 + Math.random() * H * .04; flakes.add(f);
+    }
+    acc = 0;
   }
   // przedmioty wczytane już w trakcie gry (wolny serwer): bonusy działają od tej chwili
   function lateB() {
