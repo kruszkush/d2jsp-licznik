@@ -10,7 +10,11 @@
   const API = TEST ? 'https://pileczka-test-i3odn44x6q-ue.a.run.app' : 'https://pileczka-i3odn44x6q-ue.a.run.app';
   const COLORS = ['#e0a526', '#5b8def', '#d9667a', '#4fb286', '#9b5de5', '#e07a3f'];
   const KONTA = true; // konta graczy (nick + hasło) na obu stronach; serwer: env KONTA=1 (pileczka i pileczka-test)
-  const ls = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} }, del: (k) => { try { localStorage.removeItem(k); } catch {} } };
+  // /test/ i oficjalna strona mają wspólny localStorage (ta sama domena): konto i klucz ekwipunku trzymamy osobno (na /test/ z przedrostkiem „t.”),
+  // inaczej rejestracja na teście kasowała klucz ekwipunku oficjalnej strony, a token z testu wylogowywał na oficjalnej
+  const PER_ENV = new Set(['pilTok', 'pilAcc', 'eqKey', 'eqKeyOld', 'eqOwned']), lk = (k) => TEST && PER_ENV.has(k) ? 't.' + k : k;
+  const ls = { get: (k) => { try { return localStorage.getItem(lk(k)); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(lk(k), v); } catch {} }, del: (k) => { try { localStorage.removeItem(lk(k)); } catch {} } };
+  try { if (TEST && !localStorage.getItem('t.mig')) { const k = localStorage.getItem('eqKey'); if (k && !localStorage.getItem('t.eqKey')) localStorage.setItem('t.eqKey', k); localStorage.setItem('t.mig', '1'); } } catch {} // test: dotychczasowy ekwipunek testowy zostaje
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const css = document.createElement('style');
@@ -382,7 +386,7 @@
       <div class="eq">${P.b > 1 ? `<span class="ch" style="background:${BADGE[f.base] || '#d9264a'};color:#fff"><b>×${fm(P.b)}</b><i>piłeczka</i></span><span class="op">×</span>` : ''}<span class="ch"><b>×${fm(P.lv)}</b><i>poziom ${gLvlN}</i></span>${P.items ? `<span class="op">+</span><span class="ch"><b>+${fm(P.items)}${gZuch ? `<sup class="zsup" title="w tym nabite podbiciami tuż nad dołem ekranu">+${fm(gZuch)}</sup>` : ''}</b><i>przedmioty</i></span>` : ''}<span class="op">=</span><span class="ch tot"><b>×${fm(P.total)}</b><i>na koniec</i></span></div>
       ${EQON ? chancesHtml(score) : ''}
       <input id="pilNick" minlength="3" maxlength="20" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Twój nick" value="${esc(ls.get('pilNick') || '')}">
-      <div class="row"><button class="pri" id="pilSave">Zapisz wynik</button></div><div class="msg" id="pilMsg"></div><div id="pilAccF"></div><div id="pilDrop"></div><div class="endrow"><button id="pilAgain" class="closebig">▶ Zagraj jeszcze raz</button><button id="pilClose" class="closesm">Zamknij</button></div></div>`;
+      <div class="row"><button class="pri" id="pilSave">Zapisz wynik</button></div><div class="msg" id="pilMsg"></div><div id="pilAccF"></div>${KONTA && !tok() ? '<div class="acclink">🔒 <a href="#" data-a="login">Zaloguj się</a> albo <a href="#" data-a="reg">załóż konto</a> — nick chroniony hasłem i ten sam ekwipunek na każdym urządzeniu</div>' : ''}<div id="pilDrop"></div><div class="endrow"><button id="pilAgain" class="closebig">▶ Zagraj jeszcze raz</button><button id="pilClose" class="closesm">Zamknij</button></div></div>`;
     document.body.appendChild(ov);
     setTimeout(() => ov.querySelector('.box').classList.remove('lock'), 700); // klikanie z rozpędu tuż po końcu gry nie trafia w przyciski (przez 0,7 s są wyszarzone)
     // decyzja o przedmiocie tylko tutaj: zamknięcie okna bez wyboru = przedmiot przepada (nie da się odłożyć i porównać później)
@@ -409,10 +413,11 @@
     closeB.onclick = close;
     againB.onclick = () => { if (close()) replay(); };
     const nickEl = ov.querySelector('#pilNick'), saveB = ov.querySelector('#pilSave'), msgEl = ov.querySelector('#pilMsg'), accF = ov.querySelector('#pilAccF');
+    ov.querySelectorAll('.acclink a').forEach((a) => a.onclick = (e) => { e.preventDefault(); openInv({ konto: a.dataset.a, nick: tok() ? '' : nickEl.value.trim() || ls.get('pilNick') || '' }); });
     const chgNick = () => { msgEl.textContent = ''; accF.innerHTML = ''; nickEl.style.display = ''; saveB.style.display = ''; saveB.textContent = 'Zapisz pod nowym nickiem'; nickEl.value = ''; nickEl.focus(); };
     // nick z kontem: logowanie w oknie końca gry, potem ponowny zapis (wynik nie przepada)
     const loginForm = (nick, why) => {
-      nickEl.style.display = 'none'; saveB.style.display = 'none'; msgEl.textContent = '';
+      nickEl.style.display = 'none'; saveB.style.display = 'none'; msgEl.textContent = ''; ov.querySelector('.acclink')?.remove();
       accF.innerHTML = `<form class="accf"><div class="accwhy">${why}</div><input type="text" name="username" autocomplete="username" value="${esc(nick)}" hidden><input type="password" name="password" autocomplete="current-password" placeholder="Hasło" required><button class="pri" type="submit">Zaloguj i zapisz</button><div class="msg"></div><div class="accsm">Nie pamiętasz hasła? Zmień je na urządzeniu, na którym jesteś zalogowany (Ekwipunek → Konto), albo napisz PW do kruszkush na d2jsp po jednorazowy kod. · <a href="#" data-a="other">Zapisz pod innym nickiem</a></div></form>`;
       const fm = accF.querySelector('form'), pw = fm.querySelector('[type=password]'), m = fm.querySelector('.msg');
       fm.onsubmit = (e) => {
@@ -547,13 +552,15 @@
   const accPost = (path, body) => eqPost(path, { ...body, dev: TOUCH ? 'm' : 'd' });
   const snoozed = () => +(ls.get('pilKontoNie') || 0) > Date.now();
   // zachęta do konta (po zapisie wyniku pod wolnym nickiem, po dropie magicznego+); „Nie teraz” chowa na 7 dni
-  const nudgeHtml = (txt) => `<div class="accnudge">${txt} <a href="#" data-a="reg">Załóż konto</a> · <a href="#" data-a="later">Nie teraz</a></div>`;
+  const nudgeHtml = (txt) => `<div class="accnudge">${txt} <a href="#" data-a="reg">Załóż konto</a> · <a href="#" data-a="login">Zaloguj się</a> · <a href="#" data-a="later">Nie teraz</a></div>`;
   function addNudge(host, txt, nick) {
     const ov = host.closest('#over') || host;
     if (!KONTA || tok() || snoozed() || ov.querySelector('.accnudge')) return;
     host.insertAdjacentHTML('beforeend', nudgeHtml(txt));
     const n = host.querySelector('.accnudge');
     n.querySelector('[data-a="reg"]').onclick = (e) => { e.preventDefault(); openInv({ konto: 'reg', nick }); };
+    n.querySelector('[data-a="login"]').onclick = (e) => { e.preventDefault(); openInv({ konto: 'login', nick }); };
+    ov.querySelector('.acclink')?.remove(); // zachęta zastępuje krótki link
     n.querySelector('[data-a="later"]').onclick = (e) => { e.preventDefault(); ls.set('pilKontoNie', String(Date.now() + 7 * 864e5)); n.remove(); };
   }
   // po rejestracji / logowaniu / kodzie od admina (j = { token, nick, bound })
@@ -562,9 +569,9 @@
     ls.set('pilTok', j.token); ls.set('pilAcc', j.nick); ls.set('pilNick', j.nick); ls.set('pilGral', '1'); ls.del('eqOwned');
     // rejestracja przypina ekwipunek klucza do konta (bound) — klucz gościa znika; przy logowaniu czeka na połączenie
     if (old) { if (!j.bound) ls.set('eqKeyOld', old); ls.del('eqKey'); }
-    document.querySelectorAll('.accnudge').forEach((x) => x.remove());
+    document.querySelectorAll('.accnudge, .acclink').forEach((x) => x.remove());
     eqPost('/inv', eqAuth()).catch(() => {});
-    loadRank(); accRedraw();
+    loadRank(); accRedraw(); accBtnDraw();
     if (!document.getElementById('over')) checkMerge();
   }
   // wylogowanie lokalne (przycisk albo sesja usunięta z innego urządzenia); zwraca nick konta
@@ -575,10 +582,10 @@
     B = zeroB(); eqReady = true;
     eqPost('/inv', eqAuth()).catch(() => {});
     if (msg) flash(msg, 3500);
-    loadRank(); accRedraw();
+    loadRank(); accRedraw(); accBtnDraw();
     return nick;
   }
-  let accRedraw = () => {}; // odświeża sekcję „Konto”, gdy Ekwipunek jest otwarty
+  let accRedraw = () => {}, accBtnDraw = () => {}; // odświeża sekcję „Konto” (gdy Ekwipunek jest otwarty) i przycisk konta pod rankingiem
   // Łączenie: ekwipunek gościa z tego urządzenia + ekwipunek konta → okno wyboru per slot (domyślnie rzadszy, remis → konto)
   const RANK = { n: 0, m: 1, r: 2, u: 3 };
   let merging = false;
@@ -700,7 +707,7 @@
   const fmtKey = (k) => k.match(/.{4}/g).join('-');
   // Sekcja „Konto” w Ekwipunku. o.konto: 'reg' | 'login' | 'code' — tryb startowy (np. z zachęty po grze), o.nick — wpisany nick
   function accSection(host, o, onChange) {
-    let mode = o.konto || 'reg', devs = null;
+    let mode = ['reg', 'login', 'code'].includes(o.konto) ? o.konto : 'reg', devs = null;
     const fmtD = (t) => t ? new Date(t * 1000).toLocaleDateString('pl-PL', { day: 'numeric', month: 'numeric', year: new Date(t * 1000).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' }) : '?';
     const draw = () => {
       if (!document.body.contains(host)) return;
@@ -726,6 +733,7 @@
           const t = tok();
           accPost('/logout', { token: t }).catch(() => {}).finally(() => { if (tok() === t) dropSession('Wylogowano'); onChange(); });
         };
+        if (o.konto) { o.konto = null; setTimeout(() => host.scrollIntoView({ block: 'center' }), 50); }
         if (!devs) loadDevs();
         return;
       }
@@ -869,6 +877,7 @@
     .accf .msg{font-size:12px;color:var(--mute);min-height:0;margin:0;text-align:left}.accf .msg:empty{display:none}.accf .pri,.eqmerge .pri{background:var(--acc);border-color:var(--acc);color:#fff}
     .accsm{font-size:11.5px;color:var(--mute);line-height:1.4}.accsm a,.accnudge a{color:var(--acc)}.accwhy{font-size:13px;line-height:1.4}
     .accdev{list-style:none;margin:8px 0;padding:0}.accdev li{display:flex;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid var(--line);font-size:12.5px}.accdev li span{flex:1;min-width:0}.accdev small{color:var(--mute)}.accdev button{font-size:11.5px;padding:2px 8px}
+    .acclink{margin-top:8px;font-size:12px;color:var(--mute);line-height:1.4}.acclink a{color:var(--acc)}
     .accnudge{margin-top:8px;font-size:12.5px;line-height:1.45;background:rgba(127,127,127,.1);border-radius:8px;padding:7px 9px;text-align:left;color:var(--ink)}
     #over #pilAccF:not(:empty){margin-top:8px}
     .mrow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0;padding-top:6px;border-top:1px solid var(--line)}.mrow .mslot{grid-column:1/-1;font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em}
@@ -885,9 +894,15 @@
     document.body.appendChild(defs.firstChild);
     // Przycisk pod kartą rankingu (karta rankingu pojawia się dopiero po pierwszej grze, przycisk jest zawsze)
     const eqCard = document.createElement('div'); eqCard.className = 'card';
-    eqCard.innerHTML = '<button id="eqBtn" style="width:100%">Ekwipunek</button>';
+    eqCard.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap"><button id="eqBtn" style="flex:1 1 140px">Ekwipunek</button>${KONTA ? '<button id="accBtn" style="flex:1 1 140px"></button>' : ''}</div>`;
     card.after(eqCard);
     eqCard.querySelector('#eqBtn').onclick = openInv;
+    if (KONTA) { // konto widoczne od razu (nie tylko w Ekwipunku): gość — logowanie/rejestracja, zalogowany — nick
+      const ab = eqCard.querySelector('#accBtn');
+      accBtnDraw = () => { ab.textContent = tok() ? `🔒 ${accNick()}` : '🔒 Zaloguj się / załóż konto'; ab.title = tok() ? 'Konto: urządzenia, hasło, wylogowanie' : 'Nick chroniony hasłem i ten sam ekwipunek na każdym urządzeniu'; };
+      ab.onclick = () => openInv({ konto: tok() ? 'acc' : 'reg' });
+      accBtnDraw();
+    }
     const tip = document.createElement('div'); tip.id = 'eqtip'; tip.hidden = true; document.body.appendChild(tip);
     let tipFor = null;
     const hideTip = () => { tip.hidden = true; tipFor = null; };

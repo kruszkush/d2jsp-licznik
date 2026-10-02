@@ -24,5 +24,6 @@ console.log(`${test ? '[TEST] ' : ''}Nick: ${j.nick} · konto: ${j.konto ? 'tak'
 console.log(`Ranking: ${j.ranking ? `${j.ranking.nick}, rekord ${j.ranking.score} ${j.ranking.dev === 'm' ? '📱' : '🖥️'}` : 'brak wpisu'}`);
 if (j.kod) {
   console.log(`\nKOD: ${j.kod}  (ważny do ${when(j.kod_wazny_do)})`);
+  if (j.ekwipunek_rekordu) console.log('Konto dostanie ekwipunek z urządzenia rekordu; przedmioty z urządzenia, na którym gracz użyje kodu, trafią do okna łączenia.');
   console.log(`Do wysłania w PW: „Kod do Piłeczki: ${j.kod} — wejdź w Ekwipunek → Konto → Mam kod od admina, wpisz nick ${j.nick}, kod i nowe hasło. Kod działa 24 h${j.konto ? ' i wyloguje wszystkie Twoje urządzenia' : ''}.”`);
 } else if (j.kod_wazny_do) console.log(`Wydany kod ważny do: ${when(j.kod_wazny_do)}`);

@@ -550,9 +550,13 @@ def acc_redeem(req, j):
         cur = aref.get(transaction=tx).to_dict() or {}
         if (cur.get("reset") or {}).get("h") != rs.get("h"):
             return None  # kod zużyty równolegle
-        eref = EQ.document(cur["eq"]) if cur.get("eq") else bind_eq(tx, aref, cur.get("nick") or nick, key)
+        if cur.get("eq"):  # konto z ekwipunkiem albo ekwipunek urządzenia rekordu podpięty przez admina
+            eref = EQ.document(cur["eq"])
+            bind = not (eref.get(transaction=tx).to_dict() or {}).get("owner")
+        else:
+            eref, bind = bind_eq(tx, aref, cur.get("nick") or nick, key), True
         tx.update(aref, {"pw": h, "reset": firestore.DELETE_FIELD, "fails": 0, "lockUntil": 0, "rfails": 0, "rlockUntil": 0, "eq": eref.id, "created": cur.get("created") or now})
-        if not cur.get("eq"):
+        if bind:
             tx.set(eref, {"owner": aref.id, "ownerNick": cur.get("nick") or nick, "ownerTs": time.time()}, merge=True)
         return eref.id, cur.get("nick") or nick
     out = run(db.transaction())
@@ -609,8 +613,11 @@ def acc_admin(req, j):
     upd = {"reset": {"h": sha(code), "exp": int(time.time()) + CODE_TTL}}
     if not d:
         upd.update(nick=info["nick"], nickLower=nick_low(info["nick"]))
+    ce = claim_eq(r) if r and not d.get("eq") else None
+    if ce and EQID_RE.match(ce) and not (EQ.document(ce).get().to_dict() or {}).get("owner"):
+        upd["eq"] = ce  # przejęcie nicku: konto dostanie ekwipunek z urządzenia rekordu (np. gracz stracił klucz po wyczyszczeniu przeglądarki)
     aref.set(upd, merge=True)
-    return cors(req, {**info, "kod": code[:4] + "-" + code[4:], "kod_wazny_do": upd["reset"]["exp"]})
+    return cors(req, {**info, "kod": code[:4] + "-" + code[4:], "kod_wazny_do": upd["reset"]["exp"], "ekwipunek_rekordu": bool(upd.get("eq") or d.get("eq") and not d.get("pw"))})
 
 ACC_ROUTES = {acc_register, acc_login, acc_logout, acc_sessions, acc_password, acc_redeem, acc_merge, acc_admin}
 EQ_ROUTES = {"/drop": eq_drop, "/inv": eq_inv, "/equip": eq_equip, "/grant": eq_grant, "/view": eq_view,
