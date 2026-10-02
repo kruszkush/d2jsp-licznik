@@ -201,7 +201,7 @@
   const G = 1500, JUMP = 610, PER_LEVEL = 8;
   const TOUCH = matchMedia('(pointer: coarse)').matches; // telefon: większe piłeczki, mocniejsze podbicie i większy obszar trafienia
   // test: na komputerze start od ×1,25 (początek był za wolny); na telefonie bez zmian (tam i tak +20%)
-  const speedOf = (lvl, w = 0) => (1 + lvl * 0.07 * (1 - w) + (SUFIT && !TOUCH ? .25 : 0)) * (TOUCH ? 1.2 : 1), // telefon: +20% prędkości (z większym obszarem trafienia i mocniejszym podbiciem) // Wytrwałości: wolniejszy przyrost prędkości
+  const speedOf = (lvl, w = 0) => (1 + lvl * (TOUCH ? 0.045 : 0.07) * (1 - w) + (SUFIT && !TOUCH ? .25 : 0)) * (TOUCH ? 1.2 : 1), // telefon: +20% prędkości (z większym obszarem trafienia i mocniejszym podbiciem) // Wytrwałości: wolniejszy przyrost prędkości
     multOf = (lvl, b = B) => Math.round((1 + b.rozp + lvl * 0.1) * 100) / 100;
   const hud = document.createElement('div'); hud.id = 'hud'; hud.hidden = true; document.body.appendChild(hud);
   const multEl = document.createElement('div'); multEl.id = 'mult'; document.body.appendChild(multEl);
