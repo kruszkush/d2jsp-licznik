@@ -23,6 +23,7 @@
   .flake .b2{background:#ff8a3d}.flake .b3{background:#ff5a3d;color:#fff}.flake .b4{background:#d9264a;color:#fff}
   .flake.ball .badge{display:none}
   .flake.ball{opacity:1;z-index:2}
+  .eqnote{margin-top:10px;font-size:12px;line-height:1.4;color:var(--mute);background:rgba(127,127,127,.08);border-radius:8px;padding:7px 9px;text-align:left}
   #hud .cnt{font-size:.62em;font-weight:700;opacity:.85;margin-right:10px;padding-right:10px;border-right:1px solid var(--line);vertical-align:.15em}#hud .cnt{pointer-events:auto;cursor:help;position:relative}#hud .cnt:hover::after,#hud .cnt.tip::after{content:attr(data-tip);position:absolute;top:calc(100% + 10px);left:0;width:250px;white-space:normal;font-size:12.5px;font-weight:500;line-height:1.35;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:7px 9px;box-shadow:0 6px 18px rgba(0,0,0,.35);z-index:61}
   #hud .cnt small{font-size:.8em;opacity:.7;margin-left:3px}
   #hud{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:61;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 18px;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;box-shadow:0 6px 18px rgba(0,0,0,.25);pointer-events:none}
@@ -100,7 +101,7 @@
   function showRank(j) {
     card.hidden = false;
     const top = Array.isArray(j) ? j : j.top || [], me = (ls.get('pilNick') || '').toLowerCase();
-    const li = (r, i) => `<li class="${r.nick.toLowerCase() === me ? 'me' : ''}${EQON && r.eq ? ' clk' : ''}"${EQON && r.eq ? ` data-eq="${esc(r.eq)}" data-nick="${esc(r.nick)}" title="Zobacz ekwipunek"` : ''}><span style="width:22px;color:var(--mute)">${i + 1}.</span><span class="pn"><span>${esc(r.nick)}</span>${r.hits ? `<small>${ballAv(r)}${r.hits}× ${esc(r.ball || '')}</small>` : ''}</span><b>${r.dev ? `<span class="dev" title="${r.dev === 'm' ? 'telefon' : 'komputer'}">${r.dev === 'm' ? '📱' : '🖥️'}</span>` : ''}${r.score}${EQON && r.plays ? `<small class="plays">${r.plays} ${r.plays === 1 ? 'gra' : r.plays % 10 >= 2 && r.plays % 10 <= 4 && (r.plays % 100 < 12 || r.plays % 100 > 14) ? 'gry' : 'gier'}</small>` : ''}</b></li>`;
+    const li = (r, i) => `<li class="${r.nick.toLowerCase() === me ? 'me' : ''}${EQON && r.eq ? ' clk' : ''}"${EQON && r.eq ? ` data-eq="${esc(r.eq)}" data-nick="${esc(r.nick)}" data-dev="${r.dev || ''}" title="Zobacz ekwipunek"` : ''}><span style="width:22px;color:var(--mute)">${i + 1}.</span><span class="pn"><span>${esc(r.nick)}</span>${r.hits ? `<small>${ballAv(r)}${r.hits}× ${esc(r.ball || '')}</small>` : ''}</span><b>${r.dev ? `<span class="dev" title="${r.dev === 'm' ? 'telefon' : 'komputer'}">${r.dev === 'm' ? '📱' : '🖥️'}</span>` : ''}${r.score}${EQON && r.plays ? `<small class="plays">${r.plays} ${r.plays === 1 ? 'gra' : r.plays % 10 >= 2 && r.plays % 10 <= 4 && (r.plays % 100 < 12 || r.plays % 100 > 14) ? 'gry' : 'gier'}</small>` : ''}</b></li>`;
     const gap = '<li class="gap">…</li>', rows = top.map((r, i) => li(r, i));
     const inTop = (x) => top.some((r) => r.nick === x.nick);
     if (j.you && !inTop(j.you)) rows.push(gap, li(j.you, j.you.rank - 1));
@@ -440,10 +441,10 @@
     return `<div class="eqinv"><h3>${esc(title)}</h3>${Object.keys(SLOT).map((s) => { const it = st.slots?.[s]; return `<div class="eqslot ${it ? 'q-' + it.rarity : 'empty'}${it && bb.setN && it.uid === bb.setUid ? ' setg' : ''}" data-l="${SLOT[s][2]}" style="${SLOT_POS[s]}">${it ? `${itemEl(it)}<div class="eqname" data-tid="${esc(it.id)}" style="color:${COL[it.rarity]}">${esc(itemName(it))}</div>` : ''}</div>`; }).join('')}</div>${sumHtml(calcB(st.slots))}`;
   }
   // Podgląd cudzego ekwipunku (z rankingu): tylko do oglądania
-  function openView(eq, nick) {
+  function openView(eq, nick, dev) {
     const ov = document.createElement('div'); ov.className = 'eqo';
     const z = Math.min(1, (innerWidth - 48) / 420);
-    ov.innerHTML = `<div class="eqbox" style="width:${Math.round(420 * z)}px"><div class="eqz" style="zoom:${z}"><div class="eqmain">Ładowanie…</div></div><div class="row" style="margin-top:12px"><button data-a="close">Zamknij</button></div></div>`;
+    ov.innerHTML = `<div class="eqbox" style="width:${Math.round(420 * z)}px"><div class="eqz" style="zoom:${z}"><div class="eqmain">Ładowanie…</div></div>${`<div class="eqnote">Ekwipunek z urządzenia, na którym padł rekord${dev ? ` (${dev === 'm' ? '📱 telefon' : '🖥️ komputer'})` : ''}. Każde urządzenie ma osobny ekwipunek — żeby mieć wszędzie ten sam, w „Ekwipunek” skopiuj <b>Kod przenoszenia</b> i wczytaj go na drugim urządzeniu.</div>`}<div class="row" style="margin-top:12px"><button data-a="close">Zamknij</button></div></div>`;
     document.body.appendChild(ov);
     ov.onclick = (e) => { if (e.target === ov || e.target.dataset?.a === 'close') ov.remove(); };
     eqPost('/view', { eq }).then((r) => { if (!r.ok) throw 0; ov.querySelector('.eqmain').innerHTML = invPanel(r.j, 'Ekwipunek: ' + nick); })
@@ -590,7 +591,7 @@
     } else {
       document.addEventListener('click', (e) => { const el = tidEl(e); if (el && el !== tipFor) showTip(el); else hideTip(); }, true);
     }
-    document.getElementById('pil')?.addEventListener('click', (e) => { const li = e.target.closest('li[data-eq]'); if (li) openView(li.dataset.eq, li.dataset.nick); });
+    document.getElementById('pil')?.addEventListener('click', (e) => { const li = e.target.closest('li[data-eq]'); if (li) openView(li.dataset.eq, li.dataset.nick, li.dataset.dev); });
     eqPost('/inv', { key: getKey() }).catch(() => {}); // bonusy z założonych przedmiotów od razu po wejściu na stronę
   }
 
