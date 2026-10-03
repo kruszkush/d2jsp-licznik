@@ -88,7 +88,7 @@ PRE_IDS = tuple(k for k, v in AFF.items() if v[0] == "p")
 SUF_IDS = tuple(k for k, v in AFF.items() if v[0] == "s")
 UNIQUE_MIN_SCORE = 50
 U_PTS = [(50, 0.3), (150, 0.8), (300, 1.1), (600, 1.5), (1000, 1.8)]  # % szansy na unikat
-def unique_chance(score):  # od 50 pkt, rośnie do 1.8% przy 1000 pkt
+def unique_chance(score):  # od 50 pkt, 1.8% przy 1000 pkt, dalej rośnie tym samym tempem (bez limitu)
     return 0 if score < 50 else _curve(U_PTS, score) / 100
 
 def drop_chance(score):  # szansa, że w ogóle coś wypadnie: wynik/80 (od 80 pkt zawsze)
@@ -97,12 +97,15 @@ KEY_RE = re.compile(r"^[0-9a-f]{32}$")
 EQID_RE = re.compile(r"^[0-9a-f]{40}$")
 DROP_MIN, DROP_GAP = 15, 15
 # punkty kontrolne: wynik -> (normalne, magiczne, rzadkie) w %; poniżej 30 i powyżej 150 stałe
-# Szanse rzadkości rosną płynnie (liniowo między punktami, bez schodków) aż do 1000 pkt; dalej bez zmian.
+# Szanse rzadkości rosną płynnie (liniowo między punktami, bez schodków); powyżej 1000 pkt dalej tempem ostatniego odcinka (bez limitu).
 R_PTS = [(15, 0.25), (50, 1), (100, 2), (200, 4), (300, 6), (600, 10), (1000, 15)]  # rzadkie: szybszy wzrost do 300 pkt
 M_PTS = [(15, 14), (50, 22), (100, 30), (200, 38), (300, 42), (600, 45), (1000, 45)]
 
 def _curve(pts, x):
-    x = max(pts[0][0], min(x, pts[-1][0]))
+    x = max(pts[0][0], x)
+    if x > pts[-1][0]:  # bez limitu: przedłużenie ostatniego odcinka
+        (x0, y0), (x1, y1) = pts[-2], pts[-1]
+        return y1 + (y1 - y0) * (x - x1) / (x1 - x0)
     for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
         if x <= x1:
             return y0 + (y1 - y0) * (x - x0) / (x1 - x0)
@@ -135,7 +138,7 @@ def luck_of(slots):
 
 def pick_rarity(score, luck=0):
     n, m, r = rarity_weights(score)
-    extra = r * min(luck, 100) / 100  # szczęśliwy: +X% (względnie) do szansy na rzadki, kosztem normalnego
+    extra = min(n, r * min(luck, 100) / 100)  # szczęśliwy: +X% (względnie) do szansy na rzadki, kosztem normalnego (najwyżej cały normalny)
     n, r = n - extra, r + extra
     return random.choices(("n", "m", "r"), weights=(n, m, r))[0]
 
