@@ -334,6 +334,7 @@ def eq_view(req, j):  # publiczny podgląd cudzych slotów (po skrócie z rankin
 CAP = {"stlum": .3, "ciezki": .25, "zreczny": .6, "olb": .25, "rozp": .6, "lowcy": 1.5, "lucky": 100, "wytrw": .3, "brawur": .5, "zuch": .08, "echa": .25,
        "wzn": .08, "mar": .3, "rytm": 6, "kryt": .3, "zlota": .06}  # nowe (12.1-test): wznoszący, maratończyka, rytmu, krytyczny, złotej piłki
 BRAV_MAX, ZUCH_MAX = 1.5, 0.6
+GRA_MIN_VER = 1  # najstarsza wersja zasad punktacji klienta (GRA_VER w gra.js); podbij przy zmianie punktów/szans sprawdzanych w /end
 MIN_GAP_MS = 90  # klient ignoruje kliki szybsze niż 100 ms; luz na zaokrąglenia
 
 def sign_key():
@@ -420,6 +421,9 @@ def gra_start(req, j):
         return cors(req, {"error": "niedostępne"}, 503)
     if not rate_ok(req, "start", 120, 600):
         return too_many(req)
+    v = j.get("ver")
+    if not isinstance(v, int) or isinstance(v, bool) or v < GRA_MIN_VER:
+        return cors(req, {"stale": True, "error": "Nowa wersja gry — odśwież stronę."})  # stara karta: klient sam się przeładuje
     seed = secrets.randbits(32)  # z niego klient i serwer liczą rzuty szans (echa/krytyczny/złota) — patrz roll()
     return cors(req, {"g": tok_make({"k": "g", "gid": secrets.token_hex(8), "t": time.time(), "s": seed}), "s": seed})
 
