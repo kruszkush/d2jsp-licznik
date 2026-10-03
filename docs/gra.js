@@ -28,8 +28,8 @@
   .flake .b2{background:#ff8a3d}.flake .b3{background:#ff5a3d;color:#fff}.flake .b4{background:#d9264a;color:#fff}
   .flake.ball .badge{display:none}
   .flake.ball{opacity:1;z-index:2}
-  @media (pointer:coarse){.flake.ball::before{content:'';position:absolute;inset:-12px;border-radius:50%}} /* telefon: większy obszar trafienia kciukiem */
-  @media (pointer:fine){.flake.ball::before{content:'';position:absolute;inset:-8px;border-radius:50%}} /* komputer: trafienie liczy się też kilka pikseli poza piłeczką */
+  @media (pointer:coarse){.flake.ball::before{content:'';position:absolute;inset:calc(-12px - var(--lot,0px));border-radius:50%}} /* telefon: większy obszar trafienia kciukiem */
+  @media (pointer:fine){.flake.ball::before{content:'';position:absolute;inset:calc(-8px - var(--lot,0px));border-radius:50%}} /* komputer: trafienie liczy się też kilka pikseli poza piłeczką */
   .eqnote{margin-top:10px;font-size:12px;line-height:1.4;color:var(--mute);background:rgba(127,127,127,.08);border-radius:8px;padding:7px 9px;text-align:left}
   #hud .cnt{font-size:.62em;font-weight:700;opacity:.85;margin-right:10px;padding-right:10px;border-right:1px solid var(--line);vertical-align:.15em}#hud .cnt{pointer-events:auto;cursor:help;position:relative}#hud .cnt:hover::after,#hud .cnt.tip::after{content:attr(data-tip);position:absolute;top:calc(100% + 10px);left:0;width:250px;white-space:normal;font-size:12.5px;font-weight:500;line-height:1.35;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:7px 9px;box-shadow:0 6px 18px rgba(0,0,0,.35);z-index:61}
   #hud .cnt small{font-size:.8em;opacity:.7;margin-left:3px}
@@ -211,13 +211,13 @@
   const pickKind = () => { let r = Math.random() * 100; for (const k of KINDS) { if ((r -= k.w) < 0) return k; } return KINDS[0]; };
   const BADGE = { 1.3: '#ff8a3d', 1.7: '#ff5a3d', 2.2: '#d9264a' }; // kolory jak plakietki na piłeczkach
   // Bonusy z założonych przedmiotów (tylko TEST; bez przedmiotów wszystko jest zerem i gra liczy jak dotąd)
-  const zeroB = () => ({ setN: 0, setUid: '', setMult: 0, impl: 0, ostry: 0, stlum: 0, ciezki: 0, zreczny: 0, rozp: 0, wytrw: 0, olb: 0, mrozu: 0, lowcy: 0, serii: 0, brawur: 0, zuch: 0, echa: 0, guardian: 0, lucky: 0, korona: 0, kapcie: 0 });
+  const zeroB = () => ({ setN: 0, setUid: '', setMult: 0, impl: 0, ostry: 0, stlum: 0, ciezki: 0, zreczny: 0, rozp: 0, wytrw: 0, olb: 0, mrozu: 0, lowcy: 0, serii: 0, brawur: 0, zuch: 0, echa: 0, guardian: 0, lucky: 0, korona: 0, kapcie: 0, lotny: 0, wzn: 0, mar: 0, rytm: 0, kryt: 0, zlota: 0 });
   let B = zeroB(), eqReady = !EQON, eqFailed = false; // eqReady: przedmioty wczytane z serwera
   const r3 =(x) => Math.round(x * 1000) / 1000;
-  const CAP = { stlum: .3, ciezki: .25, zreczny: .6, olb: .25, rozp: .6, lowcy: 1.5, lucky: 100, wytrw: .3, brawur: .5, zuch: .08, echa: .25 };
+  const CAP = { stlum: .3, ciezki: .25, zreczny: .6, olb: .25, rozp: .6, lowcy: 1.5, lucky: 100, wytrw: .3, brawur: .5, zuch: .08, echa: .25, lotny: 10, wzn: .08, mar: .3, rytm: 6, kryt: .3, zlota: .06 };
   // afiks → limit łączny jako tekst (np. „30%”, „+1.5x”)
-  const CAPK = { stlumiony: 'stlum', ciezki: 'ciezki', zreczny: 'zreczny', olbrzyma: 'olb', rozpedzony: 'rozp', lowcy: 'lowcy', szczesliwy: 'lucky', wytrwalosci: 'wytrw', brawurowy: 'brawur', zuchwaly: 'zuch', echa: 'echa' };
-  const capTxt = (id) => { const k = CAPK[id]; if (!k) return ''; const v = CAP[k]; return k === 'lucky' ? '+100%' : k === 'lowcy' ? '+1.5x' : k === 'brawur' || k === 'zuch' ? `+${v.toFixed(2)}x` : Math.round(v * 100) + '%'; };
+  const CAPK = { stlumiony: 'stlum', ciezki: 'ciezki', zreczny: 'zreczny', olbrzyma: 'olb', rozpedzony: 'rozp', lowcy: 'lowcy', szczesliwy: 'lucky', wytrwalosci: 'wytrw', brawurowy: 'brawur', zuchwaly: 'zuch', echa: 'echa', lotny: 'lotny', wznoszacy: 'wzn', maratonczyka: 'mar', rytmu: 'rytm', krytyczny: 'kryt', zlota: 'zlota' };
+  const capTxt = (id) => { const k = CAPK[id]; if (!k) return ''; const v = CAP[k]; return k === 'lucky' ? '+100%' : k === 'lowcy' ? '+1.5x' : k === 'brawur' || k === 'zuch' || k === 'wzn' || k === 'mar' ? `+${v.toFixed(2)}x` : k === 'lotny' ? `+${v} px` : k === 'rytm' ? `+${v} pkt` : Math.round(v * 100) + '%'; };
   function calcB(slots) {
     const b = zeroB();
     for (const it of Object.values(slots || {})) {
@@ -232,6 +232,7 @@
         else if (a.id === 'wytrwalosci') b.wytrw += v / 100; else if (a.id === 'olbrzyma') b.olb += v / 100;
         else if (a.id === 'mrozu') b.mrozu += v; else if (a.id === 'lowcy') b.lowcy += v; else if (a.id === 'serii') b.serii += v;
         else if (a.id === 'brawurowy') b.brawur += v; else if (a.id === 'zuchwaly') b.zuch += v; else if (a.id === 'echa') b.echa += v / 100; else if (a.id === 'stroza') b.guardian += v * (SUFIT ? 3 : 1); // test: Stróża = 3 odbicia
+        else if (a.id === 'lotny') b.lotny += v; else if (a.id === 'wznoszacy') b.wzn += v; else if (a.id === 'maratonczyka') b.mar += v; else if (a.id === 'rytmu') b.rytm += v; else if (a.id === 'krytyczny') b.kryt += v / 100; else if (a.id === 'zlota') b.zlota += v / 100;
       }
     }
     // zestaw: przedmioty z awatarem tej samej osoby — +0.2 pkt za sztukę, przy 4 szt. dodatkowo jedno odbicie od dołu
@@ -250,7 +251,7 @@
   const fm = (n) => { const r = Math.round(n * 100) / 100; return Math.abs(r * 10 - Math.round(r * 10)) < 1e-9 ? r.toFixed(1) : r.toFixed(2); };
   // (piłeczka + łowcy gdy mniejsza niż duża) × mnożnik poziomu (start 1 + rozpędzony) + przedmioty (implicit + ostry + seria × floor(podbicia/10))
   const partsOf = (g) => {
-    const b = g.base + (g.base > 1 ? g.B.lowcy : 0) + (g.topB || 0) + (g.crown || 0), lv = multOf(g.lvl, g.B), items = r3(g.B.impl + g.B.ostry + g.B.setMult + (g.zuchAcc || 0) + g.B.serii * Math.floor(g.hits / 10));
+    const b = g.base + (g.base > 1 ? g.B.lowcy : 0) + (g.topB || 0) + (g.crown || 0), lv = multOf(g.lvl, g.B), items = r3(g.B.impl + g.B.ostry + g.B.setMult + (g.zuchAcc || 0) + g.B.serii * Math.floor(g.hits / 10) + g.B.wzn * g.lvl + g.B.mar * (g.marN || 0)); // Wznoszący: za każdy osiągnięty poziom; Maratończyka: za każde pełne 30 s gry
     return { b, lv, items, total: Math.round((b * lv + items) * RP) / RP };
   };
   const totalMult = () => game ? partsOf(game).total : 1;
@@ -287,9 +288,9 @@
   let lastFlash = 0; const BRAV_MAX = 1.5, ZUCH_MAX = 0.6; // sufity premii z serii Brawurowego i nabitego Zuchwałego
   function flash(t, dur = 1100) { lastFlash = performance.now(); flashEl.textContent = t; flashEl.animate([{ opacity: 0, transform: 'translate(-50%,10px) scale(.8)' }, { opacity: 1, transform: 'translate(-50%,0) scale(1.1)', offset: Math.min(.2, 220 / dur) }, { opacity: 1, transform: 'translate(-50%,0) scale(1.1)', offset: Math.max(.2, 1 - 880 / dur) }, { opacity: 0, transform: 'translate(-50%,-18px) scale(1)' }], { duration: dur, easing: 'ease-out' }); }
   // pływające „+N” nad piłeczką przy każdym podbiciu (kolor jak duży mnożnik; większe przy Echu i Brawurze)
-  function ptsFx(f, pts, big) {
+  function ptsFx(f, pts, big, tag = '') {
     const e = document.createElement('div'), heat = Math.min(1, (pts - 1) / 3);
-    e.className = 'pts' + (big ? ' big' : ''); e.textContent = '+' + (pts < 10 ? pts.toFixed(1) : Math.round(pts));
+    e.className = 'pts' + (big ? ' big' : ''); e.textContent = '+' + (pts < 10 ? pts.toFixed(1) : Math.round(pts)) + (tag ? ' ' + tag : '');
     const side = f.x + f.size / 2 > W - 90 ? -1 : 1; // obok piłeczki (ona po podbiciu leci w górę i zasłaniałaby napis); przy prawej krawędzi z lewej strony
     e.style.cssText = `left:${f.x + f.size / 2 + side * (f.size / 2 + 22)}px;top:${f.y + f.size / 2}px;color:hsl(${45 - heat * 45},95%,62%)`;
     document.body.appendChild(e);
@@ -317,7 +318,8 @@
     // weryfikacja: bilet gry z serwera (w tle), log podbić [ms od startu, punkty] i statystyki kliknięć do /end
     game.t0 = performance.now(); game.log = []; game.sim = 0; game.clicks = e ? 1 : 0; game.misses = 0; game.untr = 0; if (e) game.lastClick = game.t0;
     game.emu = TOUCH && (outerWidth - innerWidth > 100 || outerHeight - innerHeight > 250); // tryb telefonu w narzędziach przeglądarki na komputerze
-    game.ticket = getTicket();
+    game.ticket = getTicket(); const gm = game; game.ticket.then((t) => { if (t && game === gm) { gm.seed = t.s; drawHud(); } }); // do przyjścia biletu (seeda) szanse za podbicia nie działają
+    applyLotny();
     if (e) hit(f, e); else { game.hover = performance.now(); game.rot0 = f.rot; game.rotTo = Math.round(f.rot / 360) * 360; drawHud(); }
     return true;
   }
@@ -330,9 +332,11 @@
     }
     acc = 0;
   }
+  // Lotny: większy obszar trafienia piłeczki (px dodane do marginesu ::before)
+  const applyLotny = () => game?.f.el.style.setProperty('--lot', (game.B.lotny || 0) + 'px');
   // przedmioty wczytane już w trakcie gry (wolny serwer): bonusy działają od tej chwili
   function lateB() {
-    const g = game; g.bWait = false; g.B = B; g.saves += B.guardian; g.bans = B.kapcie; g.crown = B.korona ? g.topB : 0;
+    const g = game; g.bWait = false; g.B = B; applyLotny(); g.saves += B.guardian; g.bans = B.kapcie; g.crown = B.korona ? g.topB : 0;
     drawHud(); flash('Przedmioty wczytane');
   }
   // Kapcie Moderatora: pudło liczy się jako podbicie — tylko gdy piłeczka spada w dolnej połowie ekranu (🔨 w HUD wtedy świeci)
@@ -364,15 +368,21 @@
     // Brawurowy: podbicie w dolnych 15% ekranu daje dodatkowy mnożnik; Echa: szansa, że podbicie liczy się podwójnie
     // podbicie tuż nad dołem (dolne 15%): Brawurowy — premia rosnąca z każdym kolejnym takim podbiciem z rzędu (wyższe podbicie zeruje serię),
     // Zuchwały — stały przyrost mnożnika do końca gry; Echa — szansa, że punkty za podbicie liczą się podwójnie
-    const low = (game.B.brawur || game.B.zuch) && f.y + f.size / 2 > H * .85, echo = game.B.echa && Math.random() < game.B.echa;
+    const low = (game.B.brawur || game.B.zuch) && f.y + f.size / 2 > H * .85;
+    // szanse z seeda biletu (i = numer podbicia od 1); bez seeda (bilet jeszcze nie przyszedł) — bez szans, serwer liczy tak samo
+    const sd = game.seed, hi = game.hits, echo = sd != null && game.B.echa > 0 && roll(sd, 1, hi) < game.B.echa, crit = sd != null && game.B.kryt > 0 && roll(sd, 2, hi) < game.B.kryt, gold = sd != null && game.B.zlota > 0 && roll(sd, 3, hi) < game.B.zlota;
+    const ms = Math.round(performance.now() - game.t0); game.marN = Math.floor(ms / 30000); // Maratończyka: pełne 30 s gry (jak na serwerze, z czasu w logu)
     game.lowRun = low ? game.lowRun + 1 : 0;
     const brav = low ? Math.min(BRAV_MAX, game.B.brawur * game.lowRun) : 0;
-    const pts = (totalMult() + brav) * (echo ? 2 : 1);
-    game.score += pts; game.log.push([Math.round(performance.now() - game.t0), pts]); ptsFx(f, pts, echo || brav > 0);
+    const rytm = game.B.rytm && hi % 5 === 0 ? game.B.rytm : 0; // Rytmu: stała premia co 5. podbicie (poza mnożnikami szans)
+    const mulX = (echo ? 2 : 1) * (crit ? 3 : 1) * (gold ? 10 : 1);
+    const pts = (totalMult() + brav) * mulX + rytm;
+    game.score += pts; game.log.push([ms, pts]); ptsFx(f, pts, mulX > 1 || brav > 0, gold ? '×10' : crit ? 'KRYT ×3' : '');
+    if (gold) f.el.animate([{ boxShadow: '0 0 0 0 rgba(255,215,0,0)', filter: 'none' }, { boxShadow: '0 0 34px 14px rgba(255,215,0,.95)', filter: 'sepia(1) saturate(4) brightness(1.15)', offset: .25 }, { boxShadow: '0 0 0 0 rgba(255,215,0,0)', filter: 'none' }], { duration: 700, easing: 'ease-out' });
     // test: odbicie od dołu za punkty — odstępy rosną 50, 100, 200, 400, 800… (progi 50, 150, 350, 750, 1550…)
     while (game.score >= game.nextSave) { game.saves++; game.saveGap *= 2; game.nextSave += game.saveGap; flash('🛡 +1 odbicie od dołu!'); lastFlash = performance.now() + 800; }
     if (low && game.B.zuch && game.lvl > 0) game.zuchAcc = r3(Math.min(ZUCH_MAX, game.zuchAcc + game.B.zuch));
-    if (!up && performance.now() - lastFlash > 1200) if (echo) flash('Echo! x2'); else if (brav) flash(`Brawura x${game.lowRun}! +${fm(brav)}x`);
+    if (!up && performance.now() - lastFlash > 1200) if (gold) flash('✨ Złota Piłka! ×10'); else if (crit) flash('Krytyk! ×3'); else if (echo) flash('Echo! x2'); else if (rytm) flash(`Rytm! +${rytm} pkt`); else if (brav) flash(`Brawura x${game.lowRun}! +${fm(brav)}x`);
     if (up) { game.lvl++; flash(`Szybciej! x${fm(totalMult())}`); showMult(game.lvl, true); }
     if (game.best && !game.rec && Math.round(game.score) > game.best) { game.rec = true; flash('🏆 Nowy rekord!', 1600); lastFlash = performance.now() + 800; } // przebicie rekordu ogólnego
     const r = f.el.getBoundingClientRect(), off = ((e.clientX - (r.left + r.width / 2)) / (r.width / 2)) || 0;
@@ -498,6 +508,12 @@
     echa: ['s', 'Echa', 10, 20, 1, 'Echa', (v) => `+${v}% szansy na podwójne punkty za podbicie`],
     stroza: ['s', 'Stróża', 1, 1, 1, 'Stróża', () => SUFIT ? '3 razy na grę: odbicie od dołu zamiast końca gry' : 'Raz na grę: odbicie od dołu zamiast końca gry'],
     serii: ['s', 'Serii', 0.10, 0.25, 0.01, 'Serii', (v) => `+${v.toFixed(2)}x mnożnika za każde 10 podbić`],
+    lotny: ['p', 'Lotny', 2, 5, 1, ['Lotny', 'Lotna', 'Lotne'], (v) => `Obszar trafienia piłeczki większy o ${v} px`],
+    wznoszacy: ['p', 'Wznoszący', 0.02, 0.04, 0.01, ['Wznoszący', 'Wznosząca', 'Wznoszące'], (v) => `+${v.toFixed(2)}x mnożnika za każdy osiągnięty poziom (dodawane do części „przedmioty”)`],
+    krytyczny: ['p', 'Krytyczny', 3, 10, 1, ['Krytyczny', 'Krytyczna', 'Krytyczne'], (v) => `+${v}% szansy na potrójne punkty za podbicie (napis „KRYT ×3”)`],
+    maratonczyka: ['s', 'Maratończyka', 0.05, 0.15, 0.01, 'Maratończyka', (v) => `+${v.toFixed(2)}x mnożnika za każde pełne 30 s gry (dodawane do części „przedmioty”)`],
+    rytmu: ['s', 'Rytmu', 1, 3, 1, 'Rytmu', (v) => `+${v} pkt za co 5. podbicie (5., 10., 15. …)`],
+    zlota: ['s', 'Złotej Piłki', 1, 3, 1, 'Złotej Piłki', (v) => `+${v}% szansy na dziesięciokrotne punkty za podbicie (piłeczka błyska na złoto, napis „×10”)`],
   };
   const itemName = (it) => {
     const s = SLOT[it.slot]; if (it.rarity === 'u') return UNIQ[it.slot];
@@ -508,7 +524,7 @@
   // Dymek w stylu D2 (najechanie; na telefonie dotknięcie pokazuje/ukrywa)
   const ITEMS = {};
   // klasa afiksu (jak na serwerze): im wyższa, tym rzadsza
-  const TIER = { stlumiony: 'slaby', zreczny: 'slaby', olbrzyma: 'slaby', lowcy: 'dobry',  ciezki: 'dobry', wytrwalosci: 'dobry', rozpedzony: 'znakomity', szczesliwy: 'dobry', brawurowy: 'znakomity', zuchwaly: 'znakomity', echa: 'znakomity', ostry: 'boski', serii: 'boski', stroza: 'boski' };
+  const TIER = { stlumiony: 'slaby', zreczny: 'slaby', olbrzyma: 'slaby', lowcy: 'dobry',  ciezki: 'dobry', wytrwalosci: 'dobry', rozpedzony: 'znakomity', szczesliwy: 'dobry', brawurowy: 'znakomity', zuchwaly: 'znakomity', echa: 'znakomity', lotny: 'znakomity', wznoszacy: 'znakomity', krytyczny: 'znakomity', maratonczyka: 'znakomity', rytmu: 'znakomity', ostry: 'boski', serii: 'boski', stroza: 'boski', zlota: 'boski' };
   const TIERN = { slaby: 'słaby', dobry: 'dobry', znakomity: 'znakomity', boski: 'boski' };
   // zakres rolla afiksu w nawiasie (min–max), żeby było widać, jak blisko maksimum jest przedmiot
   const rng = (id) => { const [, , lo, hi, st] = AFF[id]; if (lo === hi) return ''; const f = (v) => st >= 1 ? v : v.toFixed(st < .1 ? 2 : 1); return ` <span class="rng">(${f(lo)}–${f(hi)})</span>`; };
@@ -521,6 +537,12 @@
     if (b.serii) L.push(`+${b.serii.toFixed(2)}x za każde 10 podbić`);
     if (b.brawur) L.push(`+${b.brawur.toFixed(2)}x mnożnika za każde kolejne podbicie z rzędu tuż nad dołem ekranu (seria maks. +${BRAV_MAX}x)${c('brawur')}`);
     if (b.zuch) L.push(`+${b.zuch.toFixed(2)}x mnożnika na stałe za każde podbicie tuż nad dołem ekranu (od 2. poziomu, nabija się maks. do +${ZUCH_MAX}x)${c('zuch')}`);
+    if (b.wzn) L.push(`+${b.wzn.toFixed(2)}x mnożnika za każdy osiągnięty poziom${c('wzn')}`);
+    if (b.mar) L.push(`+${b.mar.toFixed(2)}x mnożnika za każde pełne 30 s gry${c('mar')}`);
+    if (b.rytm) L.push(`+${b.rytm} pkt za co 5. podbicie${c('rytm')}`);
+    if (b.kryt) L.push(`+${pct(b.kryt)}% szansy na potrójne punkty za podbicie${c('kryt')}`);
+    if (b.zlota) L.push(`+${pct(b.zlota)}% szansy na dziesięciokrotne punkty za podbicie${c('zlota')}`);
+    if (b.lotny) L.push(`Obszar trafienia piłeczki większy o ${b.lotny} px${c('lotny')}`);
     if (b.echa) L.push(`+${pct(b.echa)}% szansy na podwójne punkty za podbicie${c('echa')}`);
     if (b.lowcy) L.push(`+${b.lowcy.toFixed(1)}x do mnożnika małych i średnich piłeczek (x1.3, x1.7)${c('lowcy')}`);
     if (b.rozp) L.push(`Rozpocznij z mnożnikiem ogólnym zwiększonym o ${pct(b.rozp)}%${c('rozp')}`);
@@ -558,8 +580,10 @@
   // konto: token sesji tego urządzenia (pilTok) zamiast klucza gościa (eqKey); eqKeyOld = klucz gościa czekający na połączenie z kontem
   const tok = () => KONTA ? ls.get('pilTok') : null, accNick = () => ls.get('pilAcc') || '';
   // bilet gry z /start (ponawiany; krótka gra może skończyć się przed odpowiedzią serwera) i weryfikacja w /end — raz na grę
-  const getTicket = () => { const go = (n) => fetch(API + '/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then((r) => r.json()).then((j) => { if (!j.g) throw 0; return j.g; }).catch(() => n > 0 ? new Promise((ok) => setTimeout(ok, 1500)).then(() => go(n - 1)) : null); return go(3); };
-  const verify = (vg, auth) => vg.log.length ? Promise.resolve(vg.ticket).then((g) => g ? fetch(API + '/end', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...auth, g, log: vg.log, st: vg.st }) }).then((r) => r.json()) : { error: 'Brak połączenia z serwerem gry — wynik nie może być zapisany.' }).catch(() => ({ error: 'Błąd sieci przy sprawdzaniu wyniku.' })) : Promise.resolve({ error: 'Brak podbić.' });
+  // rzuty szans za podbicia (Echa k=1, Krytyczny k=2, Złotej Piłki k=3) liczone z seeda z biletu — serwer w /end liczy te same rzuty (kopia: roll() w main.py)
+  const roll = (seed, k, i) => { let x = (seed ^ Math.imul(k, 0x9E3779B1) ^ Math.imul(i, 0x85EBCA77)) >>> 0; x ^= x >>> 16; x = Math.imul(x, 0x85EBCA6B) >>> 0; x ^= x >>> 13; x = Math.imul(x, 0xC2B2AE35) >>> 0; x ^= x >>> 16; return (x >>> 0) / 2 ** 32; };
+  const getTicket = () => { const go = (n) => fetch(API + '/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then((r) => r.json()).then((j) => { if (!j.g || !Number.isInteger(j.s)) throw 0; return { g: j.g, s: j.s }; }).catch(() => n > 0 ? new Promise((ok) => setTimeout(ok, 1500)).then(() => go(n - 1)) : null); return go(3); };
+  const verify = (vg, auth) => vg.log.length ? Promise.resolve(vg.ticket).then((t) => t ? fetch(API + '/end', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...auth, g: t.g, log: vg.log, st: vg.st }) }).then((r) => r.json()) : { error: 'Brak połączenia z serwerem gry — wynik nie może być zapisany.' }).catch(() => ({ error: 'Błąd sieci przy sprawdzaniu wyniku.' })) : Promise.resolve({ error: 'Brak podbić.' });
   const eqAuth = () => tok() ? { token: tok() } : { key: getKey() };
   const eqPost = (path, body) => fetch(API + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     .then((r) => r.json().then((j) => {
