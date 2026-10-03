@@ -180,7 +180,7 @@
   function flakeDown(f, e) {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     e.preventDefault();
-    if (game) { if (tooFast(game)) return; hit(f, e); return; }
+    if (game) { if (!e.isTrusted) { game.untr++; return; } game.clicks++; if (tooFast(game)) return; hit(f, e); return; }
     if (e.pointerType === 'touch') { tapStart = { f, id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() }; return; }
     startGame(f, e);
   }
@@ -314,6 +314,10 @@
     document.body.classList.add('playing'); getSelection()?.removeAllRanges(); const pie = document.getElementById('pie'); if (pie) pie.hidden = true; f.vx = 0; f.vy = 0; tapStart = null;
     ls.set('pilStart', '1'); card.querySelector('.pilhint').hidden = true; // podpowiedź dla nowych już niepotrzebna
     if (EQON && eqFailed) flash('Nie udało się wczytać przedmiotów — ta gra bez nich', 2500);
+    // weryfikacja: bilet gry z serwera (w tle), log podbić [ms od startu, punkty] i statystyki kliknięć do /end
+    game.t0 = performance.now(); game.log = []; game.sim = 0; game.clicks = e ? 1 : 0; game.misses = 0; game.untr = 0; if (e) game.lastClick = game.t0;
+    game.emu = TOUCH && (outerWidth - innerWidth > 100 || outerHeight - innerHeight > 250); // tryb telefonu w narzędziach przeglądarki na komputerze
+    game.ticket = getTicket();
     if (e) hit(f, e); else { game.hover = performance.now(); game.rot0 = f.rot; game.rotTo = Math.round(f.rot / 360) * 360; drawHud(); }
     return true;
   }
@@ -337,6 +341,8 @@
     const cnt = e.target.closest?.('#hud .cnt'); if (cnt) { const on = !cnt.classList.contains('tip'); hud.querySelectorAll('.cnt.tip').forEach((x) => x.classList.remove('tip')); if (on) cnt.classList.add('tip'); return; }
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     if (!game || e.target.closest?.('.ball, button, a, input, #over')) return;
+    if (!e.isTrusted) { game.untr++; return; }
+    game.clicks++; game.misses++;
     if (tooFast(game) || !game.bans || !kapArmed(game)) return;
     game.bans--; flash('🔨 Ban! Kapcie Moderatora uratowały piłeczkę'); hit(game.f, { clientX: game.f.el.getBoundingClientRect().left + game.f.size / 2 });
   });
@@ -362,7 +368,7 @@
     game.lowRun = low ? game.lowRun + 1 : 0;
     const brav = low ? Math.min(BRAV_MAX, game.B.brawur * game.lowRun) : 0;
     const pts = (totalMult() + brav) * (echo ? 2 : 1);
-    game.score += pts; ptsFx(f, pts, echo || brav > 0);
+    game.score += pts; game.log.push([Math.round(performance.now() - game.t0), pts]); ptsFx(f, pts, echo || brav > 0);
     // test: odbicie od dołu za punkty — odstępy rosną 50, 100, 200, 400, 800… (progi 50, 150, 350, 750, 1550…)
     while (game.score >= game.nextSave) { game.saves++; game.saveGap *= 2; game.nextSave += game.saveGap; flash('🛡 +1 odbicie od dołu!'); lastFlash = performance.now() + 800; }
     if (low && game.B.zuch && game.lvl > 0) game.zuchAcc = r3(Math.min(ZUCH_MAX, game.zuchAcc + game.B.zuch));
@@ -383,6 +389,7 @@
   }
   function endGame() {
     nadEl.hidden = true;
+    const vg = { ticket: game.ticket, log: game.log, st: { dur: Math.round(performance.now() - game.t0), sim: Math.round(game.sim), clicks: game.clicks, misses: game.misses, untr: game.untr, emu: game.emu } };
     const boom = game.boom, small = game.small, gLvlN = game.lvl + 1, score = Math.round(game.score), f = game.f, gHits = game.hits, gZuch = game.zuchAcc || 0, P = partsOf(game); game = null; document.body.classList.remove('playing'); hideMult();
     f.el.remove(); flakes.clear(); hud.hidden = true;
     const ov = document.createElement('div'); ov.id = 'over';
@@ -408,14 +415,15 @@
     let dropOpen = false; // nierozstrzygnięty przedmiot: okno zamyka się tylko przyciskiem
     const closeB = ov.querySelector('#pilClose'), againB = ov.querySelector('#pilAgain'), dropEl = ov.querySelector('#pilDrop');
     const setWait = (w) => { closeB.disabled = againB.disabled = w; }; // dopóki serwer losuje przedmiot, okna nie da się zamknąć (inaczej przedmiot przepadłby niezauważony)
+    const verP = verify(vg, auth0); // zweryfikowany wynik (bilet r) dla dropu i zapisu
     if (EQON && score >= 15) { // drop idzie od razu, niezależnie od zapisu wyniku
       setWait(true); dropEl.innerHTML = '<div class="msg">Losuję przedmiot…</div>';
       const slow = setTimeout(() => { setWait(false); dropEl.innerHTML = '<div class="msg">Serwer długo nie odpowiada — przedmiot pokaże się tutaj, jeśli poczekasz.</div>'; }, 12000);
-      eqPost('/drop', { ...auth0, gameId: rndHex().slice(0, 16), score, ballUid: /^\d+$/.test(f.u) ? f.u : '', ballNick: D.users[f.u] || '' })
+      verP.then((v) => v.r ? eqPost('/drop', { ...auth0, r: v.r, ballUid: /^\d+$/.test(f.u) ? f.u : '', ballNick: D.users[f.u] || '' }) : { ok: true, j: { drop: null, reason: v.error } })
         .then((r) => {
           clearTimeout(slow); setWait(false); if (!r.ok) throw 0;
           if (r.j.drop) { pendId = r.j.autoDiscard ? null : r.j.drop.id; pendN = r.j.drop.rarity === 'n'; ov.querySelector('.box').classList.add('wide'); showDrop(dropEl, r.j, (o) => { dropOpen = o; }, auth0); }
-          else dropEl.innerHTML = `<div class="msg">${r.j.reason === 'pech' ? `Tym razem nic nie wypadło (szansa ${r.j.chance}%).` : r.j.reason === 'za szybko' ? 'Nic nie wypadło: od poprzedniego przedmiotu minęło mniej niż 15 s.' : 'Tym razem nic nie wypadło.'}</div>`;
+          else dropEl.innerHTML = `<div class="msg">${r.j.reason === 'pech' ? `Tym razem nic nie wypadło (szansa ${r.j.chance}%).` : r.j.reason === 'za szybko' ? 'Nic nie wypadło: od poprzedniego przedmiotu minęło mniej niż 15 s.' : r.j.reason && r.j.reason !== 'ta gra już była' ? esc(r.j.reason) : 'Tym razem nic nie wypadło.'}</div>`;
         }).catch(() => { clearTimeout(slow); setWait(false); dropEl.innerHTML = '<div class="msg">Nie udało się wylosować przedmiotu (błąd sieci lub serwera).</div>'; });
     }
     closeB.onclick = close;
@@ -441,8 +449,8 @@
       if (nick.length < 3) { msgEl.textContent = 'Nick musi mieć co najmniej 3 znaki.'; return; }
       ls.set('pilNick', nick); ls.set('pilGral', '1');
       msgEl.textContent = 'Zapisuję…';
-      fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nick, score, dev: TOUCH ? 'm' : 'd', hits: gHits, ball: D.users[f.u] || '', ballUid: /^\d+$/.test(f.u) ? f.u : '', okres, ...(EQON ? (tok() ? { token: tok() } : { key: getKey() }) : {}) }) })
-        .then((r) => r.json()).then((j) => {
+      verP.then((v) => v.r ? fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nick, r: v.r, dev: TOUCH ? 'm' : 'd', ball: D.users[f.u] || '', ballUid: /^\d+$/.test(f.u) ? f.u : '', okres, ...(EQON ? (tok() ? { token: tok() } : { key: getKey() }) : {}) }) }).then((r) => r.json()) : { error: v.error })
+        .then((j) => {
           if (KONTA && j.need === 'login') { loginForm(j.nick || nick, `🔒 Nick <b>${esc(j.nick || nick)}</b> ma konto. Zaloguj się, żeby zapisać wynik na tym urządzeniu:`); return; }
           if (KONTA && j.relogin) { const n = dropSession() || nick; loginForm(n, `To urządzenie zostało wylogowane. Zaloguj się ponownie, żeby zapisać wynik jako <b>${esc(n)}</b>:`); return; }
           if (j.top) {
@@ -549,6 +557,9 @@
   const getKey = () => { let k = ls.get('eqKey'); if (!/^[0-9a-f]{32}$/.test(k || '')) { k = rndHex(); ls.set('eqKey', k); } return k; };
   // konto: token sesji tego urządzenia (pilTok) zamiast klucza gościa (eqKey); eqKeyOld = klucz gościa czekający na połączenie z kontem
   const tok = () => KONTA ? ls.get('pilTok') : null, accNick = () => ls.get('pilAcc') || '';
+  // bilet gry z /start (ponawiany; krótka gra może skończyć się przed odpowiedzią serwera) i weryfikacja w /end — raz na grę
+  const getTicket = () => { const go = (n) => fetch(API + '/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then((r) => r.json()).then((j) => { if (!j.g) throw 0; return j.g; }).catch(() => n > 0 ? new Promise((ok) => setTimeout(ok, 1500)).then(() => go(n - 1)) : null); return go(3); };
+  const verify = (vg, auth) => vg.log.length ? Promise.resolve(vg.ticket).then((g) => g ? fetch(API + '/end', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...auth, g, log: vg.log, st: vg.st }) }).then((r) => r.json()) : { error: 'Brak połączenia z serwerem gry — wynik nie może być zapisany.' }).catch(() => ({ error: 'Błąd sieci przy sprawdzaniu wyniku.' })) : Promise.resolve({ error: 'Brak podbić.' });
   const eqAuth = () => tok() ? { token: tok() } : { key: getKey() };
   const eqPost = (path, body) => fetch(API + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     .then((r) => r.json().then((j) => {
@@ -944,7 +955,7 @@
   // --- pętla ---
   let last = performance.now(), acc = 0;
   function loop(t) {
-    const dt = Math.min(.05, (t - last) / 1000); last = t;
+    const dt = Math.min(.05, (t - last) / 1000); last = t; if (game) game.sim += dt * 1000;
     acc += dt; if (acc > 1.75) { acc = 0; spawn(); } // o 25% częściej niż dawniej (2.2 s)
     for (const f of flakes) {
       if (game && game.f === f) {
