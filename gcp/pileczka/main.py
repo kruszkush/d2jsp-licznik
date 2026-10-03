@@ -1,6 +1,6 @@
 # Ranking gry "piłeczka": GET [?nick=] -> top 10 + ostatni + miejsce gracza + liczba graczy, POST {nick, score} -> jeden wpis na adres IP (najlepszy wynik, ostatni nick).
 # IP nie jest zapisywane wprost — tylko jego skrót (sha256 z solą).
-import hashlib, hmac, math, ipaddress, os, random, re, secrets, time
+import base64, hashlib, hmac, json, math, ipaddress, os, random, re, secrets, time
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import functions_framework
@@ -205,9 +205,10 @@ def eq_drop(req, j):
     ref, ses, bad = eq_target(req, j)
     if bad:
         return bad
-    gid, score = j.get("gameId"), j.get("score")
-    if not isinstance(gid, str) or not 0 < len(gid) <= 40 or not isinstance(score, int) or isinstance(score, bool) or not 0 <= score <= 100000:
-        return cors(req, {"error": "zły klucz, gra lub wynik"}, 400)
+    r = tok_read(j.get("r"), "r", 3600)  # wynik zweryfikowany przez /end
+    if not r:
+        return cors(req, {"error": "Nieważny wynik gry — odśwież stronę."}, 400)
+    gid, score = r["gid"], r["score"]
     if score < DROP_MIN:
         return cors(req, {"drop": None})
     uid = str(j.get("ballUid", ""))[:12] if str(j.get("ballUid", "")).isdigit() else None
@@ -313,6 +314,132 @@ def eq_view(req, j):  # publiczny podgląd cudzych slotów (po skrócie z rankin
         return cors(req, {"error": "zły identyfikator"}, 400)
     snap = EQ.document(eid).get()
     return cors(req, {"slots": eq_state(snap.to_dict() if snap.exists else {})["slots"]})
+
+# --- weryfikacja gier: bilet z /start (podpisany, bez zapisu w bazie) -> /end sprawdza log podbić i wydaje podpisany wynik dla /drop i zapisu ---
+# Reguły bonusów to kopia calcB/CAP/partsOf z docs/gra.js — przy zmianie zasad punktacji w grze zmień też tutaj (gra_bonusy, gra_limit).
+CAP = {"stlum": .3, "ciezki": .25, "zreczny": .6, "olb": .25, "rozp": .6, "lowcy": 1.5, "lucky": 100, "wytrw": .3, "brawur": .5, "zuch": .08, "echa": .25}
+BRAV_MAX, ZUCH_MAX = 1.5, 0.6
+MIN_GAP_MS = 90  # klient ignoruje kliki szybsze niż 100 ms; luz na zaokrąglenia
+
+def sign_key():
+    k = os.environ.get("ADMIN_SECRET", "")
+    return hmac.new(k.encode(), b"pileczka-gra", hashlib.sha256).digest() if k else None
+
+def tok_make(d):
+    body = base64.urlsafe_b64encode(json.dumps(d, separators=(",", ":")).encode()).decode().rstrip("=")
+    return body + "." + hmac.new(sign_key(), body.encode(), hashlib.sha256).hexdigest()[:32]
+
+def tok_read(t, kind, max_age):
+    if not isinstance(t, str) or "." not in t or len(t) > 2000 or not sign_key():
+        return None
+    body, sig = t.rsplit(".", 1)
+    if not hmac.compare_digest(sig, hmac.new(sign_key(), body.encode(), hashlib.sha256).hexdigest()[:32]):
+        return None
+    try:
+        d = json.loads(base64.urlsafe_b64decode(body + "=" * (-len(body) % 4)))
+    except ValueError:
+        return None
+    return d if isinstance(d, dict) and d.get("k") == kind and time.time() - d.get("t", 0) <= max_age else None
+
+def gra_bonusy(slots):
+    b = dict.fromkeys(("impl", "ostry", "stlum", "ciezki", "zreczny", "rozp", "wytrw", "olb", "lowcy", "serii", "brawur", "zuch", "echa", "lucky", "korona", "setMult"), 0.0)
+    pct = {"stlumiony": "stlum", "ciezki": "ciezki", "zreczny": "zreczny", "rozpedzony": "rozp", "wytrwalosci": "wytrw", "olbrzyma": "olb", "echa": "echa"}
+    raw = {"ostry": "ostry", "szczesliwy": "lucky", "lowcy": "lowcy", "serii": "serii", "brawurowy": "brawur", "zuchwaly": "zuch"}
+    cnt = {}
+    for it in (slots or {}).values():
+        if not it:
+            continue
+        b["impl"] += (it.get("implicit") or {}).get("mult") or 0
+        if it.get("rarity") == "u" and it.get("slot") == "helm":
+            b["korona"] = 1
+        for a in it.get("affixes") or []:
+            v = a.get("v") or 0
+            if a.get("id") in pct:
+                b[pct[a["id"]]] += v / 100
+            elif a.get("id") in raw:
+                b[raw[a["id"]]] += v
+        if it.get("uid") and it.get("rarity") in ("r", "u"):
+            cnt[it["uid"]] = cnt.get(it["uid"], 0) + 1
+    n = max(cnt.values()) if cnt else 0
+    b["setMult"] = (n - 1) * .2 if n >= 2 else 0
+    for k, c in CAP.items():
+        b[k] = min(b[k], c)
+    return b
+
+def gra_limit(b, i):
+    """Najwięcej punktów możliwych za i-te podbicie (od 1): największa piłeczka (1.7) + Łowcy + premia top 10 (0.6) [+ Hełm]."""
+    base = 1.7 + b["lowcy"] + .6 + (.6 if b["korona"] else 0)
+    lv = 1 + b["rozp"] + .1 * (i // 8)
+    items = b["impl"] + b["ostry"] + b["setMult"] + min(ZUCH_MAX, b["zuch"] * i) + b["serii"] * (i // 10)
+    brav = min(BRAV_MAX, b["brawur"] * i)
+    return (base * lv + items + brav) * (2 if b["echa"] > 0 else 1) + .02
+
+def gra_start(req, j):
+    if not sign_key():
+        return cors(req, {"error": "niedostępne"}, 503)
+    if not rate_ok(req, "start", 120, 600):
+        return too_many(req)
+    return cors(req, {"g": tok_make({"k": "g", "gid": secrets.token_hex(8), "t": time.time()})})
+
+def gra_end(req, j):
+    g = tok_read(j.get("g"), "g", 6 * 3600)
+    if not g:
+        return cors(req, {"error": "Nieważny bilet gry — odśwież stronę."}, 400)
+    log = j.get("log")
+    st = j.get("st") if isinstance(j.get("st"), dict) else {}
+    if not isinstance(log, list) or not 0 < len(log) <= 20000:
+        return cors(req, {"error": "zły log gry"}, 400)
+    num = lambda x: isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x)
+    # granica punktów z ekwipunku, którym grało to urządzenie (stan teraz — przedmiot zakładany jest tylko między grami)
+    ref = None
+    if KONTA and "token" in j:
+        s = session_of(j.get("token"))
+        ref = EQ.document(s["eq"]) if s else None
+    elif eq_key(j):
+        ref = eq_ref(eq_key(j))
+    snap = ref.get() if ref else None
+    b = gra_bonusy(eq_state(snap.to_dict() if snap and snap.exists else {})["slots"])
+
+    def bad(why):
+        print("gra odrzucona:", why, g["gid"])
+        return cors(req, {"error": f"Wynik odrzucony: {why}.", "odrzucony": True}, 400)
+    prev, total, gaps = -1, 0.0, []
+    for i, e in enumerate(log, 1):
+        if not isinstance(e, list) or len(e) != 2 or not num(e[0]) or not num(e[1]) or e[1] < 0:
+            return cors(req, {"error": "zły log gry"}, 400)
+        t, pts = e
+        if prev >= 0:
+            if t - prev < MIN_GAP_MS:
+                return bad("podbicia szybsze, niż pozwala gra")
+            gaps.append(t - prev)
+        if pts > gra_limit(b, i):
+            return bad("za dużo punktów za podbicie")
+        prev, total = t, total + pts
+    dur, sim = st.get("dur"), st.get("sim")
+    if not num(dur) or not num(sim) or dur < prev:
+        return cors(req, {"error": "zły log gry"}, 400)
+    real = (time.time() - g["t"]) * 1000
+    if dur > real + 5000:
+        return bad("czas gry dłuższy, niż minął naprawdę")
+    if dur < .8 * real - 15000:
+        return bad("zegar gry był spowolniony")
+    flags = []
+    if dur > 20000 and sim < .8 * dur:
+        flags.append("fps")  # niski FPS (słaby sprzęt albo celowe dławienie) — gra zwalnia; tylko flaga
+    if st.get("emu") is True:
+        flags.append("emu")  # tryb telefonu w narzędziach przeglądarki na komputerze (heurystyka)
+    if num(st.get("untr")) and st["untr"] > 0:
+        flags.append("skrypt")  # kliknięcia wywołane skryptem (gra je ignoruje)
+    if len(gaps) >= 30:
+        m = sum(gaps) / len(gaps)
+        cv = math.sqrt(sum((x - m) ** 2 for x in gaps) / len(gaps)) / m if m else 0
+        if cv < .1:
+            flags.append("rowne")  # podbicia w bardzo równych odstępach (autokliker)
+    if num(st.get("clicks")) and dur > 10000 and st["clicks"] / (dur / 1000) > 8:
+        flags.append("klik")  # ponad 8 kliknięć na sekundę przez całą grę
+    score, hits = round(total), len(log)
+    return cors(req, {"r": tok_make({"k": "r", "gid": g["gid"], "score": score, "hits": hits, "flags": flags, "t": time.time()}),
+                      "score": score, "hits": hits, "flags": flags})
 
 # --- konta graczy: nick + hasło (scrypt), sesja per urządzenie (losowy token, na serwerze tylko skrót), bez wygasania ---
 ACC = db.collection(f"konta{SUFFIX}")  # id = skrót nicku, ten sam co wpis rankingu
@@ -603,7 +730,7 @@ def acc_admin(req, j):
     d = aref.get().to_dict() or {}
     r = nick_ref(nick).get().to_dict() or {}
     info = {"nick": d.get("nick") or r.get("nick") or nick, "konto": bool(d.get("pw")), "sesje": len(sessions_of(aref.id)) if d else 0,
-            "zablokowane": bool(lock_left(d)), "ranking": {k: r.get(k) for k in ("nick", "score", "eq", "dev")} if r else None,
+            "zablokowane": bool(lock_left(d)), "ranking": {k: r.get(k) for k in ("nick", "score", "eq", "dev", "flags")} if r else None,
             "kod_wazny_do": (d.get("reset") or {}).get("exp")}
     if j.get("action") == "info":
         return cors(req, info)
@@ -620,7 +747,7 @@ def acc_admin(req, j):
     return cors(req, {**info, "kod": code[:4] + "-" + code[4:], "kod_wazny_do": upd["reset"]["exp"], "ekwipunek_rekordu": bool(upd.get("eq") or d.get("eq") and not d.get("pw"))})
 
 ACC_ROUTES = {acc_register, acc_login, acc_logout, acc_sessions, acc_password, acc_redeem, acc_merge, acc_admin}
-EQ_ROUTES = {"/drop": eq_drop, "/inv": eq_inv, "/equip": eq_equip, "/grant": eq_grant, "/view": eq_view,
+EQ_ROUTES = {"/start": gra_start, "/end": gra_end, "/drop": eq_drop, "/inv": eq_inv, "/equip": eq_equip, "/grant": eq_grant, "/view": eq_view,
              "/register": acc_register, "/login": acc_login, "/logout": acc_logout, "/sessions": acc_sessions,
              "/password": acc_password, "/redeem": acc_redeem, "/merge": acc_merge, "/admin": acc_admin}
 
@@ -644,10 +771,12 @@ def pileczka(req):
     if req.method == "POST":
         j = req.get_json(silent=True) or {}
         nick = re.sub(r"\s+", " ", str(j.get("nick", ""))).strip()[:20]
-        score = j.get("score")
-        if len(nick) < 3 or not isinstance(score, int) or not 0 < score <= 100000:
+        gr = tok_read(j.get("r"), "r", 3600)  # wynik i podbicia tylko z biletu zweryfikowanego przez /end
+        if not gr:
+            return cors(req, {"error": "Nieważny wynik gry — odśwież stronę (nowa wersja gry)."}, 400)
+        score, hits, flags = gr["score"], gr["hits"] or None, gr.get("flags") or []
+        if len(nick) < 3 or not 0 < score <= 100000:
             return cors(req, {"error": "zły nick lub wynik"}, 400)
-        hits = j.get("hits") if isinstance(j.get("hits"), int) and 0 < j.get("hits") <= 100000 else None
         ball = str(j.get("ball", ""))[:30] or None
         ball_uid = str(j.get("ballUid", ""))[:12] if str(j.get("ballUid", "")).isdigit() else None
         dev = j.get("dev") if j.get("dev") in ("m", "d") else None
@@ -677,7 +806,7 @@ def pileczka(req):
             for i, (r, prev) in enumerate(prevs):
                 doc = {"nick": nick, "nickLower": nl, "ip": key, "ts": int(time.time())}
                 if score >= prev.get("score", 0):  # nowy rekord: zapisujemy też, ile podbić, czyim awatarem i ekwipunek z tej gry
-                    doc.update(score=score, hits=hits, ball=ball, ballUid=ball_uid, dev=dev)
+                    doc.update(score=score, hits=hits, ball=ball, ballUid=ball_uid, dev=dev, flags=flags)
                     doc["eq"] = eq_id or firestore.DELETE_FIELD  # tylko skrót klucza; rekord bez klucza nie zostawia cudzego ekwipunku
                 if i == 0 and "claimEq" not in prev:
                     # urządzenie, z którego da się od razu założyć konto na ten nick: zamrożone (urządzenie rekordu sprzed kont albo to, które założyło wpis),
