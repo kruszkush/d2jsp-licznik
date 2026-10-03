@@ -406,7 +406,7 @@
     const av = D.avatars?.[f.u], who = D.users[f.u] || '?', hits = gHits;
     ov.innerHTML = `<div class="box lock"><h3>${boom ? '💥 Piłeczka uderzyła w sufit!' : small ? 'Okno za małe — koniec gry' : 'Koniec gry!'}</h3>
       <div class="ball" style="border-color:${f.el.style.borderColor};${av ? `background-image:url('${esc(av)}')` : ''}">${av ? '' : esc(who[0].toUpperCase())}</div>
-      <div class="txt"><b style="color:var(--ink)">${esc(who)}</b> · ${hits} ${hits === 1 ? 'podbicie' : hits % 10 >= 2 && hits % 10 <= 4 && (hits % 100 < 12 || hits % 100 > 14) ? 'podbicia' : 'podbić'}</div>
+      <div class="txt">${(tok() ? accNick() : ls.get('pilNick')) ? `<b style="color:var(--ink)">${esc(tok() ? accNick() : ls.get('pilNick'))}</b>, podbiłeś` : 'Podbiłeś'} <b style="color:var(--ink)">${esc(who)}</b> ${hits} ${hits === 1 ? 'raz' : 'razy'}</div>
       <div class="sc">${score}<small> pkt</small></div>
       <div class="eq">${P.b > 1 ? `<span class="ch" style="background:${BADGE[f.base] || '#d9264a'};color:#fff"><b>×${fm(P.b)}</b><i>piłeczka</i></span><span class="op">×</span>` : ''}<span class="ch"><b>×${fm(P.lv)}</b><i>poziom ${gLvlN}</i></span>${P.items ? `<span class="op">+</span><span class="ch"><b>+${fm(P.items)}${gZuch ? `<sup class="zsup" title="w tym nabite podbiciami tuż nad dołem ekranu">+${fm(gZuch)}</sup>` : ''}</b><i>przedmioty</i></span>` : ''}<span class="op">=</span><span class="ch tot"><b>×${fm(P.total)}</b><i>na koniec</i></span></div>
       ${EQON ? chancesHtml(score) : ''}
@@ -429,7 +429,7 @@
     if (EQON && score >= 15) { // drop idzie od razu, niezależnie od zapisu wyniku
       setWait(true); dropEl.innerHTML = '<div class="msg">Losuję przedmiot…</div>';
       const slow = setTimeout(() => { setWait(false); dropEl.innerHTML = '<div class="msg">Serwer długo nie odpowiada — przedmiot pokaże się tutaj, jeśli poczekasz.</div>'; }, 12000);
-      verP.then((v) => v.r ? eqPost('/drop', { ...auth0, r: v.r, ballUid: /^\d+$/.test(f.u) ? f.u : '', ballNick: D.users[f.u] || '' }) : { ok: true, j: { drop: null, reason: v.error } })
+      verP.then((v) => v.r ? eqPost('/drop', { ...auth0, r: v.r, ballUid: /^\d+$/.test(f.u) ? f.u : '', ballNick: D.users[f.u] || '' }) : { ok: true, j: { drop: null, reason: '' } })
         .then((r) => {
           clearTimeout(slow); setWait(false); if (!r.ok) throw 0;
           if (r.j.drop) { pendId = r.j.autoDiscard ? null : r.j.drop.id; pendN = r.j.drop.rarity === 'n'; ov.querySelector('.box').classList.add('wide'); showDrop(dropEl, r.j, (o) => { dropOpen = o; }, auth0); }
@@ -581,8 +581,11 @@
   const tok = () => KONTA ? ls.get('pilTok') : null, accNick = () => ls.get('pilAcc') || '';
   // bilet gry z /start (ponawiany; krótka gra może skończyć się przed odpowiedzią serwera) i weryfikacja w /end — raz na grę
   // rzuty szans za podbicia (Echa k=1, Krytyczny k=2, Złotej Piłki k=3) liczone z seeda z biletu — serwer w /end liczy te same rzuty (kopia: roll() w main.py)
+  // wersja zasad punktacji: podbij razem z GRA_MIN_VER w main.py przy każdej zmianie, którą sprawdza serwer (punkty, szanse) — stara karta przeładuje się sama zamiast dostać odrzucony wynik
+  const GRA_VER = 1;
+  const staleReload = () => { if (game) { flash('Nowa wersja gry — przeładowuję…', 2000); game = null; } setTimeout(() => location.reload(), 1200); };
   const roll = (seed, k, i) => { let x = (seed ^ Math.imul(k, 0x9E3779B1) ^ Math.imul(i, 0x85EBCA77)) >>> 0; x ^= x >>> 16; x = Math.imul(x, 0x85EBCA6B) >>> 0; x ^= x >>> 13; x = Math.imul(x, 0xC2B2AE35) >>> 0; x ^= x >>> 16; return (x >>> 0) / 2 ** 32; };
-  const getTicket = () => { const go = (n) => fetch(API + '/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then((r) => r.json()).then((j) => { if (!j.g || !Number.isInteger(j.s)) throw 0; return { g: j.g, s: j.s }; }).catch(() => n > 0 ? new Promise((ok) => setTimeout(ok, 1500)).then(() => go(n - 1)) : null); return go(3); };
+  const getTicket = () => { const go = (n) => fetch(API + '/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ver: GRA_VER }) }).then((r) => r.json()).then((j) => { if (j.stale) { staleReload(); return null; } if (!j.g || !Number.isInteger(j.s)) throw 0; return { g: j.g, s: j.s }; }).catch(() => n > 0 ? new Promise((ok) => setTimeout(ok, 1500)).then(() => go(n - 1)) : null); return go(3); };
   const verify = (vg, auth) => vg.log.length ? Promise.resolve(vg.ticket).then((t) => t ? fetch(API + '/end', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...auth, g: t.g, log: vg.log, st: vg.st }) }).then((r) => r.json()) : { error: 'Brak połączenia z serwerem gry — wynik nie może być zapisany.' }).catch(() => ({ error: 'Błąd sieci przy sprawdzaniu wyniku.' })) : Promise.resolve({ error: 'Brak podbić.' });
   const eqAuth = () => tok() ? { token: tok() } : { key: getKey() };
   const eqPost = (path, body) => fetch(API + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
