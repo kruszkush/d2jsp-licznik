@@ -29,6 +29,7 @@
   .flake.ball .badge{display:none}
   .flake.ball{opacity:1;z-index:2}
   @media (pointer:coarse){.flake.ball::before{content:'';position:absolute;inset:-12px;border-radius:50%}} /* telefon: większy obszar trafienia kciukiem */
+  @media (pointer:fine){.flake.ball::before{content:'';position:absolute;inset:-8px;border-radius:50%}} /* komputer: trafienie liczy się też kilka pikseli poza piłeczką */
   .eqnote{margin-top:10px;font-size:12px;line-height:1.4;color:var(--mute);background:rgba(127,127,127,.08);border-radius:8px;padding:7px 9px;text-align:left}
   #hud .cnt{font-size:.62em;font-weight:700;opacity:.85;margin-right:10px;padding-right:10px;border-right:1px solid var(--line);vertical-align:.15em}#hud .cnt{pointer-events:auto;cursor:help;position:relative}#hud .cnt:hover::after,#hud .cnt.tip::after{content:attr(data-tip);position:absolute;top:calc(100% + 10px);left:0;width:250px;white-space:normal;font-size:12.5px;font-weight:500;line-height:1.35;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:7px 9px;box-shadow:0 6px 18px rgba(0,0,0,.35);z-index:61}
   #hud .cnt small{font-size:.8em;opacity:.7;margin-left:3px}
