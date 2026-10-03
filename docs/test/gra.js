@@ -539,7 +539,7 @@
   function chances(score, luck = 0) {
     const cv = (P) => { const x = Math.max(P[0][0], score), Z = P.length - 1; if (x > P[Z][0]) return P[Z][1] + (P[Z][1] - P[Z - 1][1]) * (x - P[Z][0]) / (P[Z][0] - P[Z - 1][0]); for (let i = 1; i < P.length; i++) if (x <= P[i][0]) return P[i - 1][1] + (P[i][1] - P[i - 1][1]) * (x - P[i - 1][0]) / (P[i][0] - P[i - 1][0]); return P[P.length - 1][1]; };
     const r0 = .25 + 3 * (cv([[15, .25], [50, 1], [100, 2], [200, 4], [300, 6], [600, 10], [1000, 15]]) - .25), m0 = 14 + 3 * (cv([[15, 14], [50, 22], [100, 30], [200, 38], [300, 42], [600, 45], [1000, 45]]) - 14); // magic find z punktów ×3 (PTS_MF_MULT w main.py)
-    const n0 = Math.max(5, 100 - m0 - r0), s = Math.min(luck, n0);
+    const n0 = Math.max(5, 100 - (m0 - 14) / 3 - 14 - (r0 - .25) / 3 - .25); // normalne z krzywych bez mnożnika — znikają powoli
     const L = Math.min(luck, 100) / 100 / 3, x = Math.min(n0, r0 * L), n = n0 - x, m = m0, r = r0 + x, u = (score < 50 ? 0 : cv([[50, .3], [150, .8], [300, 1.1], [600, 1.5], [1000, 1.8]])) * (1 + L), k = (100 - u) / (n + m + r);
     return { n: n * k, m: m * k, r: r * k, u, mfPts: m0 + r0 - 14.25 };
   }

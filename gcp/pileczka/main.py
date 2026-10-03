@@ -116,8 +116,9 @@ LUCK_DIV = 3  # Szczęśliwy (gear) działa w 1/3: afiks +60% = +20% efektu
 
 def rarity_weights(score):
     r, m = _curve(R_PTS, score), _curve(M_PTS, score)
+    n = max(5.0, 100 - m - r)  # waga normalnych z krzywych bez mnożnika — normalne znikają powoli
     r, m = R_PTS[0][1] + (r - R_PTS[0][1]) * PTS_MF_MULT, M_PTS[0][1] + (m - M_PTS[0][1]) * PTS_MF_MULT
-    return (max(5.0, 100 - m - r), m, r)
+    return (n, m, r)
 
 def _num(x, step):
     x = round(x, 2)
