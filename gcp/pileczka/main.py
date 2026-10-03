@@ -111,8 +111,12 @@ def _curve(pts, x):
             return y0 + (y1 - y0) * (x - x0) / (x1 - x0)
     return pts[-1][1]
 
+PTS_MF_MULT = 3  # magic find z punktów ×3: przyrost M i R ponad poziom z 15 pkt mnożony
+LUCK_DIV = 3  # Szczęśliwy (gear) działa w 1/3: afiks +60% = +20% efektu
+
 def rarity_weights(score):
     r, m = _curve(R_PTS, score), _curve(M_PTS, score)
+    r, m = R_PTS[0][1] + (r - R_PTS[0][1]) * PTS_MF_MULT, M_PTS[0][1] + (m - M_PTS[0][1]) * PTS_MF_MULT
     return (max(5.0, 100 - m - r), m, r)
 
 def _num(x, step):
@@ -138,7 +142,7 @@ def luck_of(slots):
 
 def pick_rarity(score, luck=0):
     n, m, r = rarity_weights(score)
-    extra = min(n, r * min(luck, 100) / 100)  # szczęśliwy: +X% (względnie) do szansy na rzadki, kosztem normalnego (najwyżej cały normalny)
+    extra = min(n, r * min(luck, 100) / 100 / LUCK_DIV)  # szczęśliwy: +X% (względnie) do szansy na rzadki, kosztem normalnego (najwyżej cały normalny)
     n, r = n - extra, r + extra
     return random.choices(("n", "m", "r"), weights=(n, m, r))[0]
 
@@ -156,7 +160,7 @@ TIER_W = {t: _TW[t] / sum(1 for x in TIER.values() if x == t) for t in _TW}
 
 def roll_item(score, uid, nick, luck=0):
     slot = random.choice(SLOTS)
-    if random.random() < unique_chance(score) * (1 + min(luck, 100) / 100):  # szczęśliwy zwiększa też szansę na unikat
+    if random.random() < unique_chance(score) * (1 + min(luck, 100) / 100 / LUCK_DIV):  # szczęśliwy zwiększa też szansę na unikat
         rarity = "u"  # unikat losowany przed tabelą rzadkości
         slot = random.choice(("helm", "boots"))  # na razie unikaty tylko: Korona Króla Forum i Kapcie Moderatora
     else:

@@ -217,7 +217,7 @@
   const CAP = { stlum: .3, ciezki: .25, zreczny: .6, olb: .25, rozp: .6, lowcy: 1.5, lucky: 100, wytrw: .3, brawur: .5, zuch: .08, echa: .25 };
   // afiks → limit łączny jako tekst (np. „30%”, „+1.5x”)
   const CAPK = { stlumiony: 'stlum', ciezki: 'ciezki', zreczny: 'zreczny', olbrzyma: 'olb', rozpedzony: 'rozp', lowcy: 'lowcy', szczesliwy: 'lucky', wytrwalosci: 'wytrw', brawurowy: 'brawur', zuchwaly: 'zuch', echa: 'echa' };
-  const capTxt = (id) => { const k = CAPK[id]; if (!k) return ''; const v = CAP[k]; return k === 'lucky' ? '+100%' : k === 'lowcy' ? '+1.5x' : k === 'brawur' || k === 'zuch' ? `+${v.toFixed(2)}x` : Math.round(v * 100) + '%'; };
+  const capTxt = (id) => { const k = CAPK[id]; if (!k) return ''; const v = CAP[k]; return k === 'lucky' ? '+33%' : k === 'lowcy' ? '+1.5x' : k === 'brawur' || k === 'zuch' ? `+${v.toFixed(2)}x` : Math.round(v * 100) + '%'; };
   function calcB(slots) {
     const b = zeroB();
     for (const it of Object.values(slots || {})) {
@@ -488,7 +488,7 @@
     stlumiony: ['p', 'Stłumiony', 5, 15, 1, ['Stłumiony', 'Stłumiona', 'Stłumione'], (v) => `Podbicie słabsze o ${v}% (piłeczka leci ok. ${lowerPct(v)}% niżej)`],
     ciezki: ['p', 'Ciężki', 5, 10, 1, ['Ciężki', 'Ciężka', 'Ciężkie'], (v) => `Grawitacja słabsza o ${v}%`],
     zreczny: ['p', 'Zręczny', 10, 30, 1, ['Zręczny', 'Zręczna', 'Zręczne'], (v) => `Odbicie w bok mniejsze o ${v}%`],
-    szczesliwy: ['p', 'Szczęśliwy', 30, 60, 1, ['Szczęśliwy', 'Szczęśliwa', 'Szczęśliwe'], (v) => `+${v}% większa szansa na rzadkie i unikalne przedmioty`],
+    szczesliwy: ['p', 'Szczęśliwy', 30, 60, 1, ['Szczęśliwy', 'Szczęśliwa', 'Szczęśliwe'], (v) => `+${Math.round(v / 3)}% większa szansa na rzadkie i unikalne przedmioty (1/3 z ${v})`],
     brawurowy: ['p', 'Brawurowy', 0.15, 0.25, 0.01, ['Brawurowy', 'Brawurowa', 'Brawurowe'], (v) => `+${v.toFixed(2)}x mnożnika za każde kolejne podbicie z rzędu tuż nad dołem ekranu (seria maks. +${BRAV_MAX}x)`],
     zuchwaly: ['p', 'Zuchwały', 0.02, 0.04, 0.01, ['Zuchwały', 'Zuchwała', 'Zuchwałe'], (v) => `+${v.toFixed(2)}x mnożnika na stałe za każde podbicie tuż nad dołem ekranu (od 2. poziomu, nabija się maks. do +${ZUCH_MAX}x)`],
     rozpedzony: ['p', 'Rozpędzony', 10, 20, 1, ['Rozpędzony', 'Rozpędzona', 'Rozpędzone'], (v) => `Rozpocznij z mnożnikiem ogólnym zwiększonym o ${v}%`],
@@ -529,7 +529,7 @@
     if (b.ciezki) L.push(`Grawitacja słabsza o ${pct(b.ciezki)}%${c('ciezki')}`);
     if (b.zreczny) L.push(`Odbicie w bok mniejsze o ${pct(b.zreczny)}%${c('zreczny')}`);
     if (b.olb) L.push(`Większa piłeczka o ${pct(b.olb)}%${c('olb')}`);
-    if (b.lucky) L.push(`+${b.lucky}% większa szansa na rzadkie i unikalne przedmioty${c('lucky')}`);
+    if (b.lucky) L.push(`+${Math.round(Math.min(b.lucky, 100) / 3)}% większa szansa na rzadkie i unikalne przedmioty${c('lucky')}`);
     if (b.kapcie) L.push(`Kapcie Moderatora: ${kapTxt(b.kapcie).replace(/^R/, 'r')}`);
     if (b.korona) L.push('Hełm Weterana: podwaja premię piłeczek osób, którymi grasz, z top 10 z ostatnich 24 godzin');
     if (b.guardian) L.push(`Anioł Stróż: ${b.guardian}× ratunek na grę`);
@@ -538,15 +538,15 @@
   // Szanse na przedmiot (kopia wzoru z serwera): płynny wzrost, powyżej 1000 pkt dalej tempem ostatniego odcinka (bez limitu); szczęśliwy przesuwa % z Normalnego (70% → M, 30% → R)
   function chances(score, luck = 0) {
     const cv = (P) => { const x = Math.max(P[0][0], score), Z = P.length - 1; if (x > P[Z][0]) return P[Z][1] + (P[Z][1] - P[Z - 1][1]) * (x - P[Z][0]) / (P[Z][0] - P[Z - 1][0]); for (let i = 1; i < P.length; i++) if (x <= P[i][0]) return P[i - 1][1] + (P[i][1] - P[i - 1][1]) * (x - P[i - 1][0]) / (P[i][0] - P[i - 1][0]); return P[P.length - 1][1]; };
-    const r0 = cv([[15, .25], [50, 1], [100, 2], [200, 4], [300, 6], [600, 10], [1000, 15]]), m0 = cv([[15, 14], [50, 22], [100, 30], [200, 38], [300, 42], [600, 45], [1000, 45]]);
+    const r0 = .25 + 3 * (cv([[15, .25], [50, 1], [100, 2], [200, 4], [300, 6], [600, 10], [1000, 15]]) - .25), m0 = 14 + 3 * (cv([[15, 14], [50, 22], [100, 30], [200, 38], [300, 42], [600, 45], [1000, 45]]) - 14); // magic find z punktów ×3 (PTS_MF_MULT w main.py)
     const n0 = Math.max(5, 100 - m0 - r0), s = Math.min(luck, n0);
-    const L = Math.min(luck, 100) / 100, x = Math.min(n0, r0 * L), n = n0 - x, m = m0, r = r0 + x, u = (score < 50 ? 0 : cv([[50, .3], [150, .8], [300, 1.1], [600, 1.5], [1000, 1.8]])) * (1 + L), k = (100 - u) / (n + m + r);
-    return { n: n * k, m: m * k, r: r * k, u, mf: Math.round(((m + r) / 14.25 - 1) * 100) };
+    const L = Math.min(luck, 100) / 100 / 3, x = Math.min(n0, r0 * L), n = n0 - x, m = m0, r = r0 + x, u = (score < 50 ? 0 : cv([[50, .3], [150, .8], [300, 1.1], [600, 1.5], [1000, 1.8]])) * (1 + L), k = (100 - u) / (n + m + r);
+    return { n: n * k, m: m * k, r: r * k, u, mfPts: m0 + r0 - 14.25 };
   }
   function chancesHtml(score) {
     if (score < 15) return `<div class="mf">Przedmiot wypada od 15 pkt — im więcej punktów, tym większa szansa na rzadszy.</div>`;
     const c = chances(score, B.lucky || 0), c0 = chances(score, 0), p = (v) => v < 10 ? v.toFixed(1) : Math.round(v);
-    const mfPts = Math.round(c0.m + c0.r - 14.25), mfIt = B.lucky || 0; // magic find: zwykła suma — z punktów + z przedmiotów
+    const mfPts = Math.round(c0.mfPts), mfIt = Math.round(Math.min(B.lucky || 0, 100) / 3); // magic find: zwykła suma — z punktów + z przedmiotów
     const row = (k, name, v) => `<div class="mfr"><span style="color:${COL[k]}">${name}</span><i>·</i><b>${p(v)}%</b></div>`;
     return `<details class="mf"><summary>Magic find <b>+${mfPts}%</b>${mfIt ? ` · rzadkie i unikaty <b>+${mfIt}%</b>` : ''} ▾</summary>
       <div class="mfr"><span>Szansa na drop</span><i>·</i><b>${Math.round(Math.min(1, score / 80) * 100)}%</b></div>
@@ -717,7 +717,7 @@
       <h4>Klasy afiksów</h4>
       <div class="lgr"><b class="t-slaby">słaby</b><span>55%</span></div><div class="lgr"><b class="t-dobry">dobry</b><span>35%</span></div><div class="lgr"><b class="t-znakomity">znakomity</b><span>7%</span></div><div class="lgr"><b class="t-boski">boski</b><span>3%</span></div>
       ${SUFIT ? '<h4>Odbicia za punkty</h4><div class="lgr"><span>Za punkty zdobywasz odbicia od dołu (🛡): przy 50, 150, 350, 750, 1550… pkt — każdy kolejny odstęp jest dwa razy większy. Gdy piłeczka spadnie, odbicie podnosi ją wysoko (mniej więcej na górną ⅓ ekranu), tam piłeczka zatrzymuje się i czeka na Twoje kliknięcie — możesz chwilę odpocząć. Po kliknięciu przez 2 s rozpędza się od wolniejszego tempa.</span></div><h4>Nad ekranem</h4><div class="lgr"><span>Za mocno podbita piłeczka wylatuje nad ekran — wtedy nie da się jej kliknąć, trzeba poczekać, aż spadnie. Wskaźnik u góry pokazuje, ile pikseli nad ekranem jest.</span></div>' : ''}<h4>Zestaw</h4><div class="lgr"><span>Rzadkie lub unikaty z awatarem tej samej osoby — punkty za każde podbicie piłeczki:</span></div><div class="lgr"><b style="color:#3fd13f">2 szt.</b><span>+0.2 pkt</span></div><div class="lgr"><b style="color:#3fd13f">3 szt.</b><span>+0.4 pkt</span></div><div class="lgr"><b style="color:#3fd13f">4 szt.</b><span>+0.6 pkt · pełny zestaw</span></div>
-      <h4>Magic find</h4><div class="lgr"><span>Zwiększa szansę na magiczne i rzadkie kosztem normalnych. Rośnie z wynikiem gry. Afiks Szczęśliwy dodatkowo zwiększa szansę na rzadkie i unikaty o podany procent.</span></div>
+      <h4>Magic find</h4><div class="lgr"><span>Zwiększa szansę na magiczne i rzadkie kosztem normalnych. Rośnie z wynikiem gry. Afiks Szczęśliwy dodatkowo zwiększa szansę na rzadkie i unikaty — działa w 1/3 wylosowanej wartości (np. 60 → +20%).</span></div>
       <p class="mute" style="font-size:12px;margin:10px 0 0">Przedmiot może wypaść po grze od 15 pkt (najwyżej raz na 15 s) — im więcej punktów, tym częściej i tym rzadszy.</p>
       <div class="row" style="margin-top:12px"><button data-a="close">Zamknij</button></div></div>`;
     document.body.appendChild(ov);
