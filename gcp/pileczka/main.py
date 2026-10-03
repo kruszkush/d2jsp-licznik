@@ -455,6 +455,7 @@ def gra_end(req, j):
                 return bad("podbicia szybsze, niż pozwala gra")
             gaps.append(t - prev)
         if pts > gra_limit(b, i, t, g.get("s")):
+            print("szczegóły:", {"i": i, "pts": pts, "limit": gra_limit(b, i, t, g.get("s")), "seed": g.get("s"), "eq": "token" if "token" in j else ("key" if eq_key(j) else "brak"), "b": {k: v for k, v in b.items() if v}})  # diagnoza fałszywych odrzuceń
             return bad("za dużo punktów za podbicie")
         prev, total = t, total + pts
     dur, sim = st.get("dur"), st.get("sim")

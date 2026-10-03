@@ -406,7 +406,7 @@
     const av = D.avatars?.[f.u], who = D.users[f.u] || '?', hits = gHits;
     ov.innerHTML = `<div class="box lock"><h3>${boom ? '💥 Piłeczka uderzyła w sufit!' : small ? 'Okno za małe — koniec gry' : 'Koniec gry!'}</h3>
       <div class="ball" style="border-color:${f.el.style.borderColor};${av ? `background-image:url('${esc(av)}')` : ''}">${av ? '' : esc(who[0].toUpperCase())}</div>
-      <div class="txt"><b style="color:var(--ink)">${esc(who)}</b> · ${hits} ${hits === 1 ? 'podbicie' : hits % 10 >= 2 && hits % 10 <= 4 && (hits % 100 < 12 || hits % 100 > 14) ? 'podbicia' : 'podbić'}</div>
+      <div class="txt">${(tok() ? accNick() : ls.get('pilNick')) ? `<b style="color:var(--ink)">${esc(tok() ? accNick() : ls.get('pilNick'))}</b>, podbiłeś` : 'Podbiłeś'} <b style="color:var(--ink)">${esc(who)}</b> ${hits} ${hits === 1 ? 'raz' : 'razy'}</div>
       <div class="sc">${score}<small> pkt</small></div>
       <div class="eq">${P.b > 1 ? `<span class="ch" style="background:${BADGE[f.base] || '#d9264a'};color:#fff"><b>×${fm(P.b)}</b><i>piłeczka</i></span><span class="op">×</span>` : ''}<span class="ch"><b>×${fm(P.lv)}</b><i>poziom ${gLvlN}</i></span>${P.items ? `<span class="op">+</span><span class="ch"><b>+${fm(P.items)}${gZuch ? `<sup class="zsup" title="w tym nabite podbiciami tuż nad dołem ekranu">+${fm(gZuch)}</sup>` : ''}</b><i>przedmioty</i></span>` : ''}<span class="op">=</span><span class="ch tot"><b>×${fm(P.total)}</b><i>na koniec</i></span></div>
       ${EQON ? chancesHtml(score) : ''}
