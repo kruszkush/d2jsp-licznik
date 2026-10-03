@@ -179,7 +179,7 @@
   function flakeDown(f, e) {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     e.preventDefault();
-    if (game) { if (game.f === f && performance.now() < (game.lock || 0)) return; hit(f, e); return; }
+    if (game) { if (tooFast(game)) return; hit(f, e); return; }
     if (e.pointerType === 'touch') { tapStart = { f, id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() }; return; }
     startGame(f, e);
   }
@@ -336,15 +336,14 @@
     const cnt = e.target.closest?.('#hud .cnt'); if (cnt) { const on = !cnt.classList.contains('tip'); hud.querySelectorAll('.cnt.tip').forEach((x) => x.classList.remove('tip')); if (on) cnt.classList.add('tip'); return; }
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     if (!game || e.target.closest?.('.ball, button, a, input, #over')) return;
-    if (!game.bans || !kapArmed(game)) { miss(game); return; }
+    if (tooFast(game) || !game.bans || !kapArmed(game)) return;
     game.bans--; flash('🔨 Ban! Kapcie Moderatora uratowały piłeczkę'); hit(game.f, { clientX: game.f.el.getBoundingClientRect().left + game.f.size / 2 });
   });
-  // pudło (klik obok piłeczki) blokuje podbicie na MISS_LOCK ms — autokliker klikający cały czas nie trafi; piłeczka szarzeje na czas blokady
-  const MISS_LOCK = 250;
-  function miss(g) {
-    g.lock = performance.now() + MISS_LOCK;
-    g.f.el.animate([{ filter: 'grayscale(1) brightness(.6)' }, { filter: 'none' }], { duration: MISS_LOCK, easing: 'steps(1,end)' });
-    if (performance.now() - lastFlash > 1500) flash(`Pudło — ${MISS_LOCK / 1000} s blokady`, 700);
+  // limit klików: w trakcie gry klik szybciej niż CLICK_GAP ms po poprzednim (w piłeczkę lub obok) nie liczy się
+  const CLICK_GAP = 100;
+  function tooFast(g) {
+    const now = performance.now(), fast = now - (g.lastClick || 0) < CLICK_GAP;
+    g.lastClick = now; return fast;
   }
   // w trakcie gry prawy przycisk nie otwiera menu, a środkowy nie włącza autoprzewijania
   addEventListener('contextmenu', (e) => { if (game) e.preventDefault(); });
