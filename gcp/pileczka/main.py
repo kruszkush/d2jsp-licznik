@@ -83,6 +83,8 @@ AFF = {
     "ostry": ("p", 0.4, 1.0, 0.1), "stlumiony": ("p", 5, 15, 1), "ciezki": ("p", 5, 10, 1), "zreczny": ("p", 10, 30, 1),
     "szczesliwy": ("p", 30, 60, 1), "rozpedzony": ("p", 10, 20, 1), "brawurowy": ("p", 0.15, 0.25, 0.01), "zuchwaly": ("p", 0.02, 0.04, 0.01),
     "wytrwalosci": ("s", 5, 15, 1), "olbrzyma": ("s", 5, 10, 1), "lowcy": ("s", 0.2, 0.5, 0.1), "serii": ("s", 0.10, 0.25, 0.01), "echa": ("s", 10, 20, 1), "stroza": ("s", 1, 1, 1),
+    "lotny": ("p", 2, 5, 1), "wznoszacy": ("p", 0.02, 0.04, 0.01), "krytyczny": ("p", 3, 10, 1),
+    "maratonczyka": ("s", 0.05, 0.15, 0.01), "rytmu": ("s", 1, 3, 1), "zlota": ("s", 1, 3, 1),
 }
 PRE_IDS = tuple(k for k, v in AFF.items() if v[0] == "p")
 SUF_IDS = tuple(k for k, v in AFF.items() if v[0] == "s")
@@ -158,7 +160,8 @@ def make_item(slot, rarity, affixes, uid=None, nick=None, ilvl=0, mult=0.1):
 TIER = {"stlumiony": "slaby", "zreczny": "slaby", "olbrzyma": "slaby",
         "lowcy": "dobry", "ciezki": "dobry",
         "wytrwalosci": "dobry", "rozpedzony": "znakomity", "szczesliwy": "dobry", "brawurowy": "znakomity", "zuchwaly": "znakomity", "echa": "znakomity",
-        "ostry": "boski", "serii": "boski", "stroza": "boski"}
+        "lotny": "znakomity", "wznoszacy": "znakomity", "krytyczny": "znakomity", "maratonczyka": "znakomity", "rytmu": "znakomity",
+        "ostry": "boski", "serii": "boski", "stroza": "boski", "zlota": "boski"}
 _TW = {"slaby": 55, "dobry": 35, "znakomity": 7, "boski": 3}
 TIER_W = {t: _TW[t] / sum(1 for x in TIER.values() if x == t) for t in _TW}
 
@@ -328,7 +331,8 @@ def eq_view(req, j):  # publiczny podgląd cudzych slotów (po skrócie z rankin
 
 # --- weryfikacja gier: bilet z /start (podpisany, bez zapisu w bazie) -> /end sprawdza log podbić i wydaje podpisany wynik dla /drop i zapisu ---
 # Reguły bonusów to kopia calcB/CAP/partsOf z docs/gra.js — przy zmianie zasad punktacji w grze zmień też tutaj (gra_bonusy, gra_limit).
-CAP = {"stlum": .3, "ciezki": .25, "zreczny": .6, "olb": .25, "rozp": .6, "lowcy": 1.5, "lucky": 100, "wytrw": .3, "brawur": .5, "zuch": .08, "echa": .25}
+CAP = {"stlum": .3, "ciezki": .25, "zreczny": .6, "olb": .25, "rozp": .6, "lowcy": 1.5, "lucky": 100, "wytrw": .3, "brawur": .5, "zuch": .08, "echa": .25,
+       "wzn": .08, "mar": .3, "rytm": 6, "kryt": .3, "zlota": .06}  # nowe (12.1-test): wznoszący, maratończyka, rytmu, krytyczny, złotej piłki
 BRAV_MAX, ZUCH_MAX = 1.5, 0.6
 MIN_GAP_MS = 90  # klient ignoruje kliki szybsze niż 100 ms; luz na zaokrąglenia
 
@@ -353,9 +357,9 @@ def tok_read(t, kind, max_age):
     return d if isinstance(d, dict) and d.get("k") == kind and time.time() - d.get("t", 0) <= max_age else None
 
 def gra_bonusy(slots):
-    b = dict.fromkeys(("impl", "ostry", "stlum", "ciezki", "zreczny", "rozp", "wytrw", "olb", "lowcy", "serii", "brawur", "zuch", "echa", "lucky", "korona", "setMult"), 0.0)
-    pct = {"stlumiony": "stlum", "ciezki": "ciezki", "zreczny": "zreczny", "rozpedzony": "rozp", "wytrwalosci": "wytrw", "olbrzyma": "olb", "echa": "echa"}
-    raw = {"ostry": "ostry", "szczesliwy": "lucky", "lowcy": "lowcy", "serii": "serii", "brawurowy": "brawur", "zuchwaly": "zuch"}
+    b = dict.fromkeys(("impl", "ostry", "stlum", "ciezki", "zreczny", "rozp", "wytrw", "olb", "lowcy", "serii", "brawur", "zuch", "echa", "lucky", "korona", "setMult", "wzn", "mar", "rytm", "kryt", "zlota"), 0.0)
+    pct = {"stlumiony": "stlum", "ciezki": "ciezki", "zreczny": "zreczny", "rozpedzony": "rozp", "wytrwalosci": "wytrw", "olbrzyma": "olb", "echa": "echa", "krytyczny": "kryt", "zlota": "zlota"}
+    raw = {"ostry": "ostry", "szczesliwy": "lucky", "lowcy": "lowcy", "serii": "serii", "brawurowy": "brawur", "zuchwaly": "zuch", "wznoszacy": "wzn", "maratonczyka": "mar", "rytmu": "rytm"}
     cnt = {}
     for it in (slots or {}).values():
         if not it:
@@ -377,20 +381,47 @@ def gra_bonusy(slots):
         b[k] = min(b[k], c)
     return b
 
-def gra_limit(b, i):
-    """Najwięcej punktów możliwych za i-te podbicie (od 1): największa piłeczka (1.7) + Łowcy + premia top 10 (0.6) [+ Hełm]."""
+def roll(seed, k, i):
+    """Rzut szansy za podbicie: kopia funkcji roll z docs/test/gra.js (32 bity). k: 1 echa, 2 krytyczny, 3 złota; i: numer podbicia od 1. Trafienie gdy roll < szansa."""
+    M = 0xFFFFFFFF
+    x = (seed ^ (k * 0x9E3779B1 & M) ^ (i * 0x85EBCA77 & M)) & M
+    x ^= x >> 16
+    x = x * 0x85EBCA6B & M
+    x ^= x >> 13
+    x = x * 0xC2B2AE35 & M
+    x ^= x >> 16
+    return x / 2**32
+
+def chance_mult(b, seed, i):
+    """Dokładny mnożnik szans za i-te podbicie: echa ×2, krytyczny ×3, złota ×10 (mnożą się). Bilet bez seeda (stary klient) = najgorszy możliwy przypadek dla echa."""
+    if seed is None:
+        return 2 if b["echa"] > 0 else 1
+    m, eps = 1, 1e-9  # eps: zaokrąglenia szans po stronie klienta (r3) nie mogą odrzucić uczciwej gry
+    if roll(seed, 1, i) < b["echa"] + eps:
+        m *= 2
+    if roll(seed, 2, i) < b["kryt"] + eps:
+        m *= 3
+    if roll(seed, 3, i) < b["zlota"] + eps:
+        m *= 10
+    return m
+
+def gra_limit(b, i, t_ms=0, seed=None):
+    """Najwięcej punktów możliwych za i-te podbicie (od 1, t_ms = czas z logu): największa piłeczka (1.7) + Łowcy + premia top 10 (0.6) [+ Hełm]."""
     base = 1.7 + b["lowcy"] + .6 + (.6 if b["korona"] else 0)
     lv = 1 + b["rozp"] + .1 * (i // 8)
-    items = b["impl"] + b["ostry"] + b["setMult"] + min(ZUCH_MAX, b["zuch"] * i) + b["serii"] * (i // 10)
+    items = (b["impl"] + b["ostry"] + b["setMult"] + min(ZUCH_MAX, b["zuch"] * i) + b["serii"] * (i // 10)
+             + b["wzn"] * (i // 8) + b["mar"] * (int(t_ms) // 30000))
     brav = min(BRAV_MAX, b["brawur"] * i)
-    return (base * lv + items + brav) * (2 if b["echa"] > 0 else 1) + .02
+    rytm = b["rytm"] if i % 5 == 0 else 0  # stała premia na co 5. podbiciu (poza mnożnikami szans)
+    return (base * lv + items + brav) * chance_mult(b, seed, i) + rytm + .02
 
 def gra_start(req, j):
     if not sign_key():
         return cors(req, {"error": "niedostępne"}, 503)
     if not rate_ok(req, "start", 120, 600):
         return too_many(req)
-    return cors(req, {"g": tok_make({"k": "g", "gid": secrets.token_hex(8), "t": time.time()})})
+    seed = secrets.randbits(32)  # z niego klient i serwer liczą rzuty szans (echa/krytyczny/złota) — patrz roll()
+    return cors(req, {"g": tok_make({"k": "g", "gid": secrets.token_hex(8), "t": time.time(), "s": seed}), "s": seed})
 
 def gra_end(req, j):
     g = tok_read(j.get("g"), "g", 6 * 3600)
@@ -423,7 +454,7 @@ def gra_end(req, j):
             if t - prev < MIN_GAP_MS:
                 return bad("podbicia szybsze, niż pozwala gra")
             gaps.append(t - prev)
-        if pts > gra_limit(b, i):
+        if pts > gra_limit(b, i, t, g.get("s")):
             return bad("za dużo punktów za podbicie")
         prev, total = t, total + pts
     dur, sim = st.get("dur"), st.get("sim")
