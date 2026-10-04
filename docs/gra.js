@@ -21,7 +21,8 @@
   css.textContent = `
   #snow{position:fixed;inset:0;pointer-events:none;z-index:40;overflow:hidden}
   .flake .badge.b3{left:calc(100% - 18px)}.flake .badge .icr{display:inline-block;margin-left:2px;filter:hue-rotate(235deg) saturate(2.2) brightness(1.1)}
-  .flake.leader{border:3px solid #f2c94c;box-shadow:0 0 14px rgba(242,201,76,.8)}.flake .lcrown{position:absolute;top:-27px;left:50%;transform:translateX(-50%);font-size:25px;pointer-events:none}
+  .flake.leader{border:3px solid #f2c94c;box-shadow:0 0 14px rgba(242,201,76,.8)}.flake.dom::after{content:'';position:absolute;inset:-3px;border-radius:50%;box-shadow:0 0 18px 6px rgba(242,201,76,.75),0 0 6px 2px rgba(255,227,138,.9);pointer-events:none;animation:fdom 2.4s ease-in-out infinite}@keyframes fdom{0%,100%{opacity:.55}50%{opacity:1}} /* lider 24 h z przewagą >= 50: pulsująca złota poświata (tylko opacity, bez przemalowań) */
+  .flake .lcrown{position:absolute;top:-27px;left:50%;transform:translateX(-50%);font-size:25px;pointer-events:none}
   .flake{position:absolute;top:0;left:0;border-radius:50%;background:var(--card) center/cover no-repeat;border:2px solid;display:grid;place-items:center;font-weight:700;color:var(--ink);pointer-events:auto;cursor:pointer;user-select:none;opacity:.85;will-change:transform;contain:layout;-webkit-tap-highlight-color:transparent}
   .flake:hover{opacity:1}
   .flake .badge{position:absolute;left:calc(100% - 30px);white-space:nowrap;top:-6px;background:#e0a526;color:#141413;font-weight:800;border-radius:999px;padding:1px 6px;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,.4);border:2px solid #141413;line-height:1.3;pointer-events:none}
@@ -41,6 +42,7 @@
   #hud{white-space:nowrap;max-width:calc(100vw - 24px)}
   @media (pointer:coarse){#hud{top:6px;font-size:17px;padding:3px 12px;opacity:.8}#lvlup{top:40px;font-size:16px}#nad{top:70px}}
   body.playing #snow{z-index:62}
+  .wrap{transition:opacity .4s}body.playing .wrap{opacity:.4} /* w trakcie gry strona lekko przygaszona (statyczna przezroczystość, bez pełnoekranowej warstwy — te zacinały) */
   #hud small{font-size:12px;font-weight:500;color:var(--mute);margin-left:6px}
   #over{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:rgba(0,0,0,.45)}
   #over .box{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;width:min(320px,calc(100vw - 32px));text-align:center}
@@ -194,7 +196,7 @@
     const kind = pickKind(), size = Math.round(80 * kind.p * scaleK() * (TOUCH ? 1.2 : 1) * (1 + B.olb)); // na telefonie o 20% większe
     const f = { u, size, x: (TOUCH ? 0 : arena().l) + Math.random() * ((TOUCH ? W : arena().r - arena().l) - size), y: -size - 10, vy: (28 + Math.random() * 30) * scaleK(), sway: 20 + Math.random() * 30, ph: Math.random() * 6.28, rot: 0, vr: (Math.random() - .5) * 40 };
     f.el = makeEl(u, size); f.base = kind.m; f.top = window.crownOf ? window.crownOf(u) : 0; // premia za miejsce właściciela awatara w top 10 z 24 h (dla wszystkich)
-    if (window.dayLeader?.() === u) { f.el.classList.add('leader'); const c = document.createElement('span'); c.className = 'lcrown'; c.textContent = '👑'; f.el.appendChild(c); }
+    if (window.dayLeader?.() === u) { f.el.classList.add('leader'); if (window.dayDom?.()) f.el.classList.add('dom'); const c = document.createElement('span'); c.className = 'lcrown'; c.textContent = '👑'; f.el.appendChild(c); }
     // z Koroną Króla Forum plakietka pokazuje mnożnik piłeczki już z premią za miejsce właściciela awatara w top 10 z 24 h
     const cr = B.korona ? f.top : 0, bm = Math.round((kind.m + f.top + cr) * 10) / 10; // Hełm Weterana podwaja premię
     if (bm > 1) { const b = document.createElement('span'); b.className = 'badge ' + (kind.m > 1 ? kind.cls : ''); b.innerHTML = 'x' + bm + (cr ? '<span class="icr">👑</span>' : ''); if (cr) b.title = `z Hełmem Weterana: +${cr}x`; f.el.appendChild(b); }

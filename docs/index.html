@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Licznik postów d2jsp 9.6</title>
+<title>Licznik postów d2jsp 9.7</title>
 <style>
 :root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e4e2dc;--acc:#b4441f;--bar:#d9825f;
  --gold:#c9961a;--gold2:#f3d46b;--goldbg:#fff8e3;--goldline:#efd89a;--silver:#9aa0a6;--bronze:#b3713f}
@@ -46,6 +46,37 @@ a{color:var(--ink);text-decoration:none}a:hover{color:var(--acc)}
 @media (max-width:560px){.w{display:none}}
 .head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
 .head h2{margin:0}
+/* dominacja lidera: przewaga nad 2. miejscem >= prog zakresu (DOM) — świeci tylko wiersz lidera: złota pulsująca ramka + przelatujący błysk; w trakcie gry stoi */
+#rankCard.dom tr.lead{background:linear-gradient(100deg,var(--goldbg) 35%,rgba(255,227,138,.55) 50%,var(--goldbg) 65%) 0 0/300% 100%}
+@property --gc{syntax:'<color>';inherits:true;initial-value:#efd89a} /* kolor ramki lidera (animowany); ramka z cieni, bo obramowania komórek zlewały się z liniami tabeli */
+#rankCard.dom tr.lead{--gc:var(--goldline);animation:domShine 3.2s linear infinite,domPulse 2.4s ease-in-out infinite}
+#rankCard.dom tr.lead{outline:1px solid var(--gc);outline-offset:-1px;box-shadow:0 0 8px 1px color-mix(in srgb,var(--gc) 55%,transparent);position:relative;z-index:1} /* ramka + niewielki cień w kolorze ramki */
+#rankCard.dom tr.lead td{border-bottom-color:transparent}
+#rankCard.dom tr.lead td.n:nth-child(3){color:var(--gold);font-weight:600}
+.rav{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;margin-right:6px;vertical-align:middle;background:var(--line) center/cover;font-size:11px;line-height:1;color:var(--mute);font-weight:600} /* mały awatar w rankingu */
+#rankCard{position:relative}#lsnow{position:absolute;inset:0;overflow:hidden;pointer-events:none;border-radius:inherit;z-index:2}
+#lsnow i{position:absolute;top:0;width:20px;height:20px;border-radius:50%;background:var(--line) center/cover;opacity:0;animation:lfall var(--t) linear forwards;will-change:transform,opacity}
+@keyframes lfall{0%{opacity:0;transform:translate(0,0) rotate(0)}10%{opacity:.85}80%{opacity:.6}100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--r))}} /* awatary lidera opadają jak płatki śniegu */
+.domtag{margin-left:6px;font-size:11px;padding:1px 6px;border-radius:6px;background:var(--gold);color:#fff;white-space:nowrap}
+@keyframes domPulse{0%,100%{--gc:var(--goldline)}50%{--gc:color-mix(in srgb,var(--goldline) 65%,var(--gold))}}
+@keyframes domShine{from{background-position:100% 0}to{background-position:0 0}}
+body.playing #rankCard.dom tr.lead,body.playing #rankCard.dom tr.lead td{animation:none}
+.champ .domrow{position:relative;border-radius:6px;padding:0 6px;align-items:center;margin-left:-6px;margin-right:-6px;background:linear-gradient(100deg,transparent 35%,var(--ds) 50%,transparent 65%) 0 0/300% 100%;animation:cdS 3.2s linear infinite} /* 1. miejsce w karcie mistrza przy dużej przewadze (CUPDOM) */
+.champ .ld.domrow .dt{font-size:10.5px;line-height:17px;padding:0 7px;vertical-align:1px;background:color-mix(in srgb,var(--dc) 30%,transparent);color:color-mix(in srgb,var(--dc) 45%,#fff);font-weight:500}
+.champ .who.domrow{display:inline-block;margin:2px auto;padding:0 10px}
+.champ .dt{display:inline-block;margin-left:6px;font-size:11px;padding:0 6px;border-radius:6px;background:var(--dc);color:#fff;font-weight:600;white-space:nowrap;vertical-align:middle}
+@keyframes cdP{0%,100%{border-color:var(--dl)}50%{border-color:var(--dc)}}@keyframes cdS{from{background-position:100% 0}to{background-position:0 0}}
+#champ.dom{border-color:var(--dc);animation:cwP 2.4s ease-in-out infinite} /* mistrz tygodnia: świeci cała karta */
+#champ.dom::after{content:"";position:absolute;top:0;bottom:0;left:-40%;width:30%;pointer-events:none;background:linear-gradient(100deg,transparent,var(--ds),transparent);animation:cwS 3.2s linear infinite}
+#champ.dom .dt{margin:8px 0 0;font-size:12px;padding:2px 10px}
+@keyframes cwP{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 18px 2px var(--dg)}}@keyframes cwS{to{left:140%}}
+body.playing #champ.dom,body.playing #champ.dom::after{animation:none}
+#champ{--dl:var(--goldline);--dc:#c9961a;--dg:rgba(230,185,58,.55);--ds:rgba(255,227,138,.3)}
+#champM{--dl:rgba(155,93,229,.35);--dc:#8a4fd6;--dg:rgba(155,93,229,.55);--ds:rgba(206,170,255,.3)}
+#champY{--dl:rgba(63,170,210,.35);--dc:#2a8fb8;--dg:rgba(63,176,216,.55);--ds:rgba(170,230,250,.3)}
+body.playing .champ .domrow{animation:none}
+@media (prefers-reduced-motion:reduce){.champ .domrow{animation:none}}
+@media (prefers-reduced-motion:reduce){#rankCard.dom tr.lead,#rankCard.dom tr.lead td{animation:none}}
 /* puchary */
 aside{position:sticky;top:16px}
 @media (max-width:900px){aside{position:static}}
@@ -186,12 +217,12 @@ aside{position:sticky;top:16px}
 <div class="vtop" id="vtop"></div>
 <div class="wrap">
 <main>
-<h1>Licznik postów — d2jsp Polska <span class="ver">9.6</span></h1>
+<h1>Licznik postów — d2jsp Polska <span class="ver">9.7</span></h1>
 <p class="sub" id="sub">Ładowanie danych…</p>
 
 <div class="ranges" id="ranges">
   <button data-d="1" class="on">24 h</button><button data-d="7">7 dni</button><button data-d="30">30 dni</button>
-  <button data-d="90">90 dni</button><button data-d="0">Całość</button>
+  <button data-d="365">1 rok</button><button data-d="0">Całość</button>
   <span style="margin-left:6px;color:var(--mute);font-size:13px">lub od</span><input type="date" id="from">
   <span style="color:var(--mute);font-size:13px">do</span><input type="date" id="to">
 </div>
@@ -205,7 +236,8 @@ aside{position:sticky;top:16px}
 
 <div class="card"><h2 id="chartH">Posty dziennie</h2><p class="note" id="chartN" style="margin:-6px 0 10px">Ile postów napisano na forum każdego dnia w wybranym zakresie.</p><div id="chart" class="bars"></div></div>
 
-<div class="card">
+<div class="card" id="rankCard">
+  <div id="lsnow"></div>
   <div class="head"><h2>Ranking</h2><input id="q" placeholder="Szukaj nicku…"></div>
   <table><thead><tr><th>#</th><th>Użytkownik</th><th class="n">Posty</th><th class="n">Tematy</th><th class="w">Udział</th></tr></thead><tbody id="rows"></tbody></table>
 </div>
@@ -325,6 +357,16 @@ function updateNote() {
 }
 setInterval(() => { if (D) updateNote(); }, 60000);
 
+// Karta mistrza świeci, gdy zwycięzca (albo lider trwającego okresu) ma nad 2. miejscem co najmniej tyle postów; ?domdemo = podgląd bez progu
+const CUPDOM = { w: 200, m: 250, y: 1000 }, DOMDEMO = new URLSearchParams(location.search).has('domdemo');
+function cupDom(id, t, x, leader) {
+  const el = $(id), gap = x?.rank?.length ? x.rank[0][1] - (x.rank[1]?.[1] || 0) : 0;
+  if (!x?.rank?.length || !(DOMDEMO || gap >= CUPDOM[t])) return;
+  if (t === 'w') { el.classList.add('dom'); el.querySelector('.meta')?.insertAdjacentHTML('afterend', `<div><span class="dt" title="Przewaga nad 2. miejscem">+${fmt(gap)} przewagi</span></div>`); return; }
+  const row = el.querySelector(leader ? '.ld .ldn' : '.who'); if (!row) return; // trwający okres: 1. wiersz „na czele”; przyznany: nick zwycięzcy
+  (leader ? row.parentNode : row).classList.add('domrow');
+  row.insertAdjacentHTML('beforeend', `<span class="dt" title="Przewaga nad 2. miejscem">+${fmt(gap)} przewagi</span>`);
+}
 function renderCups(R) {
   reign = new Set(R.m.past[0]?.winners || []); // fioletowy nick do czasu kolejnego mistrza miesiąca
   const last = R.w.past[0];
@@ -333,6 +375,8 @@ function renderCups(R) {
        <div class="who">${last.winners.map(link).join(' & ')}</div>
        <div class="meta">${fmt(last.rank[0][1])} postów · ${Math.round(last.rank[0][1] / last.total * 100)}% całego tygodnia</div>`
     : `${cupSvg('w', 'big')}<div class="lab">Pierwszy puchar</div><div class="meta">zostanie przyznany po niedzieli</div>`;
+
+  cupDom('champ', 'w', last, false);
 
   // Mistrz miesiąca i roku: duże karty jak tygodnia; zwycięzca ostatniego okresu albo kto prowadzi w bieżącym
   const cap = (x) => x[0].toUpperCase() + x.slice(1);
@@ -346,6 +390,7 @@ function renderCups(R) {
       ? `${t === 'y' ? '' : `<div class="wk">${cap(won.p.label)}</div>`}<div class="who">${won.winners.map(link).join(' & ')}</div><div class="meta">${fmt(won.rank[0][1])} postów · ${Math.round(won.rank[0][1] / won.total * 100)}% całego okresu</div>`
       : `${t === 'y' ? (upcoming.label.includes('od') ? `<div class="wk">liczony od ${dm(START)}</div>` : '') : `<div class="wk">${cap(upcoming.label)}</div>`}<div class="who tbd">jeszcze nieznany</div><div class="meta">${c.notYet ? 'liczenie od ' + (t === 'm' ? '1.10' : dm(START)) : 'przyznanie za ' + until(c.p.end)}</div>`;
     $('champ' + t.toUpperCase()).innerHTML = head + body + standings;
+    cupDom('champ' + t.toUpperCase(), t, won || (c.notYet ? null : c), !won);
   }
 
   const c = R.w.current, lead = c.rank[0]?.[1] || 1;
@@ -454,7 +499,18 @@ fetch('data.json?' + Date.now()).then((r) => r.json()).then((d) => {
   setDays(1);
 }).catch((e) => { console.error(e); $('sub').textContent = 'Brak danych — pierwsza aktualizacja jeszcze się nie zakończyła.'; });
 
+const DOM = { 1: 50, 7: 200, 30: 550, 365: 1000, 0: 2000 }; // próg przewagi lidera nad 2. miejscem per przycisk zakresu
+let domMin = 0;
+// Lider z przewagą (tr.lead): jego małe awatary opadają z nicku w dół karty rankingu; stoi w trakcie gry, na ukrytej karcie i przy ograniczeniu animacji
+setInterval(() => {
+  const av = document.querySelector('#rankCard.dom tr.lead .rav'), box = $('lsnow');
+  if (!av || document.hidden || document.body.classList.contains('playing') || matchMedia('(prefers-reduced-motion:reduce)').matches || box.childElementCount > 14) return;
+  const b = box.getBoundingClientRect(), a = av.getBoundingClientRect(), f = document.createElement('i'), t = 5 + Math.random() * 3;
+  f.style.cssText = `left:${a.left - b.left + (Math.random() - .5) * 60}px;top:${a.top - b.top}px;--t:${t}s;--dx:${(Math.random() - .5) * 80}px;--dy:${b.bottom - a.top}px;--r:${(Math.random() - .5) * 360}deg;${av.style.backgroundImage ? 'background-image:' + av.style.backgroundImage : ''}`;
+  f.addEventListener('animationend', () => f.remove()); box.appendChild(f);
+}, 650);
 function setDays(n) {
+  domMin = DOM[n] || 0;
   const now = Date.now();
   to = now; from = n ? Math.max(now - n * day, D.from) : D.from;
   document.querySelectorAll('#ranges button').forEach((b) => b.classList.toggle('on', +b.dataset.d === n));
@@ -466,7 +522,7 @@ for (const id of ['from', 'to']) $(id).addEventListener('change', () => {
   if (!$('from').value || !$('to').value) return;
   from = new Date($('from').value + 'T00:00').getTime(); to = new Date($('to').value + 'T23:59:59').getTime();
   document.querySelectorAll('#ranges button').forEach((b) => b.classList.remove('on'));
-  render();
+  domMin = 0; render();
 });
 $('q').addEventListener('input', render);
 
@@ -480,6 +536,8 @@ function crownTable() {
 }
 window.crownOf = (u) => crownTable().get(String(u)) || 0;
 // lider ostatnich 24 h: w grze jego piłeczka wypada w 15% przypadków i ma złotą ramkę z koroną
+// lider 24 h z przewagą >= DOM[1] postów nad 2. miejscem (świeci w rankingu i w grze)
+window.dayDom = () => { const t = Date.now() / 1000 - 86400, m = new Map(); for (const p of D?.posts || []) if (p[3] >= t) m.set(p[2], (m.get(p[2]) || 0) + 1); const v = [...m.values()].sort((a, b) => b - a); return (v[0] || 0) - (v[1] || 0) >= DOM[1]; };
 window.dayLeader = (() => { let at = 0, v = null; return () => { if (!at || Date.now() - at > 6e4) { v = [...crownTable()][0]?.[0] || null; at = Date.now(); } return v; }; })();
 
 function render() {
@@ -499,11 +557,13 @@ function render() {
   $('tTopics').textContent = fmt(topics.size); $('tAvg').textContent = fmt(Math.round(posts.length / nDays));
 
   const rank = [...users.values()].sort((a, b) => b.n - a.n);
+  const lead = rank[0] ? rank[0].n - (rank[1]?.n || 0) : 0, dom = domMin && lead >= domMin;
+  $('rankCard').classList.toggle('dom', !!dom);
   const top = rank[0]?.n || 1, q = $('q').value.trim().toLowerCase();
   $('rows').innerHTML = rank.map((x, i) => ({ x, i }))
-    .filter(({ x }) => !q || nick(x.u).toLowerCase().includes(q))
+    .filter(({ x, i }) => q ? nick(x.u).toLowerCase().includes(q) : i < 15) // bez szukania tylko top 15; szukanie obejmuje wszystkich
     .map(({ x, i }) => { const c = cups.get(x.u);
-      return `<tr><td>${i+1}</td><td>${nickBadges(x.u)}${crown.has(x.u) ? `<small class="crownb" title="Piłeczka z tym awatarem ma w grze większy mnożnik (miejsce w ostatnich 24 h)">+${crown.get(x.u).toFixed(1)}x do piłeczki</small>` : ''}</td><td class="n">${fmt(x.n)}</td><td class="n">${x.t.size}</td><td class="w"><div class="share" style="width:${x.n/top*100}%" title="${(x.n/posts.length*100).toFixed(1)}%"></div></td></tr>`; }).join('')
+      return `<tr${dom && !i ? ' class="lead"' : ''}><td>${i+1}</td><td>${(() => { const av = D.avatars?.[x.u]; return `<span class="rav"${av ? ` style="background-image:url('${esc(av)}')"` : ''}>${av ? '' : esc(nick(x.u)[0].toUpperCase())}</span>`; })()}${nickBadges(x.u)}${dom && !i ? `<span class="domtag" title="Przewaga nad 2. miejscem">+${fmt(lead)} przewagi</span>` : ''}${crown.has(x.u) ? `<small class="crownb" title="Piłeczka z tym awatarem ma w grze większy mnożnik (miejsce w ostatnich 24 h)">+${crown.get(x.u).toFixed(1)}x do piłeczki</small>` : ''}</td><td class="n">${fmt(x.n)}</td><td class="n">${x.t.size}</td><td class="w"><div class="share" style="width:${x.n/top*100}%" title="${(x.n/posts.length*100).toFixed(1)}%"></div></td></tr>`; }).join('')
     || '<tr><td colspan="5" style="color:var(--mute)">Brak postów w tym zakresie.</td></tr>';
 
   // zakres do 2 dni: słupki co godzinę (dzienne dałyby tylko 1–2 słupki)
@@ -528,7 +588,7 @@ function render() {
       <span class="d">${show ? `${dt.getDate()}.${String(dt.getMonth() + 1).padStart(2, '0')}${many ? '' : `<i>${WD[dt.getDay()]}</i>`}` : '&nbsp;'}</span></div>`; }).join('');
 }
 </script>
-<script src="gra.js?v=1791000018"></script>
+<script src="gra.js?v=1791000021"></script>
 <script>document.getElementById('vtop').textContent = 'wersja ' + document.querySelector('.ver').textContent;</script>
 </body>
 </html>
