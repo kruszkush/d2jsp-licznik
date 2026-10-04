@@ -551,7 +551,7 @@
     if (b.lowcy) L.push(`+${b.lowcy.toFixed(1)}x do mnożnika małych i średnich piłeczek (x1.3, x1.7)${c('lowcy')}`);
     if (b.rozp) L.push(`Rozpocznij z mnożnikiem ogólnym zwiększonym o ${pct(b.rozp)}%${c('rozp')}`);
     if (b.wytrw) L.push(`Piłeczka przyspiesza o ${Math.round(b.wytrw * 100)}% wolniej${c('wytrw')}`);
-    if (b.stlum) L.push(`Piłeczka odbija się ${lowerPct(pct(b.stlum))}% niżej${c('stlum')}${stlumNote()}``);
+    if (b.stlum) L.push(`Piłeczka odbija się ${lowerPct(pct(b.stlum))}% niżej${c('stlum')}${stlumNote()}`);
     if (b.ciezki) L.push(`Grawitacja słabsza o ${pct(b.ciezki)}%${c('ciezki')}`);
     if (b.zreczny) L.push(`Odbicie w bok mniejsze o ${pct(b.zreczny)}%${c('zreczny')}`);
     if (b.olb) L.push(`Większa piłeczka o ${pct(b.olb)}%${c('olb')}`);
