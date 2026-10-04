@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Licznik postów d2jsp 13.1-test</title>
+<title>Licznik postów d2jsp 13.2-test</title>
 <style>
 :root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e4e2dc;--acc:#b4441f;--bar:#d9825f;
  --gold:#c9961a;--gold2:#f3d46b;--goldbg:#fff8e3;--goldline:#efd89a;--silver:#9aa0a6;--bronze:#b3713f}
@@ -52,7 +52,7 @@ a{color:var(--ink);text-decoration:none}a:hover{color:var(--acc)}
 #rankCard.dom tr.lead td:first-child{border-left:1px solid var(--goldline)}#rankCard.dom tr.lead td:last-child{border-right:1px solid var(--goldline)}
 #rankCard.dom tr.lead td.n:nth-child(3){color:var(--gold);font-weight:600}
 .domtag{margin-left:6px;font-size:11px;padding:1px 6px;border-radius:6px;background:var(--gold);color:#fff;white-space:nowrap}
-@keyframes domPulse{0%,100%{box-shadow:inset 0 0 0 0 rgba(230,185,58,0)}50%{box-shadow:inset 0 0 12px 0 rgba(230,185,58,.55)}}
+@keyframes domPulse{0%,100%{border-color:var(--goldline)}50%{border-color:var(--gold)}}
 @keyframes domShine{from{background-position:100% 0}to{background-position:0 0}}
 body.playing #rankCard.dom tr.lead,body.playing #rankCard.dom tr.lead td{animation:none}
 .champ.dom{border-color:var(--dc);animation:cdP 2.4s ease-in-out infinite} /* karta mistrza przy dużej przewadze (CUPDOM) */
@@ -206,7 +206,7 @@ aside{position:sticky;top:16px}
 <div class="vtop" id="vtop"></div>
 <div class="wrap">
 <main>
-<h1>Licznik postów — d2jsp Polska <span class="ver">13.1-test</span></h1>
+<h1>Licznik postów — d2jsp Polska <span class="ver">13.2-test</span></h1>
 <p class="sub" id="sub">Ładowanie danych…</p>
 
 <div class="ranges" id="ranges">
