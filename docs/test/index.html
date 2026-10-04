@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Licznik postów d2jsp 13.0-test</title>
+<title>Licznik postów d2jsp 13.1-test</title>
 <style>
 :root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e4e2dc;--acc:#b4441f;--bar:#d9825f;
  --gold:#c9961a;--gold2:#f3d46b;--goldbg:#fff8e3;--goldline:#efd89a;--silver:#9aa0a6;--bronze:#b3713f}
@@ -55,6 +55,15 @@ a{color:var(--ink);text-decoration:none}a:hover{color:var(--acc)}
 @keyframes domPulse{0%,100%{box-shadow:inset 0 0 0 0 rgba(230,185,58,0)}50%{box-shadow:inset 0 0 12px 0 rgba(230,185,58,.55)}}
 @keyframes domShine{from{background-position:100% 0}to{background-position:0 0}}
 body.playing #rankCard.dom tr.lead,body.playing #rankCard.dom tr.lead td{animation:none}
+.champ.dom{border-color:var(--dc);animation:cdP 2.4s ease-in-out infinite} /* karta mistrza przy dużej przewadze (CUPDOM) */
+.champ.dom::after{content:"";position:absolute;top:0;bottom:0;left:-40%;width:30%;pointer-events:none;background:linear-gradient(100deg,transparent,var(--ds),transparent);animation:cdS 3.2s linear infinite}
+.champ .dt{display:inline-block;margin-top:8px;font-size:12px;padding:2px 10px;border-radius:8px;background:var(--dc);color:#fff;font-weight:600}
+@keyframes cdP{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 18px 2px var(--dg)}}@keyframes cdS{to{left:140%}}
+#champ{--dc:#c9961a;--dg:rgba(230,185,58,.55);--ds:rgba(255,227,138,.3)}
+#champM{--dc:#8a4fd6;--dg:rgba(155,93,229,.55);--ds:rgba(206,170,255,.3)}
+#champY{--dc:#2a8fb8;--dg:rgba(63,176,216,.55);--ds:rgba(170,230,250,.3)}
+body.playing .champ.dom,body.playing .champ.dom::after{animation:none}
+@media (prefers-reduced-motion:reduce){.champ.dom,.champ.dom::after{animation:none}}
 @media (prefers-reduced-motion:reduce){#rankCard.dom tr.lead,#rankCard.dom tr.lead td{animation:none}}
 /* puchary */
 aside{position:sticky;top:16px}
@@ -197,7 +206,7 @@ aside{position:sticky;top:16px}
 <div class="vtop" id="vtop"></div>
 <div class="wrap">
 <main>
-<h1>Licznik postów — d2jsp Polska <span class="ver">13.0-test</span></h1>
+<h1>Licznik postów — d2jsp Polska <span class="ver">13.1-test</span></h1>
 <p class="sub" id="sub">Ładowanie danych…</p>
 
 <div class="ranges" id="ranges">
@@ -336,6 +345,13 @@ function updateNote() {
 }
 setInterval(() => { if (D) updateNote(); }, 60000);
 
+// Karta mistrza świeci, gdy zwycięzca (albo lider trwającego okresu) ma nad 2. miejscem co najmniej tyle postów; ?domdemo = podgląd bez progu
+const CUPDOM = { w: 200, m: 550, y: 1000 }, DOMDEMO = new URLSearchParams(location.search).has('domdemo');
+function cupDom(id, t, x, leader) {
+  const el = $(id), gap = x?.rank?.length ? x.rank[0][1] - (x.rank[1]?.[1] || 0) : 0, on = !!x?.rank?.length && (DOMDEMO || gap >= CUPDOM[t]);
+  el.classList.toggle('dom', on);
+  if (on) el.querySelector('.meta')?.insertAdjacentHTML('afterend', `<div><span class="dt" title="Przewaga nad 2. miejscem">${leader ? 'lider ' : ''}+${fmt(gap)} przewagi</span></div>`);
+}
 function renderCups(R) {
   reign = new Set(R.m.past[0]?.winners || []); // fioletowy nick do czasu kolejnego mistrza miesiąca
   const last = R.w.past[0];
@@ -344,6 +360,8 @@ function renderCups(R) {
        <div class="who">${last.winners.map(link).join(' & ')}</div>
        <div class="meta">${fmt(last.rank[0][1])} postów · ${Math.round(last.rank[0][1] / last.total * 100)}% całego tygodnia</div>`
     : `${cupSvg('w', 'big')}<div class="lab">Pierwszy puchar</div><div class="meta">zostanie przyznany po niedzieli</div>`;
+
+  cupDom('champ', 'w', last, false);
 
   // Mistrz miesiąca i roku: duże karty jak tygodnia; zwycięzca ostatniego okresu albo kto prowadzi w bieżącym
   const cap = (x) => x[0].toUpperCase() + x.slice(1);
@@ -357,6 +375,7 @@ function renderCups(R) {
       ? `${t === 'y' ? '' : `<div class="wk">${cap(won.p.label)}</div>`}<div class="who">${won.winners.map(link).join(' & ')}</div><div class="meta">${fmt(won.rank[0][1])} postów · ${Math.round(won.rank[0][1] / won.total * 100)}% całego okresu</div>`
       : `${t === 'y' ? (upcoming.label.includes('od') ? `<div class="wk">liczony od ${dm(START)}</div>` : '') : `<div class="wk">${cap(upcoming.label)}</div>`}<div class="who tbd">jeszcze nieznany</div><div class="meta">${c.notYet ? 'liczenie od ' + (t === 'm' ? '1.10' : dm(START)) : 'przyznanie za ' + until(c.p.end)}</div>`;
     $('champ' + t.toUpperCase()).innerHTML = head + body + standings;
+    cupDom('champ' + t.toUpperCase(), t, won || (c.notYet ? null : c), !won);
   }
 
   const c = R.w.current, lead = c.rank[0]?.[1] || 1;
