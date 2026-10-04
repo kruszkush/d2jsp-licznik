@@ -493,13 +493,13 @@
   // Stłumiony: pełne działanie do 300 pkt, słabnie do 0 przy 400 pkt, dalej odwrotnie (mocniejsze podbicie) aż do połowy wartości przy 450 pkt
   const STLUM_FROM = 300, STLUM_ZERO = 400, STLUM_REV = .5;
   const stlumNow = (v, score) => v * Math.max(-STLUM_REV, Math.min(1, (STLUM_ZERO - score) / (STLUM_ZERO - STLUM_FROM)));
-  const stlumNote = (v) => `; słabnie od ${STLUM_FROM} pkt, przy ${STLUM_ZERO} pkt 0%, od ${STLUM_ZERO + (STLUM_ZERO - STLUM_FROM) * STLUM_REV} pkt podbicie mocniejsze o ${Math.round(v * STLUM_REV)}%`;
+  const stlumNote = () => `; działanie słabnie między ${STLUM_FROM} a ${STLUM_ZERO} pkt, później działanie jest odwrócone`;
   const lowerPct = (v) => Math.round((1 - (1 - v / 100) ** 2) * 100); // słabsze podbicie o v% → wysokość lotu niższa o tyle %
   const kapTxt = (n) => `${n > 1 ? `${n} razy` : 'Raz'} na grę: pudło, gdy piłeczka spada w dolnej połowie ekranu, liczy się jako podbicie`;
   // afiksy: [typ p/s, nazwa, min, max, krok, przymiotnik m/ż/lm albo dopełniacz, opis(v)]
   const AFF = {
     ostry: ['p', 'Ostry', 0.4, 1.0, 0.1, ['Ostry', 'Ostra', 'Ostre'], (v) => `+${v.toFixed(1)}x mnożnika`],
-    stlumiony: ['p', 'Stłumiony', 5, 15, 1, ['Stłumiony', 'Stłumiona', 'Stłumione'], (v) => `Podbicie słabsze o ${v}% (piłeczka leci ok. ${lowerPct(v)}% niżej${stlumNote(v)})`],
+    stlumiony: ['p', 'Stłumiony', 5, 15, 1, ['Stłumiony', 'Stłumiona', 'Stłumione'], (v) => `Podbicie piłeczki słabsze o ${v}% (leci ok. ${lowerPct(v)}% niżej)${stlumNote()}`],
     ciezki: ['p', 'Ciężki', 5, 10, 1, ['Ciężki', 'Ciężka', 'Ciężkie'], (v) => `Grawitacja słabsza o ${v}%`],
     zreczny: ['p', 'Zręczny', 10, 30, 1, ['Zręczny', 'Zręczna', 'Zręczne'], (v) => `Odbicie w bok mniejsze o ${v}%`],
     szczesliwy: ['p', 'Szczęśliwy', 30, 60, 1, ['Szczęśliwy', 'Szczęśliwa', 'Szczęśliwe'], (v) => `+${v}% magic find (sumuje się z magic find z punktów)`],
@@ -551,7 +551,7 @@
     if (b.lowcy) L.push(`+${b.lowcy.toFixed(1)}x do mnożnika małych i średnich piłeczek (x1.3, x1.7)${c('lowcy')}`);
     if (b.rozp) L.push(`Rozpocznij z mnożnikiem ogólnym zwiększonym o ${pct(b.rozp)}%${c('rozp')}`);
     if (b.wytrw) L.push(`Piłeczka przyspiesza o ${Math.round(b.wytrw * 100)}% wolniej${c('wytrw')}`);
-    if (b.stlum) L.push(`Podbicie słabsze o ${pct(b.stlum)}% (piłeczka leci ok. ${lowerPct(pct(b.stlum))}% niżej${stlumNote(pct(b.stlum))})${c('stlum')}`);
+    if (b.stlum) L.push(`Podbicie piłeczki słabsze o ${pct(b.stlum)}% (leci ok. ${lowerPct(pct(b.stlum))}% niżej)${stlumNote()}${c('stlum')}`);
     if (b.ciezki) L.push(`Grawitacja słabsza o ${pct(b.ciezki)}%${c('ciezki')}`);
     if (b.zreczny) L.push(`Odbicie w bok mniejsze o ${pct(b.zreczny)}%${c('zreczny')}`);
     if (b.olb) L.push(`Większa piłeczka o ${pct(b.olb)}%${c('olb')}`);
