@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Licznik postów d2jsp 12.7-test</title>
+<title>Licznik postów d2jsp 12.8-test</title>
 <style>
 :root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e4e2dc;--acc:#b4441f;--bar:#d9825f;
  --gold:#c9961a;--gold2:#f3d46b;--goldbg:#fff8e3;--goldline:#efd89a;--silver:#9aa0a6;--bronze:#b3713f}
@@ -46,6 +46,16 @@ a{color:var(--ink);text-decoration:none}a:hover{color:var(--acc)}
 @media (max-width:560px){.w{display:none}}
 .head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
 .head h2{margin:0}
+/* dominacja lidera: przewaga nad 2. miejscem >= prog zakresu (DOM) — złota pulsująca ramka tabeli + przelatujący błysk */
+#rankCard{position:relative;overflow:hidden}
+#rankCard.dom{border:2px solid var(--gold);animation:domPulse 2.4s ease-in-out infinite}
+#rankCard.dom::after{content:"";position:absolute;top:0;bottom:0;left:-40%;width:30%;pointer-events:none;background:linear-gradient(100deg,transparent,rgba(255,227,138,.35),transparent);animation:domShine 3.2s linear infinite}
+#rankCard.dom tr.lead td{background:var(--goldbg)}
+#rankCard.dom tr.lead td.n:nth-child(3){color:var(--gold);font-weight:600}
+.domtag{margin-left:6px;font-size:11px;padding:1px 6px;border-radius:6px;background:var(--gold);color:#fff;white-space:nowrap}
+@keyframes domPulse{0%,100%{box-shadow:0 0 0 0 rgba(230,185,58,0)}50%{box-shadow:0 0 16px 2px rgba(230,185,58,.6)}}
+@keyframes domShine{to{left:140%}}
+@media (prefers-reduced-motion:reduce){#rankCard.dom,#rankCard.dom::after{animation:none}}
 /* puchary */
 aside{position:sticky;top:16px}
 @media (max-width:900px){aside{position:static}}
@@ -187,12 +197,12 @@ aside{position:sticky;top:16px}
 <div class="vtop" id="vtop"></div>
 <div class="wrap">
 <main>
-<h1>Licznik postów — d2jsp Polska <span class="ver">12.7-test</span></h1>
+<h1>Licznik postów — d2jsp Polska <span class="ver">12.8-test</span></h1>
 <p class="sub" id="sub">Ładowanie danych…</p>
 
 <div class="ranges" id="ranges">
   <button data-d="1" class="on">24 h</button><button data-d="7">7 dni</button><button data-d="30">30 dni</button>
-  <button data-d="90">90 dni</button><button data-d="0">Całość</button>
+  <button data-d="365">1 rok</button><button data-d="0">Całość</button>
   <span style="margin-left:6px;color:var(--mute);font-size:13px">lub od</span><input type="date" id="from">
   <span style="color:var(--mute);font-size:13px">do</span><input type="date" id="to">
 </div>
@@ -206,7 +216,7 @@ aside{position:sticky;top:16px}
 
 <div class="card"><h2 id="chartH">Posty dziennie</h2><p class="note" id="chartN" style="margin:-6px 0 10px">Ile postów napisano na forum każdego dnia w wybranym zakresie.</p><div id="chart" class="bars"></div></div>
 
-<div class="card">
+<div class="card" id="rankCard">
   <div class="head"><h2>Ranking</h2><input id="q" placeholder="Szukaj nicku…"></div>
   <table><thead><tr><th>#</th><th>Użytkownik</th><th class="n">Posty</th><th class="n">Tematy</th><th class="w">Udział</th></tr></thead><tbody id="rows"></tbody></table>
 </div>
@@ -455,7 +465,10 @@ fetch('../data.json?' + Date.now()).then((r) => r.json()).then((d) => {
   setDays(1);
 }).catch((e) => { console.error(e); $('sub').textContent = 'Brak danych — pierwsza aktualizacja jeszcze się nie zakończyła.'; });
 
+const DOM = { 1: 50, 7: 200, 30: 550, 365: 1000, 0: 2000 }; // próg przewagi lidera nad 2. miejscem per przycisk zakresu
+let domMin = 0;
 function setDays(n) {
+  domMin = DOM[n] || 0;
   const now = Date.now();
   to = now; from = n ? Math.max(now - n * day, D.from) : D.from;
   document.querySelectorAll('#ranges button').forEach((b) => b.classList.toggle('on', +b.dataset.d === n));
@@ -467,7 +480,7 @@ for (const id of ['from', 'to']) $(id).addEventListener('change', () => {
   if (!$('from').value || !$('to').value) return;
   from = new Date($('from').value + 'T00:00').getTime(); to = new Date($('to').value + 'T23:59:59').getTime();
   document.querySelectorAll('#ranges button').forEach((b) => b.classList.remove('on'));
-  render();
+  domMin = 0; render();
 });
 $('q').addEventListener('input', render);
 
@@ -500,11 +513,13 @@ function render() {
   $('tTopics').textContent = fmt(topics.size); $('tAvg').textContent = fmt(Math.round(posts.length / nDays));
 
   const rank = [...users.values()].sort((a, b) => b.n - a.n);
+  const lead = rank[0] ? rank[0].n - (rank[1]?.n || 0) : 0, dom = domMin && lead >= domMin;
+  $('rankCard').classList.toggle('dom', !!dom);
   const top = rank[0]?.n || 1, q = $('q').value.trim().toLowerCase();
   $('rows').innerHTML = rank.map((x, i) => ({ x, i }))
     .filter(({ x }) => !q || nick(x.u).toLowerCase().includes(q))
     .map(({ x, i }) => { const c = cups.get(x.u);
-      return `<tr><td>${i+1}</td><td>${nickBadges(x.u)}${crown.has(x.u) ? `<small class="crownb" title="Piłeczka z tym awatarem ma w grze większy mnożnik (miejsce w ostatnich 24 h)">+${crown.get(x.u).toFixed(1)}x do piłeczki</small>` : ''}</td><td class="n">${fmt(x.n)}</td><td class="n">${x.t.size}</td><td class="w"><div class="share" style="width:${x.n/top*100}%" title="${(x.n/posts.length*100).toFixed(1)}%"></div></td></tr>`; }).join('')
+      return `<tr${dom && !i ? ' class="lead"' : ''}><td>${i+1}</td><td>${nickBadges(x.u)}${dom && !i ? `<span class="domtag" title="Przewaga nad 2. miejscem">+${fmt(lead)} przewagi</span>` : ''}${crown.has(x.u) ? `<small class="crownb" title="Piłeczka z tym awatarem ma w grze większy mnożnik (miejsce w ostatnich 24 h)">+${crown.get(x.u).toFixed(1)}x do piłeczki</small>` : ''}</td><td class="n">${fmt(x.n)}</td><td class="n">${x.t.size}</td><td class="w"><div class="share" style="width:${x.n/top*100}%" title="${(x.n/posts.length*100).toFixed(1)}%"></div></td></tr>`; }).join('')
     || '<tr><td colspan="5" style="color:var(--mute)">Brak postów w tym zakresie.</td></tr>';
 
   // zakres do 2 dni: słupki co godzinę (dzienne dałyby tylko 1–2 słupki)
