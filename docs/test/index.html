@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Licznik postów d2jsp 13.3-test</title>
+<title>Licznik postów d2jsp 13.4-test</title>
 <style>
 :root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e4e2dc;--acc:#b4441f;--bar:#d9825f;
  --gold:#c9961a;--gold2:#f3d46b;--goldbg:#fff8e3;--goldline:#efd89a;--silver:#9aa0a6;--bronze:#b3713f}
@@ -47,12 +47,15 @@ a{color:var(--ink);text-decoration:none}a:hover{color:var(--acc)}
 .head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
 .head h2{margin:0}
 /* dominacja lidera: przewaga nad 2. miejscem >= prog zakresu (DOM) — świeci tylko wiersz lidera: złota pulsująca ramka + przelatujący błysk; w trakcie gry stoi */
-#rankCard.dom tr.lead{background:linear-gradient(100deg,var(--goldbg) 35%,rgba(255,227,138,.55) 50%,var(--goldbg) 65%) 0 0/300% 100%;animation:domShine 3.2s linear infinite}
-#rankCard.dom tr.lead td{border-top:1px solid var(--goldline);border-bottom:1px solid var(--goldline);animation:domPulse 2.4s ease-in-out infinite}
-#rankCard.dom tr.lead td:first-child{border-left:1px solid var(--goldline)}#rankCard.dom tr.lead td:last-child{border-right:1px solid var(--goldline)}
+#rankCard.dom tr.lead{background:linear-gradient(100deg,var(--goldbg) 35%,rgba(255,227,138,.55) 50%,var(--goldbg) 65%) 0 0/300% 100%}
+@property --gc{syntax:'<color>';inherits:true;initial-value:#efd89a} /* kolor ramki lidera (animowany); ramka z cieni, bo obramowania komórek zlewały się z liniami tabeli */
+#rankCard.dom tr.lead{--gc:var(--goldline);animation:domShine 3.2s linear infinite,domPulse 2.4s ease-in-out infinite}
+#rankCard.dom tr.lead td{border-bottom-color:transparent;box-shadow:inset 0 1px var(--gc),inset 0 -1px var(--gc)}
+#rankCard.dom tr.lead td:first-child{box-shadow:inset 0 1px var(--gc),inset 0 -1px var(--gc),inset 1px 0 var(--gc)}
+#rankCard.dom tr.lead td:last-child{box-shadow:inset 0 1px var(--gc),inset 0 -1px var(--gc),inset -1px 0 var(--gc)}
 #rankCard.dom tr.lead td.n:nth-child(3){color:var(--gold);font-weight:600}
 .domtag{margin-left:6px;font-size:11px;padding:1px 6px;border-radius:6px;background:var(--gold);color:#fff;white-space:nowrap}
-@keyframes domPulse{0%,100%{border-color:var(--goldline)}50%{border-color:var(--gold)}}
+@keyframes domPulse{0%,100%{--gc:var(--goldline)}50%{--gc:var(--gold)}}
 @keyframes domShine{from{background-position:100% 0}to{background-position:0 0}}
 body.playing #rankCard.dom tr.lead,body.playing #rankCard.dom tr.lead td{animation:none}
 .champ .domrow{position:relative;border:1px solid var(--dc);border-radius:6px;padding:1px 6px;margin-left:-6px;margin-right:-6px;background:linear-gradient(100deg,transparent 35%,var(--ds) 50%,transparent 65%) 0 0/300% 100%;animation:cdS 3.2s linear infinite,cdP 2.4s ease-in-out infinite} /* 1. miejsce w karcie mistrza przy dużej przewadze (CUPDOM) */
@@ -211,7 +214,7 @@ aside{position:sticky;top:16px}
 <div class="vtop" id="vtop"></div>
 <div class="wrap">
 <main>
-<h1>Licznik postów — d2jsp Polska <span class="ver">13.3-test</span></h1>
+<h1>Licznik postów — d2jsp Polska <span class="ver">13.4-test</span></h1>
 <p class="sub" id="sub">Ładowanie danych…</p>
 
 <div class="ranges" id="ranges">
