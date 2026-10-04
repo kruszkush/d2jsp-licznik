@@ -327,7 +327,10 @@ def eq_view(req, j):  # publiczny podgląd cudzych slotów (po skrócie z rankin
     if not isinstance(eid, str) or not EQID_RE.match(eid):
         return cors(req, {"error": "zły identyfikator"}, 400)
     snap = EQ.document(eid).get()
-    return cors(req, {"slots": eq_state(snap.to_dict() if snap.exists else {})["slots"]})
+    d = snap.to_dict() if snap.exists else {}
+    if isinstance(d.get("mergedInto"), str) and EQID_RE.match(d["mergedInto"]):  # rekord z urządzenia gościa połączonego z kontem: pokazujemy ekwipunek konta
+        d = EQ.document(d["mergedInto"]).get().to_dict() or {}
+    return cors(req, {"slots": eq_state(d)["slots"]})
 
 # --- weryfikacja gier: bilet z /start (podpisany, bez zapisu w bazie) -> /end sprawdza log podbić i wydaje podpisany wynik dla /drop i zapisu ---
 # Reguły bonusów to kopia calcB/CAP/partsOf z docs/gra.js — przy zmianie zasad punktacji w grze zmień też tutaj (gra_bonusy, gra_limit).
