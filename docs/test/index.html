@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Licznik postów d2jsp 14.7-test</title>
+<title>Licznik postów d2jsp 14.8-test</title>
 <style>
 :root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e4e2dc;--acc:#b4441f;--bar:#d9825f;
  --gold:#c9961a;--gold2:#f3d46b;--goldbg:#fff8e3;--goldline:#efd89a;--silver:#9aa0a6;--bronze:#b3713f}
@@ -218,7 +218,7 @@ aside{position:sticky;top:16px}
 <div class="vtop" id="vtop"></div>
 <div class="wrap">
 <main>
-<h1>Licznik postów — d2jsp Polska <span class="ver">14.7-test</span></h1>
+<h1>Licznik postów — d2jsp Polska <span class="ver">14.8-test</span></h1>
 <p class="sub" id="sub">Ładowanie danych…</p>
 
 <div class="ranges" id="ranges">
@@ -359,7 +359,7 @@ function updateNote() {
 setInterval(() => { if (D) updateNote(); }, 60000);
 
 // Karta mistrza świeci, gdy zwycięzca (albo lider trwającego okresu) ma nad 2. miejscem co najmniej tyle postów; ?domdemo = podgląd bez progu
-const CUPDOM = { w: 200, m: 250, y: 1000 }, DOMDEMO = new URLSearchParams(location.search).has('domdemo');
+const CUPDOM = { w: 200, m: 100, y: 1000 }, DOMDEMO = new URLSearchParams(location.search).has('domdemo');
 function cupDom(id, t, x, leader) {
   const el = $(id), gap = x?.rank?.length ? x.rank[0][1] - (x.rank[1]?.[1] || 0) : 0;
   if (!x?.rank?.length || !(DOMDEMO || gap >= CUPDOM[t])) return;
