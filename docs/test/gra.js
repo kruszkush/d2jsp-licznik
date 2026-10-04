@@ -217,7 +217,7 @@
   const CAP = { stlum: .3, ciezki: .25, zreczny: .6, olb: .25, rozp: .6, lowcy: 1.5, lucky: 100, wytrw: .3, brawur: .5, zuch: .08, echa: .25, lotny: 10, wzn: .08, mar: .3, rytm: 6, kryt: .3, zlota: .06 };
   // afiks → limit łączny jako tekst (np. „30%”, „+1.5x”)
   const CAPK = { stlumiony: 'stlum', ciezki: 'ciezki', zreczny: 'zreczny', olbrzyma: 'olb', rozpedzony: 'rozp', lowcy: 'lowcy', szczesliwy: 'lucky', wytrwalosci: 'wytrw', brawurowy: 'brawur', zuchwaly: 'zuch', echa: 'echa', lotny: 'lotny', wznoszacy: 'wzn', maratonczyka: 'mar', rytmu: 'rytm', krytyczny: 'kryt', zlota: 'zlota' };
-  const capTxt = (id) => { const k = CAPK[id]; if (!k) return ''; const v = CAP[k]; return k === 'lucky' ? '+100%' : k === 'lowcy' ? '+1.5x' : k === 'brawur' || k === 'zuch' || k === 'wzn' || k === 'mar' ? `+${v.toFixed(2)}x` : k === 'lotny' ? `+${v} px` : k === 'rytm' ? `+${v} pkt` : Math.round(v * 100) + '%'; };
+  const capTxt = (id) => { const k = CAPK[id]; if (!k) return ''; const v = CAP[k]; return k === 'lucky' ? '+100%' : k === 'lowcy' ? '+1.5x' : k === 'brawur' || k === 'zuch' || k === 'wzn' || k === 'mar' ? `+${v.toFixed(2)}x` : k === 'lotny' ? `+${v} px` : k === 'rytm' ? `+${v} pkt` : k === 'stlum' ? lowerPct(v * 100) + '%' : Math.round(v * 100) + '%'; };
   function calcB(slots) {
     const b = zeroB();
     for (const it of Object.values(slots || {})) {
@@ -531,7 +531,7 @@
   const TIER = { stlumiony: 'slaby', zreczny: 'slaby', olbrzyma: 'slaby', lowcy: 'dobry',  ciezki: 'dobry', wytrwalosci: 'dobry', rozpedzony: 'znakomity', szczesliwy: 'dobry', brawurowy: 'znakomity', zuchwaly: 'znakomity', echa: 'znakomity', lotny: 'znakomity', wznoszacy: 'znakomity', krytyczny: 'znakomity', maratonczyka: 'znakomity', rytmu: 'znakomity', ostry: 'boski', serii: 'boski', stroza: 'boski', zlota: 'boski' };
   const TIERN = { slaby: 'słaby', dobry: 'dobry', znakomity: 'znakomity', boski: 'boski' };
   // zakres rolla afiksu w nawiasie (min–max), żeby było widać, jak blisko maksimum jest przedmiot
-  const rng = (id) => { const [, , lo, hi, st] = AFF[id]; if (lo === hi) return ''; const f = (v) => st >= 1 ? v : v.toFixed(st < .1 ? 2 : 1); return ` <span class="rng">(${f(lo)}–${f(hi)})</span>`; };
+  const rng = (id) => { const [, , lo, hi, st] = AFF[id]; if (lo === hi) return ''; const f = (v) => id === 'stlumiony' ? lowerPct(v) : st >= 1 ? v : v.toFixed(st < .1 ? 2 : 1); return ` <span class="rng">(${f(lo)}–${f(hi)})</span>`; };
   const tipHtml = (it) => `<div class="tn" style="color:${COL[it.rarity]}">${esc(itemName(it))}</div><div class="ts">${SLOT[it.slot][0]} · ${RAR[it.rarity]}</div><div class="ts">Poziom przedmiotu: ${it.ilvl ?? 0}</div>
     <div class="tg">+${(it.implicit?.mult ?? 0.1).toFixed(1)}x mnożnika</div>${(it.affixes || []).filter((a) => AFF[a.id]).map((a) => `<div class="tb">${esc(AFF[a.id][6](a.v))}${rng(a.id)}<small class="tier t-${TIER[a.id]}">(${TIERN[TIER[a.id]]}${capTxt(a.id) ? ` · łącznie maks. ${capTxt(a.id)}` : ''})</small></div>`).join('')}${it.rarity === 'u' && it.slot === 'boots' ? `<div class="tb">${kapTxt(it.bans || 1)} (🔨 w grze wtedy świeci)</div>` : ''}${it.rarity === 'u' && it.slot === 'helm' ? '<div class="tb">Podwaja premię piłeczek osób, którymi grasz, z top 10 z ostatnich 24 godzin</div>' : ''}`;
   const sumHtml = (b) => {
