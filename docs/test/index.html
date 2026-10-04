@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Licznik postów d2jsp 14.3-test</title>
+<title>Licznik postów d2jsp 14.4-test</title>
 <style>
 :root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e4e2dc;--acc:#b4441f;--bar:#d9825f;
  --gold:#c9961a;--gold2:#f3d46b;--goldbg:#fff8e3;--goldline:#efd89a;--silver:#9aa0a6;--bronze:#b3713f}
@@ -54,6 +54,9 @@ a{color:var(--ink);text-decoration:none}a:hover{color:var(--acc)}
 #rankCard.dom tr.lead td{border-bottom-color:transparent}
 #rankCard.dom tr.lead td.n:nth-child(3){color:var(--gold);font-weight:600}
 .rav{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;margin-right:6px;vertical-align:middle;background:var(--line) center/cover;font-size:11px;line-height:1;color:var(--mute);font-weight:600} /* mały awatar w rankingu */
+#rankCard{position:relative}#lsnow{position:absolute;inset:0;overflow:hidden;pointer-events:none;border-radius:inherit;z-index:2}
+#lsnow i{position:absolute;top:0;width:20px;height:20px;border-radius:50%;background:var(--line) center/cover;opacity:0;animation:lfall var(--t) linear forwards;will-change:transform,opacity}
+@keyframes lfall{0%{opacity:0;transform:translate(0,0) rotate(0)}10%{opacity:.85}80%{opacity:.6}100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--r))}} /* awatary lidera opadają jak płatki śniegu */
 .domtag{margin-left:6px;font-size:11px;padding:1px 6px;border-radius:6px;background:var(--gold);color:#fff;white-space:nowrap}
 @keyframes domPulse{0%,100%{--gc:var(--goldline)}50%{--gc:color-mix(in srgb,var(--goldline) 65%,var(--gold))}}
 @keyframes domShine{from{background-position:100% 0}to{background-position:0 0}}
@@ -215,7 +218,7 @@ aside{position:sticky;top:16px}
 <div class="vtop" id="vtop"></div>
 <div class="wrap">
 <main>
-<h1>Licznik postów — d2jsp Polska <span class="ver">14.3-test</span></h1>
+<h1>Licznik postów — d2jsp Polska <span class="ver">14.4-test</span></h1>
 <p class="sub" id="sub">Ładowanie danych…</p>
 
 <div class="ranges" id="ranges">
@@ -235,6 +238,7 @@ aside{position:sticky;top:16px}
 <div class="card"><h2 id="chartH">Posty dziennie</h2><p class="note" id="chartN" style="margin:-6px 0 10px">Ile postów napisano na forum każdego dnia w wybranym zakresie.</p><div id="chart" class="bars"></div></div>
 
 <div class="card" id="rankCard">
+  <div id="lsnow"></div>
   <div class="head"><h2>Ranking</h2><input id="q" placeholder="Szukaj nicku…"></div>
   <table><thead><tr><th>#</th><th>Użytkownik</th><th class="n">Posty</th><th class="n">Tematy</th><th class="w">Udział</th></tr></thead><tbody id="rows"></tbody></table>
 </div>
@@ -498,6 +502,14 @@ fetch('../data.json?' + Date.now()).then((r) => r.json()).then((d) => {
 
 const DOM = { 1: 50, 7: 200, 30: 550, 365: 1000, 0: 2000 }; // próg przewagi lidera nad 2. miejscem per przycisk zakresu
 let domMin = 0;
+// Lider z przewagą (tr.lead): jego małe awatary opadają z nicku w dół karty rankingu; stoi w trakcie gry, na ukrytej karcie i przy ograniczeniu animacji
+setInterval(() => {
+  const av = document.querySelector('#rankCard.dom tr.lead .rav'), box = $('lsnow');
+  if (!av || document.hidden || document.body.classList.contains('playing') || matchMedia('(prefers-reduced-motion:reduce)').matches || box.childElementCount > 14) return;
+  const b = box.getBoundingClientRect(), a = av.getBoundingClientRect(), f = document.createElement('i'), t = 5 + Math.random() * 3;
+  f.style.cssText = `left:${a.left - b.left + (Math.random() - .5) * 60}px;top:${a.top - b.top}px;--t:${t}s;--dx:${(Math.random() - .5) * 80}px;--dy:${b.bottom - a.top}px;--r:${(Math.random() - .5) * 360}deg;${av.style.backgroundImage ? 'background-image:' + av.style.backgroundImage : ''}`;
+  f.addEventListener('animationend', () => f.remove()); box.appendChild(f);
+}, 650);
 function setDays(n) {
   domMin = DOM[n] || 0;
   const now = Date.now();
