@@ -42,7 +42,7 @@
   #hud{white-space:nowrap;max-width:calc(100vw - 24px)}
   @media (pointer:coarse){#hud{top:6px;font-size:17px;padding:3px 12px;opacity:.8}#lvlup{top:40px;font-size:16px}#nad{top:70px}}
   body.playing #snow{z-index:62}
-  .wrap{transition:opacity .4s}body.playing .wrap{opacity:.6} /* w trakcie gry strona lekko przygaszona (statyczna przezroczystość, bez pełnoekranowej warstwy — te zacinały) */
+  .wrap{transition:opacity .4s}body.playing .wrap{opacity:.4} /* w trakcie gry strona lekko przygaszona (statyczna przezroczystość, bez pełnoekranowej warstwy — te zacinały) */
   #hud small{font-size:12px;font-weight:500;color:var(--mute);margin-left:6px}
   #over{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:rgba(0,0,0,.45)}
   #over .box{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;width:min(320px,calc(100vw - 32px));text-align:center}
