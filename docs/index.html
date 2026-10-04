@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Licznik postów d2jsp 10.0</title>
+<title>Licznik postów d2jsp 10.1</title>
 <style>
 :root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e4e2dc;--acc:#b4441f;--bar:#d9825f;
  --gold:#c9961a;--gold2:#f3d46b;--goldbg:#fff8e3;--goldline:#efd89a;--silver:#9aa0a6;--bronze:#b3713f}
@@ -59,6 +59,8 @@ a{color:var(--ink);text-decoration:none}a:hover{color:var(--acc)}
 #lsnow i{position:absolute;top:0;width:20px;height:20px;border-radius:50%;background:var(--line) center/cover;opacity:0;animation:lfall var(--t) linear forwards;will-change:transform,opacity}
 @keyframes lfall{0%{opacity:0;transform:translate(0,0) rotate(0)}10%{opacity:.85}80%{opacity:.6}100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--r))}} /* awatary lidera opadają jak płatki śniegu */
 .domtag{margin-left:6px;font-size:11px;padding:1px 6px;border-radius:6px;background:var(--gold);color:#fff;white-space:nowrap}
+.wch a{color:var(--gold)!important;font-weight:600}
+.wtag{margin-left:6px;font-size:11px;padding:1px 7px;border-radius:9px;background:rgba(201,150,26,.15);color:var(--gold);border:1px solid rgba(201,150,26,.4);white-space:nowrap}.wtag svg{vertical-align:-2px} /* aktualny mistrz tygodnia w rankingu */
 @keyframes domPulse{0%,100%{--gc:var(--goldline)}50%{--gc:color-mix(in srgb,var(--goldline) 65%,var(--gold))}}
 @keyframes domShine{from{background-position:100% 0}to{background-position:0 0}}
 body.playing #rankCard.dom tr.lead,body.playing #rankCard.dom tr.lead td{animation:none}
@@ -218,7 +220,7 @@ aside{position:sticky;top:16px}
 <div class="vtop" id="vtop"></div>
 <div class="wrap">
 <main>
-<h1>Licznik postów — d2jsp Polska <span class="ver">10.0</span></h1>
+<h1>Licznik postów — d2jsp Polska <span class="ver">10.1</span></h1>
 <p class="sub" id="sub">Ładowanie danych…</p>
 
 <div class="ranges" id="ranges">
@@ -257,7 +259,7 @@ aside{position:sticky;top:16px}
 <div id="legendSlot"></div>
 <script>
 const $ = (id) => document.getElementById(id);
-let D, from, to, reign = new Set(), cups = new Map(); // uid -> [{t: 'w'|'m'|'y', label}]
+let D, from, to, reign = new Set(), wchamp = new Set(), cups = new Map(); // uid -> [{t: 'w'|'m'|'y', label}]
 const day = 864e5;
 const fmt = (n) => n.toLocaleString('pl-PL');
 const ymd = (t) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
@@ -370,6 +372,7 @@ function cupDom(id, t, x, leader) {
 }
 function renderCups(R) {
   reign = new Set(R.m.past[0]?.winners || []); // fioletowy nick do czasu kolejnego mistrza miesiąca
+  wchamp = new Set(R.w.past[0]?.winners || []); // złoty nick + plakietka w rankingu do kolejnego mistrza tygodnia
   const last = R.w.past[0];
   $('champ').innerHTML = last
     ? `${cupSvg('w', 'big')}<div class="lab">Mistrz tygodnia</div><div class="wk" title="${last.p.label}">${last.p.nice}</div>
@@ -564,7 +567,7 @@ function render() {
   $('rows').innerHTML = rank.map((x, i) => ({ x, i }))
     .filter(({ x, i }) => q ? nick(x.u).toLowerCase().includes(q) : i < 15) // bez szukania tylko top 15; szukanie obejmuje wszystkich
     .map(({ x, i }) => { const c = cups.get(x.u);
-      return `<tr${dom && !i ? ' class="lead"' : ''}><td>${i+1}</td><td>${(() => { const av = D.avatars?.[x.u]; return `<span class="rav"${av ? ` style="background-image:url('${esc(av)}')"` : ''}>${av ? '' : esc(nick(x.u)[0].toUpperCase())}</span>`; })()}${nickBadges(x.u)}${dom && !i ? `<span class="domtag" title="Przewaga nad 2. miejscem">+${fmt(lead)} przewagi</span>` : ''}${crown.has(x.u) ? `<small class="crownb" title="Piłeczka z tym awatarem ma w grze większy mnożnik (miejsce w ostatnich 24 h)">+${crown.get(x.u).toFixed(1)}x do piłeczki</small>` : ''}</td><td class="n">${fmt(x.n)}</td><td class="n">${x.t.size}</td><td class="w"><div class="share" style="width:${x.n/top*100}%" title="${(x.n/posts.length*100).toFixed(1)}%"></div></td></tr>`; }).join('')
+      return `<tr${dom && !i ? ' class="lead"' : ''}><td>${i+1}</td><td>${(() => { const av = D.avatars?.[x.u]; return `<span class="rav"${av ? ` style="background-image:url('${esc(av)}')"` : ''}>${av ? '' : esc(nick(x.u)[0].toUpperCase())}</span>`; })()}${wchamp.has(x.u) ? `<span class="wch">${nickBadges(x.u)}</span><span class="wtag">${cupSvg('w')} Mistrz tygodnia</span>` : nickBadges(x.u)}${dom && !i ? `<span class="domtag" title="Przewaga nad 2. miejscem">+${fmt(lead)} przewagi</span>` : ''}</td><td class="n">${fmt(x.n)}</td><td class="n">${x.t.size}</td><td class="w"><div class="share" style="width:${x.n/top*100}%" title="${(x.n/posts.length*100).toFixed(1)}%"></div></td></tr>`; }).join('')
     || '<tr><td colspan="5" style="color:var(--mute)">Brak postów w tym zakresie.</td></tr>';
 
   // zakres do 2 dni: słupki co godzinę (dzienne dałyby tylko 1–2 słupki)
