@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Licznik postów d2jsp 14.1-test</title>
+<title>Licznik postów d2jsp 14.2-test</title>
 <style>
 :root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e4e2dc;--acc:#b4441f;--bar:#d9825f;
  --gold:#c9961a;--gold2:#f3d46b;--goldbg:#fff8e3;--goldline:#efd89a;--silver:#9aa0a6;--bronze:#b3713f}
@@ -215,7 +215,7 @@ aside{position:sticky;top:16px}
 <div class="vtop" id="vtop"></div>
 <div class="wrap">
 <main>
-<h1>Licznik postów — d2jsp Polska <span class="ver">14.1-test</span></h1>
+<h1>Licznik postów — d2jsp Polska <span class="ver">14.2-test</span></h1>
 <p class="sub" id="sub">Ładowanie danych…</p>
 
 <div class="ranges" id="ranges">
@@ -525,6 +525,8 @@ function crownTable() {
 }
 window.crownOf = (u) => crownTable().get(String(u)) || 0;
 // lider ostatnich 24 h: w grze jego piłeczka wypada w 15% przypadków i ma złotą ramkę z koroną
+// lider 24 h z przewagą >= DOM[1] postów nad 2. miejscem (świeci w rankingu i w grze)
+window.dayDom = () => { const t = Date.now() / 1000 - 86400, m = new Map(); for (const p of D?.posts || []) if (p[3] >= t) m.set(p[2], (m.get(p[2]) || 0) + 1); const v = [...m.values()].sort((a, b) => b - a); return (v[0] || 0) - (v[1] || 0) >= DOM[1]; };
 window.dayLeader = (() => { let at = 0, v = null; return () => { if (!at || Date.now() - at > 6e4) { v = [...crownTable()][0]?.[0] || null; at = Date.now(); } return v; }; })();
 
 function render() {
@@ -575,7 +577,7 @@ function render() {
       <span class="d">${show ? `${dt.getDate()}.${String(dt.getMonth() + 1).padStart(2, '0')}${many ? '' : `<i>${WD[dt.getDay()]}</i>`}` : '&nbsp;'}</span></div>`; }).join('');
 }
 </script>
-<script src="gra.js?v=1791000018"></script>
+<script src="gra.js?v=1791000019"></script>
 <script>document.getElementById('vtop').textContent = 'wersja ' + document.querySelector('.ver').textContent;</script>
 </body>
 </html>
