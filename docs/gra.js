@@ -253,7 +253,7 @@
   const fm = (n) => { const r = Math.round(n * 100) / 100; return Math.abs(r * 10 - Math.round(r * 10)) < 1e-9 ? r.toFixed(1) : r.toFixed(2); };
   // (piłeczka + łowcy gdy mniejsza niż duża) × mnożnik poziomu (start 1 + rozpędzony) + przedmioty (implicit + ostry + seria × floor(podbicia/10))
   const partsOf = (g) => {
-    const b = g.base + (g.base > 1 ? g.B.lowcy : 0) + (g.topB || 0) + (g.crown || 0), lv = multOf(g.lvl, g.B), items = r3(g.B.impl + g.B.ostry + g.B.setMult + (g.zuchAcc || 0) + g.B.serii * Math.floor(g.hits / 10) + g.B.wzn * g.lvl + g.B.mar * (g.marN || 0)); // Wznoszący: za każdy osiągnięty poziom; Maratończyka: za każde pełne 30 s gry
+    const b = g.base + (g.base > 1 ? g.B.lowcy : 0) + (g.topB || 0) + (g.crown || 0), lv = multOf(g.lvl, g.B), items = r3(g.B.impl + g.B.ostry + g.B.setMult + (g.zuchAcc || 0) + g.B.serii * Math.floor(g.hits / 10) + g.B.wzn * g.lvl + g.B.mar * (g.marN || 0) + (g.B.stlum && g.score >= STLUM_ZERO ? STLUM_PTS : 0)); // Wznoszący: za każdy osiągnięty poziom; Maratończyka: za każde pełne 30 s gry
     return { b, lv, items, total: Math.round((b * lv + items) * RP) / RP };
   };
   const totalMult = () => game ? partsOf(game).total : 1;
@@ -492,10 +492,10 @@
   const COL = { n: '#c8c8c8', m: '#6c8cff', r: '#f2d24b', u: '#c7864a' }, RAR = { n: 'Normalny', m: 'Magiczny', r: 'Rzadki', u: 'Unikat' };
   const SLOT = { helm: ['Hełm', 0, 'hełm'], armor: ['Zbroja', 1, 'zbroja'], gloves: ['Rękawice', 2, 'rękawice'], boots: ['Buty', 2, 'buty'] }; // nazwa, rodzaj (m/ż/lm), etykieta pustego slotu
   const UNIQ = { helm: 'Hełm Weterana', armor: 'Zbroja Anioła Stróża', gloves: 'Rękawice Anioła Stróża', boots: 'Kapcie Moderatora' };
-  // Stłumiony: pełne działanie do 300 pkt, słabnie do 0 przy 400 pkt, dalej odwrotnie (mocniejsze podbicie) aż do połowy wartości przy 450 pkt
-  const STLUM_FROM = 300, STLUM_ZERO = 400, STLUM_REV = .5;
-  const stlumNow = (v, score) => v * Math.max(-STLUM_REV, Math.min(1, (STLUM_ZERO - score) / (STLUM_ZERO - STLUM_FROM)));
-  const stlumNote = () => `; od ${STLUM_FROM} pkt słabnie, od ${STLUM_ZERO} pkt leci wyżej (odwrotne działanie)`;
+  // Stłumiony: pełne działanie do 300 pkt, słabnie do 0 przy 400 pkt, od 400 pkt stałe +0.1 pkt za podbicie
+  const STLUM_FROM = 300, STLUM_ZERO = 400, STLUM_PTS = .1;
+  const stlumNow = (v, score) => v * Math.max(0, Math.min(1, (STLUM_ZERO - score) / (STLUM_ZERO - STLUM_FROM)));
+  const stlumNote = () => `; od ${STLUM_FROM} pkt słabnie, od ${STLUM_ZERO} pkt zamiast tego +${STLUM_PTS} pkt za podbicie`;
   const lowerPct = (v) => Math.round((1 - (1 - v / 100) ** 2) * 100); // słabsze podbicie o v% → wysokość lotu niższa o tyle %
   const kapTxt = (n) => `${n > 1 ? `${n} razy` : 'Raz'} na grę: pudło, gdy piłeczka spada w dolnej połowie ekranu, liczy się jako podbicie`;
   // afiksy: [typ p/s, nazwa, min, max, krok, przymiotnik m/ż/lm albo dopełniacz, opis(v)]
@@ -588,7 +588,7 @@
   // bilet gry z /start (ponawiany; krótka gra może skończyć się przed odpowiedzią serwera) i weryfikacja w /end — raz na grę
   // rzuty szans za podbicia (Echa k=1, Krytyczny k=2, Złotej Piłki k=3) liczone z seeda z biletu — serwer w /end liczy te same rzuty (kopia: roll() w main.py)
   // wersja zasad punktacji: podbij razem z GRA_MIN_VER w main.py przy każdej zmianie, którą sprawdza serwer (punkty, szanse) — stara karta przeładuje się sama zamiast dostać odrzucony wynik
-  const GRA_VER = 1;
+  const GRA_VER = 2;
   const staleReload = () => { if (game) { flash('Nowa wersja gry — przeładowuję…', 2000); game = null; } setTimeout(() => location.reload(), 1200); };
   const roll = (seed, k, i) => { let x = (seed ^ Math.imul(k, 0x9E3779B1) ^ Math.imul(i, 0x85EBCA77)) >>> 0; x ^= x >>> 16; x = Math.imul(x, 0x85EBCA6B) >>> 0; x ^= x >>> 13; x = Math.imul(x, 0xC2B2AE35) >>> 0; x ^= x >>> 16; return (x >>> 0) / 2 ** 32; };
   const getTicket = () => { const go = (n) => fetch(API + '/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ver: GRA_VER }) }).then((r) => r.json()).then((j) => { if (j.stale) { staleReload(); return null; } if (!j.g || !Number.isInteger(j.s)) throw 0; return { g: j.g, s: j.s }; }).catch(() => n > 0 ? new Promise((ok) => setTimeout(ok, 1500)).then(() => go(n - 1)) : null); return go(3); };
