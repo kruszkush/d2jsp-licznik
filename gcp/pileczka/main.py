@@ -337,7 +337,7 @@ def eq_view(req, j):  # publiczny podgląd cudzych slotów (po skrócie z rankin
 CAP = {"stlum": .3, "ciezki": .25, "zreczny": .6, "olb": .25, "rozp": .6, "lowcy": 1.5, "lucky": 100, "wytrw": .3, "brawur": .5, "zuch": .08, "echa": .25,
        "wzn": .08, "mar": .3, "rytm": 6, "kryt": .3, "zlota": .06}  # nowe (12.1-test): wznoszący, maratończyka, rytmu, krytyczny, złotej piłki
 BRAV_MAX, ZUCH_MAX = 1.5, 0.6
-GRA_MIN_VER = 1  # najstarsza wersja zasad punktacji klienta (GRA_VER w gra.js); podbij przy zmianie punktów/szans sprawdzanych w /end
+GRA_MIN_VER = 2  # najstarsza wersja zasad punktacji klienta (GRA_VER w gra.js); podbij przy zmianie punktów/szans sprawdzanych w /end
 MIN_GAP_MS = 90  # klient ignoruje kliki szybsze niż 100 ms; luz na zaokrąglenia
 
 def sign_key():
@@ -414,7 +414,7 @@ def gra_limit(b, i, t_ms=0, seed=None):
     base = 1.7 + b["lowcy"] + .6 + (.6 if b["korona"] else 0)
     lv = 1 + b["rozp"] + .1 * (i // 8)
     items = (b["impl"] + b["ostry"] + b["setMult"] + min(ZUCH_MAX, b["zuch"] * i) + b["serii"] * (i // 10)
-             + b["wzn"] * (i // 8) + b["mar"] * (int(t_ms) // 30000))
+             + b["wzn"] * (i // 8) + b["mar"] * (int(t_ms) // 30000) + (.1 if b["stlum"] else 0))  # Stłumiony od 400 pkt
     brav = min(BRAV_MAX, b["brawur"] * i)
     rytm = b["rytm"] if i % 5 == 0 else 0  # stała premia na co 5. podbiciu (poza mnożnikami szans)
     return (base * lv + items + brav) * chance_mult(b, seed, i) + rytm + .02
