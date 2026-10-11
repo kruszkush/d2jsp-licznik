@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Licznik postów d2jsp 10.2</title>
+<title>Licznik postów d2jsp 10.3</title>
 <style>
 :root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e4e2dc;--acc:#b4441f;--bar:#d9825f;
  --gold:#c9961a;--gold2:#f3d46b;--goldbg:#fff8e3;--goldline:#efd89a;--silver:#9aa0a6;--bronze:#b3713f}
@@ -220,7 +220,7 @@ aside{position:sticky;top:16px}
 <div class="vtop" id="vtop"></div>
 <div class="wrap">
 <main>
-<h1>Licznik postów — d2jsp Polska <span class="ver">10.2</span></h1>
+<h1>Licznik postów — d2jsp Polska <span class="ver">10.3</span></h1>
 <p class="sub" id="sub">Ładowanie danych…</p>
 
 <div class="ranges" id="ranges">
@@ -388,7 +388,7 @@ function renderCups(R) {
     const { past, current: c } = R[t], won = past[0];
     const upcoming = c.notYet ? P[t].of(plMidnight((t === 'm' ? FIRST_MONTH + '-01' : START)) + 3600e3) : c.p;
     const standings = !c.notYet && c.rank.length
-      ? `<div class="lead"><span>${won ? cap(c.p.label) + ' · w toku' : 'na czele'}</span>${c.rank.slice(0, 3).map(([u, n], i) => `<div class="ld"><span class="ldn">${i + 1}. ${link(u)}</span><span class="ldv">${fmt(n)}</span></div>`).join('')}</div>` : '';
+      ? `<div class="lead"><span>${won ? cap(c.p.label) + ' · w toku' : 'na czele'}</span>${c.rank.slice(0, 5).map(([u, n], i) => `<div class="ld"><span class="ldn">${i + 1}. ${link(u)}</span><span class="ldv">${fmt(n)}</span></div>`).join('')}</div>` : '';
     const head = `${cupSvg(t, 'big')}<div class="lab">Mistrz ${TYPE[t].name}${t === 'y' ? ' ' + (won ? won.p : upcoming).key : ''}</div>`;
     const body = won
       ? `${t === 'y' ? '' : `<div class="wk">${cap(won.p.label)}</div>`}<div class="who">${won.winners.map(link).join(' & ')}</div><div class="meta">${fmt(won.rank[0][1])} postów · ${Math.round(won.rank[0][1] / won.total * 100)}% całego okresu</div>`
