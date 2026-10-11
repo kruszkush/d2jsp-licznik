@@ -156,14 +156,18 @@
   let game = null, W = innerWidth, H = innerHeight;
   addEventListener('resize', () => { W = innerWidth; H = innerHeight; });
   const pickUser = () => {
+    const rp = (window.rankPool?.() || []).filter(([u]) => D.users[u]), W8 = new Map(rp);
     const withAv = Object.keys(D.avatars || {}).filter((u) => D.users[u]);
-    const pool = withAv.length ? withAv : Object.keys(D.users || {});
+    const pool = rp.length ? rp.map(([u]) => u) : withAv.length ? withAv : Object.keys(D.users || {});
     // bez powtórek: pomijamy awatary, które już lecą; lider dnia (tylko test) wypada w 15% przypadków, reszta po równo
     const onScreen = new Set([...flakes].map((f) => f.u)), free = pool.filter((u) => !onScreen.has(u));
     const lead = window.dayLeader?.();
     if (lead && [...flakes].filter((f) => f.u === lead).length < 2 && pool.includes(lead) && Math.random() < .15) return lead; // lider może lecieć w 2 egzemplarzach naraz
     const rest = free.filter((u) => u !== lead);
-    return rest.length ? rest[Math.floor(Math.random() * rest.length)] : free[0];
+    if (!rest.length) return free[0];
+    let r = Math.random() * rest.reduce((s, u) => s + (W8.get(u) || 1), 0);
+    for (const u of rest) if ((r -= W8.get(u) || 1) < 0) return u;
+    return rest[rest.length - 1];
   };
   function makeEl(u, size) {
     const el = document.createElement('div'); el.className = 'flake';
