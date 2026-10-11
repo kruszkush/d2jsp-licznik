@@ -97,8 +97,9 @@ async function topicPage(t, o) { // o === 'last' → ostatnia strona (link „Go
 // Pobiera nowe posty tematu: od ostatniej strony w dół, dopóki na stronie są posty nowsze od granicy.
 async function doTopic(row) {
   const result = await collectTopic(row, { st, lastInData, floor: FLOOR, timestamp: ts, read: topicPage,
-    exhausted: () => pages >= MAX_PAGES, save, started: START, consume(p, topic) {
-      if (p.uid) { data.users[p.uid] = p.user; if (p.av) (data.avatars ||= {})[p.uid] = p.av; }
+    exhausted: () => pages >= MAX_PAGES, save, started: START,
+    seen(p) { if (p.uid) { data.users[p.uid] = p.user; if (p.av) (data.avatars ||= {})[p.uid] = p.av; } },
+    consume(p, topic) {
       if (known.has(p.id)) return;
       known.add(p.id); added++;
       data.posts.push([p.id, topic, p.uid || p.user, Math.round(ts(p.date) / 1000)]);

@@ -32,7 +32,7 @@ export function topicChanged(row, previous, agoMs) {
 
 // Przy limicie stron zapamiętujemy brakujący starszy fragment tematu. Nie przesuwamy
 // ukończonego last do najnowszego posta, zanim ten fragment zostanie odczytany.
-export async function collectTopic(row, { st, lastInData, floor, timestamp, read, consume, exhausted, save, started }) {
+export async function collectTopic(row, { st, lastInData, floor, timestamp, read, consume, seen, exhausted, save, started }) {
   const old = st.topics[row.t], p = old?.pending;
   const last = p ? p.last : (old?.last ?? lastInData[row.t] ?? 0);
   const generation = old?.recoveryAt ? { recoveryAt: old.recoveryAt } : {};
@@ -45,6 +45,7 @@ export async function collectTopic(row, { st, lastInData, floor, timestamp, read
       step = diffs.length ? Math.min(...diffs) : 20;
       o = result.pager.length ? Math.max(...result.pager) + step : 0;
     }
+    for (const post of result.posts) seen?.(post);
     const fresh = result.posts.filter((x) => last ? Number(x.id) > last : timestamp(x.date) >= floor);
     for (const post of fresh) { consume(post, row.t); max = Math.max(max, Number(post.id)); }
     o -= step;
