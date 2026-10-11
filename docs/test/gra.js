@@ -156,7 +156,7 @@
   let game = null, W = innerWidth, H = innerHeight;
   addEventListener('resize', () => { W = innerWidth; H = innerHeight; });
   const pickUser = () => {
-    const rp = (window.rankPool?.() || []).filter(([u]) => D.users[u]), W8 = new Map(rp);
+    const rp = (window.rankPool?.() || []).filter(([u]) => D.users[u] && D.avatars?.[u]), W8 = new Map(rp);
     const withAv = Object.keys(D.avatars || {}).filter((u) => D.users[u]);
     const pool = rp.length ? rp.map(([u]) => u) : withAv.length ? withAv : Object.keys(D.users || {});
     // bez powtórek: pomijamy awatary, które już lecą; lider dnia (tylko test) wypada w 15% przypadków, reszta po równo
