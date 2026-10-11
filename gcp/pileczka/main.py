@@ -1,7 +1,7 @@
 # Ranking gry "piłeczka": GET [?nick=] -> top 10 + ostatni + miejsce gracza + liczba graczy, POST {nick, score} -> jeden wpis na adres IP (najlepszy wynik, ostatni nick).
 # IP nie jest zapisywane wprost — tylko jego skrót (sha256 z solą).
 import base64, hashlib, hmac, json, math, ipaddress, os, random, re, secrets, time
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import functions_framework
 from google.api_core.exceptions import AlreadyExists
@@ -337,7 +337,7 @@ def eq_view(req, j):  # publiczny podgląd cudzych slotów (po skrócie z rankin
 CAP = {"stlum": .3, "ciezki": .25, "zreczny": .6, "olb": .25, "rozp": .6, "lowcy": 1.5, "lucky": 100, "wytrw": .3, "brawur": .5, "zuch": .08, "echa": .25,
        "wzn": .08, "mar": .3, "rytm": 6, "kryt": .3, "zlota": .06}  # nowe (12.1-test): wznoszący, maratończyka, rytmu, krytyczny, złotej piłki
 BRAV_MAX, ZUCH_MAX = 1.5, 0.6
-GRA_MIN_VER = 2  # najstarsza wersja zasad punktacji klienta (GRA_VER w gra.js); podbij przy zmianie punktów/szans sprawdzanych w /end
+GRA_MIN_VER = 3  # najstarsza wersja zasad punktacji klienta (GRA_VER w gra.js); podbij przy zmianie punktów/szans sprawdzanych w /end
 MIN_GAP_MS = 90  # klient ignoruje kliki szybsze niż 100 ms; luz na zaokrąglenia
 
 def sign_key():
@@ -452,11 +452,13 @@ def gra_end(req, j):
     def bad(why):
         print("gra odrzucona:", why, g["gid"])
         return cors(req, {"error": f"Wynik odrzucony: {why}.", "odrzucony": True}, 400)
-    prev, total, gaps = -1, 0.0, []
+    prev, total, gaps, mvs, offs = -1, 0.0, [], [], []
     for i, e in enumerate(log, 1):
-        if not isinstance(e, list) or len(e) != 2 or not num(e[0]) or not num(e[1]) or e[1] < 0:
+        if not isinstance(e, list) or len(e) != 4 or not all(num(x) for x in e) or e[1] < 0:
             return cors(req, {"error": "zły log gry"}, 400)
-        t, pts = e
+        t, pts, mv, off = e
+        if mv >= 0 and off >= 0:  # podbicie myszą (dotyk/pióro/Kapcie = -1)
+            mvs.append(mv); offs.append(off)
         if prev >= 0:
             if t - prev < MIN_GAP_MS:
                 return bad("podbicia szybsze, niż pozwala gra")
@@ -473,6 +475,18 @@ def gra_end(req, j):
         return bad("czas gry dłuższy, niż minął naprawdę")
     if dur < .8 * real - 15000:
         return bad("zegar gry był spowolniony")
+    # anty-bot (od GRA_VER 3): automatyzacja przeglądarki, kliki bez ruchu myszy, trafienia idealnie w środek, emulacja telefonu
+    mv_med = sorted(mvs)[len(mvs) // 2] if mvs else None
+    off_avg = sum(offs) / len(offs) if offs else None
+    print("antybot:", {"gid": g["gid"], "hits": len(log), "mysz": len(mvs), "mv_med": mv_med, "off_avg": off_avg and round(off_avg, 1), "wd": st.get("wd"), "emu": st.get("emu")})
+    if st.get("wd") is True:
+        return bad("automatyzacja przeglądarki")
+    if len(mvs) >= 20 and mv_med <= 2:
+        return bad("kliknięcia bez ruchu myszy")
+    if len(offs) >= 20 and off_avg < 8:
+        return bad("podbicia idealnie w środek piłeczki")
+    if st.get("emu") is True:
+        return bad("tryb telefonu w narzędziach przeglądarki")
     flags = []
     if dur > 20000 and sim < .8 * dur:
         flags.append("fps")  # niski FPS (słaby sprzęt albo celowe dławienie) — gra zwalnia; tylko flaga
@@ -784,6 +798,19 @@ def acc_admin(req, j):
             "kod_wazny_do": (d.get("reset") or {}).get("exp")}
     if j.get("action") == "info":
         return cors(req, info)
+    if j.get("action") == "remove":  # usunięcie wyniku (oszustwo): kopia do pileczka{SUFFIX}_usuniete, kasowanie z rankingu ogólnego i dnia/tygodnia (dziś, wczoraj, ten i poprzedni tydzień)
+        now, refs = datetime.now(TZ), [nick_ref(nick)]
+        for dd in (now, now - timedelta(days=1), now - timedelta(days=7)):
+            y, w, _ = dd.isocalendar()
+            refs += [nick_ref(nick, OKRES.document("d" + dd.strftime("%Y-%m-%d")).collection("gracze")), nick_ref(nick, OKRES.document(f"w{y}-{w:02d}").collection("gracze"))]
+        out = db.collection(f"pileczka{SUFFIX}_usuniete")
+        removed = []
+        for ref in refs:
+            s = ref.get()
+            if s.exists:
+                out.document().set({"path": ref.path, "doc": s.to_dict(), "t": time.time()})
+                ref.delete(); removed.append(ref.path)
+        return cors(req, {"nick": info["nick"], "usuniete": removed})
     if j.get("action") != "code":
         return cors(req, {"error": "zła akcja"}, 400)
     code = "".join(secrets.choice(CODE_ABC) for _ in range(8))

@@ -1,6 +1,7 @@
 // Admin kont gry „Piłeczka” (reset hasła / przejęcie nicku z rankingu po PW na d2jsp).
 //   node scripts/pileczka-admin.mjs kod  <nick> [--test]   → jednorazowy kod na 24 h (gracz: Ekwipunek → Konto → „Mam kod od admina”)
 //   node scripts/pileczka-admin.mjs info <nick> [--test]   → stan konta i wpisu w rankingu
+//   node scripts/pileczka-admin.mjs usun <nick> [--test]   → usuwa wynik z rankingu (ogólny + dzień/tydzień); kopia w pileczka{SUFFIX}_usuniete
 // Sekret (ADMIN_SECRET funkcji) czytany z E:\Vibe coding\pileczka-admin.env — poza repo, nie commitować.
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -8,17 +9,21 @@ import { dirname, resolve } from 'path';
 
 const [action, ...rest] = process.argv.slice(2);
 const test = rest.includes('--test'), nick = rest.filter((x) => x !== '--test').join(' ').trim();
-if (!['kod', 'info'].includes(action) || nick.length < 3) {
-  console.error('Użycie: node scripts/pileczka-admin.mjs kod|info <nick> [--test]');
+if (!['kod', 'info', 'usun'].includes(action) || nick.length < 3) {
+  console.error('Użycie: node scripts/pileczka-admin.mjs kod|info|usun <nick> [--test]');
   process.exit(1);
 }
 const envFile = resolve(dirname(fileURLToPath(import.meta.url)), '../../pileczka-admin.env');
 const secret = readFileSync(envFile, 'utf8').match(/^ADMIN_SECRET=(.+)$/m)?.[1]?.trim();
 if (!secret) { console.error('Brak ADMIN_SECRET w ' + envFile); process.exit(1); }
 const API = test ? 'https://pileczka-test-i3odn44x6q-ue.a.run.app' : 'https://pileczka-i3odn44x6q-ue.a.run.app';
-const r = await fetch(API + '/admin', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://kruszkush.github.io' }, body: JSON.stringify({ secret, action: action === 'kod' ? 'code' : 'info', nick }) });
+const r = await fetch(API + '/admin', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://kruszkush.github.io' }, body: JSON.stringify({ secret, action: { kod: 'code', info: 'info', usun: 'remove' }[action], nick }) });
 const j = await r.json().catch(() => ({}));
 if (!r.ok) { console.error(`Błąd ${r.status}: ${j.error || '?'}${r.status === 404 ? ' (konta wyłączone na tej funkcji — brak env KONTA=1)' : ''}`); process.exit(1); }
+if (action === 'usun') {
+  console.log(`${test ? '[TEST] ' : ''}${j.nick}: usunięto ${j.usuniete?.length || 0} wpisów${j.usuniete?.length ? '\n  ' + j.usuniete.join('\n  ') : ''}`);
+  process.exit(0);
+}
 const when = (t) => t ? new Date(t * 1000).toLocaleString('pl-PL') : '—';
 console.log(`${test ? '[TEST] ' : ''}Nick: ${j.nick} · konto: ${j.konto ? 'tak' : 'nie'} · zalogowane urządzenia: ${j.sesje} · blokada logowania: ${j.zablokowane ? 'tak' : 'nie'}`);
 console.log(`Ranking: ${j.ranking ? `${j.ranking.nick}, rekord ${j.ranking.score} ${j.ranking.dev === 'm' ? '📱' : '🖥️'}` : 'brak wpisu'}`);

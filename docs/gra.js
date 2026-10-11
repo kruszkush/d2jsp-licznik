@@ -318,7 +318,7 @@
     ls.set('pilStart', '1'); card.querySelector('.pilhint').hidden = true; // podpowiedź dla nowych już niepotrzebna
     if (EQON && eqFailed) flash('Nie udało się wczytać przedmiotów — ta gra bez nich', 2500);
     // weryfikacja: bilet gry z serwera (w tle), log podbić [ms od startu, punkty] i statystyki kliknięć do /end
-    game.t0 = performance.now(); game.log = []; game.sim = 0; game.clicks = e ? 1 : 0; game.misses = 0; game.untr = 0; if (e) game.lastClick = game.t0;
+    game.t0 = performance.now(); game.log = []; game.sim = 0; game.clicks = e ? 1 : 0; game.misses = 0; game.untr = 0; game.mv = 0; if (e) game.lastClick = game.t0;
     game.emu = TOUCH && (outerWidth - innerWidth > 100 || outerHeight - innerHeight > 250); // tryb telefonu w narzędziach przeglądarki na komputerze
     game.ticket = getTicket(); const gm = game; game.ticket.then((t) => { if (t && game === gm) { gm.seed = t.s; drawHud(); } }); // do przyjścia biletu (seeda) szanse za podbicia nie działają
     applyLotny();
@@ -360,6 +360,7 @@
   }
   // w trakcie gry prawy przycisk nie otwiera menu, a środkowy nie włącza autoprzewijania
   addEventListener('contextmenu', (e) => { if (game) e.preventDefault(); });
+  addEventListener('pointermove', (e) => { if (game && e.isTrusted && e.pointerType === 'mouse') game.mv++; });
   addEventListener('mousedown', (e) => { if (game && e.button === 1) e.preventDefault(); });
   function hit(f, e) {
     if (!game || game.f !== f) return;
@@ -373,13 +374,16 @@
     const low = (game.B.brawur || game.B.zuch) && f.y + f.size / 2 > H * .85;
     // szanse z seeda biletu (i = numer podbicia od 1); bez seeda (bilet jeszcze nie przyszedł) — bez szans, serwer liczy tak samo
     const sd = game.seed, hi = game.hits, echo = sd != null && game.B.echa > 0 && roll(sd, 1, hi) < game.B.echa, crit = sd != null && game.B.kryt > 0 && roll(sd, 2, hi) < game.B.kryt, gold = sd != null && game.B.zlota > 0 && roll(sd, 3, hi) < game.B.zlota;
+    // anty-bot: ruchy myszy od poprzedniego podbicia i odległość kliku od środka piłeczki (% promienia); -1 = nie dotyczy (dotyk/pióro, Kapcie)
+    const abR = f.el.getBoundingClientRect(), abM = e.pointerType === 'mouse' && e.clientY != null;
+    const abMv = abM ? game.mv : -1, abOff = abM ? Math.round(Math.hypot(e.clientX - abR.left - abR.width / 2, e.clientY - abR.top - abR.height / 2) / (abR.width / 2) * 100) : -1; game.mv = 0;
     const ms = Math.round(performance.now() - game.t0); game.marN = Math.floor(ms / 30000); // Maratończyka: pełne 30 s gry (jak na serwerze, z czasu w logu)
     game.lowRun = low ? game.lowRun + 1 : 0;
     const brav = low ? Math.min(BRAV_MAX, game.B.brawur * game.lowRun) : 0;
     const rytm = game.B.rytm && hi % 5 === 0 ? game.B.rytm : 0; // Rytmu: stała premia co 5. podbicie (poza mnożnikami szans)
     const mulX = (echo ? 2 : 1) * (crit ? 3 : 1) * (gold ? 10 : 1);
     const pts = (totalMult() + brav) * mulX + rytm;
-    game.score += pts; game.log.push([ms, pts]); ptsFx(f, pts, mulX > 1 || brav > 0, gold ? '×10' : crit ? 'KRYT ×3' : '');
+    game.score += pts; game.log.push([ms, pts, abMv, abOff]); ptsFx(f, pts, mulX > 1 || brav > 0, gold ? '×10' : crit ? 'KRYT ×3' : '');
     if (gold) f.el.animate([{ boxShadow: '0 0 0 0 rgba(255,215,0,0)', filter: 'none' }, { boxShadow: '0 0 34px 14px rgba(255,215,0,.95)', filter: 'sepia(1) saturate(4) brightness(1.15)', offset: .25 }, { boxShadow: '0 0 0 0 rgba(255,215,0,0)', filter: 'none' }], { duration: 700, easing: 'ease-out' });
     // test: odbicie od dołu za punkty — odstępy rosną 50, 100, 200, 400, 800… (progi 50, 150, 350, 750, 1550…)
     while (game.score >= game.nextSave) { game.saves++; game.saveGap *= 2; game.nextSave += game.saveGap; flash('🛡 +1 odbicie od dołu!'); lastFlash = performance.now() + 800; }
@@ -401,7 +405,7 @@
   }
   function endGame() {
     nadEl.hidden = true;
-    const vg = { ticket: game.ticket, log: game.log, st: { dur: Math.round(performance.now() - game.t0), sim: Math.round(game.sim), clicks: game.clicks, misses: game.misses, untr: game.untr, emu: game.emu } };
+    const vg = { ticket: game.ticket, log: game.log, st: { dur: Math.round(performance.now() - game.t0), sim: Math.round(game.sim), clicks: game.clicks, misses: game.misses, untr: game.untr, emu: game.emu, wd: navigator.webdriver === true } };
     const boom = game.boom, small = game.small, gLvlN = game.lvl + 1, score = Math.round(game.score), f = game.f, gHits = game.hits, gZuch = game.zuchAcc || 0, P = partsOf(game); game = null; document.body.classList.remove('playing'); hideMult();
     f.el.remove(); flakes.clear(); hud.hidden = true;
     const ov = document.createElement('div'); ov.id = 'over';
@@ -588,7 +592,7 @@
   // bilet gry z /start (ponawiany; krótka gra może skończyć się przed odpowiedzią serwera) i weryfikacja w /end — raz na grę
   // rzuty szans za podbicia (Echa k=1, Krytyczny k=2, Złotej Piłki k=3) liczone z seeda z biletu — serwer w /end liczy te same rzuty (kopia: roll() w main.py)
   // wersja zasad punktacji: podbij razem z GRA_MIN_VER w main.py przy każdej zmianie, którą sprawdza serwer (punkty, szanse) — stara karta przeładuje się sama zamiast dostać odrzucony wynik
-  const GRA_VER = 2;
+  const GRA_VER = 3;
   const staleReload = () => { if (game) { flash('Nowa wersja gry — przeładowuję…', 2000); game = null; } setTimeout(() => location.reload(), 1200); };
   const roll = (seed, k, i) => { let x = (seed ^ Math.imul(k, 0x9E3779B1) ^ Math.imul(i, 0x85EBCA77)) >>> 0; x ^= x >>> 16; x = Math.imul(x, 0x85EBCA6B) >>> 0; x ^= x >>> 13; x = Math.imul(x, 0xC2B2AE35) >>> 0; x ^= x >>> 16; return (x >>> 0) / 2 ** 32; };
   const getTicket = () => { const go = (n) => fetch(API + '/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ver: GRA_VER }) }).then((r) => r.json()).then((j) => { if (j.stale) { staleReload(); return null; } if (!j.g || !Number.isInteger(j.s)) throw 0; return { g: j.g, s: j.s }; }).catch(() => n > 0 ? new Promise((ok) => setTimeout(ok, 1500)).then(() => go(n - 1)) : null); return go(3); };
