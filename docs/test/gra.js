@@ -25,6 +25,7 @@
   .flake .lcrown{position:absolute;top:-27px;left:50%;transform:translateX(-50%);font-size:25px;pointer-events:none}
   .flake{position:absolute;top:0;left:0;border-radius:50%;background:var(--card) center/cover no-repeat;border:2px solid;display:grid;place-items:center;font-weight:700;color:var(--ink);pointer-events:auto;cursor:pointer;user-select:none;opacity:.85;will-change:transform;contain:layout;-webkit-tap-highlight-color:transparent}
   .flake:hover{opacity:1}
+  .pkup{position:absolute;top:0;left:0;border-radius:50%;border:3px solid;background:var(--card);display:grid;place-items:center;line-height:1;pointer-events:none;z-index:1;will-change:transform;box-shadow:0 2px 8px rgba(0,0,0,.35)}.pkup.x2{box-shadow:0 0 12px 3px rgba(155,93,229,.75)} /* nagroda: tylko piłeczka ją zbiera (nie da się kliknąć) */
   .flake .badge{position:absolute;left:calc(100% - 30px);white-space:nowrap;top:-6px;background:#e0a526;color:#141413;font-weight:800;border-radius:999px;padding:1px 6px;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,.4);border:2px solid #141413;line-height:1.3;pointer-events:none}
   .flake .b2{background:#ff8a3d}.flake .b3{background:#ff5a3d;color:#fff}.flake .b4{background:#d9264a;color:#fff}
   .flake.ball .badge{display:none}
@@ -322,7 +323,7 @@
     ls.set('pilStart', '1'); card.querySelector('.pilhint').hidden = true; // podpowiedź dla nowych już niepotrzebna
     if (EQON && eqFailed) flash('Nie udało się wczytać przedmiotów — ta gra bez nich', 2500);
     // weryfikacja: bilet gry z serwera (w tle), log podbić [ms od startu, punkty] i statystyki kliknięć do /end
-    game.t0 = performance.now(); game.log = []; game.sim = 0; game.clicks = e ? 1 : 0; game.misses = 0; game.untr = 0; game.mv = 0; if (e) game.lastClick = game.t0;
+    game.t0 = performance.now(); game.log = []; game.sim = 0; pkInit(game); game.clicks = e ? 1 : 0; game.misses = 0; game.untr = 0; game.mv = 0; if (e) game.lastClick = game.t0;
     game.emu = TOUCH && (outerWidth - innerWidth > 100 || outerHeight - innerHeight > 250); // tryb telefonu w narzędziach przeglądarki na komputerze
     game.ticket = getTicket(); const gm = game; game.ticket.then((t) => { if (t && game === gm) { gm.seed = t.s; drawHud(); } }); // do przyjścia biletu (seeda) szanse za podbicia nie działają
     applyLotny();
@@ -386,8 +387,11 @@
     const brav = low ? Math.min(BRAV_MAX, game.B.brawur * game.lowRun) : 0;
     const rytm = game.B.rytm && hi % 5 === 0 ? game.B.rytm : 0; // Rytmu: stała premia co 5. podbicie (poza mnożnikami szans)
     const mulX = (echo ? 2 : 1) * (crit ? 3 : 1) * (gold ? 10 : 1);
-    const pts = (totalMult() + brav) * mulX + rytm;
-    game.score += pts; game.log.push([ms, pts, abMv, abOff]); ptsFx(f, pts, mulX > 1 || brav > 0, gold ? '×10' : crit ? 'KRYT ×3' : '');
+    // nagrody: Iskra — kolejne podbicia ×PK_SPARK; Przypływ — punkty ×PK_FLOW (razem z Rytmem) do końca okna (serwer liczy tak samo)
+    const spark = game.sparks > 0; if (spark) game.sparks--;
+    const flow = ms <= game.flowUntil ? PK_FLOW : 1;
+    const pts = ((totalMult() + brav) * mulX * (spark ? PK_SPARK : 1) + rytm) * flow;
+    game.score += pts; game.log.push([ms, pts, abMv, abOff]); ptsFx(f, pts, mulX > 1 || brav > 0 || spark || flow > 1, gold ? '×10' : crit ? 'KRYT ×3' : spark ? `⚡×${PK_SPARK}` : flow > 1 ? '🌊' : '');
     if (gold) f.el.animate([{ boxShadow: '0 0 0 0 rgba(255,215,0,0)', filter: 'none' }, { boxShadow: '0 0 34px 14px rgba(255,215,0,.95)', filter: 'sepia(1) saturate(4) brightness(1.15)', offset: .25 }, { boxShadow: '0 0 0 0 rgba(255,215,0,0)', filter: 'none' }], { duration: 700, easing: 'ease-out' });
     // test: odbicie od dołu za punkty — odstępy rosną 50, 100, 200, 400, 800… (progi 50, 150, 350, 750, 1550…)
     while (game.score >= game.nextSave) { game.saves++; game.saveGap *= 2; game.nextSave += game.saveGap; flash('🛡 +1 odbicie od dołu!'); lastFlash = performance.now() + 800; }
@@ -405,11 +409,11 @@
   }
   function drawHud() {
     const P = partsOf(game), best = game.best ? (game.rec ? ' · <b style="color:var(--acc)">🏆 nowy rekord!</b>' : ` · 🏆 ${game.best}`) : '';
-    hud.hidden = false; hud.innerHTML = `${game.saves || SUFIT ? `<span class="cnt" data-tip="🛡 Odbicia od dołu: gdy piłeczka spadnie, odbije się wysoko zamiast końca gry. Masz ${game.saves}.${SUFIT ? ` Kolejne dostaniesz przy ${game.nextSave} pkt.` : ''}">🛡${game.saves}${SUFIT ? `<small>→${game.nextSave}</small>` : ''}</span>` : ''}${game.bans ? `<span class="cnt kap${game.armed ? ' arm' : ''}" data-tip="🔨 Kapcie Moderatora: pudło, gdy piłeczka spada w dolnej połowie ekranu, liczy się jako podbicie (🔨 wtedy świeci). Zostało: ${game.bans}.">🔨${game.bans}</span>` : ''}${Math.round(game.score)}<small>pkt${TOUCH ? ` · x${fm(P.total)}` : ` · ${P.b > 1 ? `x${fm(P.b)} more · ` : ''}+${Math.round((P.lv - 1) * 100)}% increased${P.items ? ` + ${fm(P.items)} przedmioty` : ''} = x${fm(P.total)} · ${game.hits} podbić`}${best}${game.bWait ? ' · ⏳ wczytuję przedmioty…' : ''}</small>`;
+    hud.hidden = false; hud.innerHTML = `${game.saves || SUFIT ? `<span class="cnt" data-tip="🛡 Odbicia od dołu: gdy piłeczka spadnie, odbije się wysoko zamiast końca gry. Masz ${game.saves}.${SUFIT ? ` Kolejne dostaniesz przy ${game.nextSave} pkt.` : ''}">🛡${game.saves}${SUFIT ? `<small>→${game.nextSave}</small>` : ''}</span>` : ''}${game.bans ? `<span class="cnt kap${game.armed ? ' arm' : ''}" data-tip="🔨 Kapcie Moderatora: pudło, gdy piłeczka spada w dolnej połowie ekranu, liczy się jako podbicie (🔨 wtedy świeci). Zostało: ${game.bans}.">🔨${game.bans}</span>` : ''}${game.sparks ? `<span class="cnt" data-tip="⚡ Iskra: następne podbicia dają ×${PK_SPARK} punktów. Zostało: ${game.sparks}.">⚡${game.sparks}</span>` : ''}${performance.now() - game.t0 <= game.flowUntil ? `<span class="cnt" data-tip="🌊 Przypływ: przez chwilę każde podbicie daje ×${PK_FLOW} punktów.">🌊</span>` : ''}${Math.round(game.score)}<small>pkt${TOUCH ? ` · x${fm(P.total)}` : ` · ${P.b > 1 ? `x${fm(P.b)} more · ` : ''}+${Math.round((P.lv - 1) * 100)}% increased${P.items ? ` + ${fm(P.items)} przedmioty` : ''} = x${fm(P.total)} · ${game.hits} podbić`}${best}${game.bWait ? ' · ⏳ wczytuję przedmioty…' : ''}</small>`;
   }
   function endGame() {
-    nadEl.hidden = true;
-    const vg = { ticket: game.ticket, log: game.log, st: { dur: Math.round(performance.now() - game.t0), sim: Math.round(game.sim), clicks: game.clicks, misses: game.misses, untr: game.untr, emu: game.emu, wd: navigator.webdriver === true } };
+    nadEl.hidden = true; for (const p of game.pks) p.el.remove();
+    const vg = { ticket: game.ticket, log: game.log, pk: game.pk, st: { dur: Math.round(performance.now() - game.t0), sim: Math.round(game.sim), clicks: game.clicks, misses: game.misses, untr: game.untr, emu: game.emu, wd: navigator.webdriver === true } };
     const boom = game.boom, small = game.small, gLvlN = game.lvl + 1, score = Math.round(game.score), f = game.f, gHits = game.hits, gZuch = game.zuchAcc || 0, P = partsOf(game); game = null; document.body.classList.remove('playing'); hideMult();
     f.el.remove(); flakes.clear(); hud.hidden = true;
     const ov = document.createElement('div'); ov.id = 'over';
@@ -596,11 +600,54 @@
   // bilet gry z /start (ponawiany; krótka gra może skończyć się przed odpowiedzią serwera) i weryfikacja w /end — raz na grę
   // rzuty szans za podbicia (Echa k=1, Krytyczny k=2, Złotej Piłki k=3) liczone z seeda z biletu — serwer w /end liczy te same rzuty (kopia: roll() w main.py)
   // wersja zasad punktacji: podbij razem z GRA_MIN_VER w main.py przy każdej zmianie, którą sprawdza serwer (punkty, szanse) — stara karta przeładuje się sama zamiast dostać odrzucony wynik
-  const GRA_VER = 3;
+  const GRA_VER = 4; // 4: nagrody spadające z góry (tylko test)
   const staleReload = () => { if (game) { flash('Nowa wersja gry — przeładowuję…', 2000); game = null; } setTimeout(() => location.reload(), 1200); };
   const roll = (seed, k, i) => { let x = (seed ^ Math.imul(k, 0x9E3779B1) ^ Math.imul(i, 0x85EBCA77)) >>> 0; x ^= x >>> 16; x = Math.imul(x, 0x85EBCA6B) >>> 0; x ^= x >>> 13; x = Math.imul(x, 0xC2B2AE35) >>> 0; x ^= x >>> 16; return (x >>> 0) / 2 ** 32; };
-  const getTicket = () => { const go = (n) => fetch(API + '/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ver: GRA_VER }) }).then((r) => r.json()).then((j) => { if (j.stale) { staleReload(); return null; } if (!j.g || !Number.isInteger(j.s)) throw 0; return { g: j.g, s: j.s }; }).catch(() => n > 0 ? new Promise((ok) => setTimeout(ok, 1500)).then(() => go(n - 1)) : null); return go(3); };
-  const verify = (vg, auth) => vg.log.length ? Promise.resolve(vg.ticket).then((t) => t ? fetch(API + '/end', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...auth, g: t.g, log: vg.log, st: vg.st }) }).then((r) => r.json()) : { error: 'Brak połączenia z serwerem gry — wynik nie może być zapisany.' }).catch(() => ({ error: 'Błąd sieci przy sprawdzaniu wyniku.' })) : Promise.resolve({ error: 'Brak podbić.' });
+  // Nagrody spadające z góry (tylko /test/): zbiera je piłeczka dotknięciem, nie zmieniają jej lotu i nie da się ich kliknąć.
+  // Harmonogram i rodzaj z seeda biletu (roll k=4 odstęp, k=5 rodzaj, k=6 rodzaj w Skarbie, k=7 pozycja x); pozycja w pionie z czasu gry, nie z klatek.
+  // Serwer liczy to samo (PK_*, pk_type, pk_spawns w main.py) — przy zmianie stałych lub zasad zmień oba miejsca i podbij GRA_VER/GRA_MIN_VER.
+  // Kropla: +PK_DROP × mnożnik od razu; Przypływ: punkty ×PK_FLOW przez PK_FLOW_MS; Iskra: PK_SPARK_N następnych podbić ×PK_SPARK; Skarb (🎁): losowa z trzech, podwójna.
+  const PK = TEST, PK_FIRST = 6000, PK_GAP = 8000, PK_GAP_R = 4000, PK_LIFE = 10000, PK_SKARB = .1;
+  const PK_DROP = 8, PK_FLOW = 1.5, PK_FLOW_MS = 5000, PK_SPARK = 4, PK_SPARK_N = 3, PK_KINDS = ['k', 'p', 'i'];
+  const PK_INFO = { k: { ico: '💧', col: '#5b8def' }, p: { ico: '🌊', col: '#2bb3a3' }, i: { ico: '⚡', col: '#f2c94c' } };
+  const pkType = (seed, j) => { const r = roll(seed, 5, j); return r < PK_SKARB ? { kind: PK_KINDS[Math.min(2, Math.floor(roll(seed, 6, j) * 3))], x2: true } : { kind: PK_KINDS[Math.min(2, Math.floor((r - PK_SKARB) / (1 - PK_SKARB) * 3))], x2: false }; };
+  const podbic = (n) => n >= 2 && n <= 4 ? 'podbicia' : 'podbić';
+  // pk: zebrane [ms, nr nagrody, podbicia przed zebraniem, punkty Kropli] (do /end); pks: nagrody na ekranie
+  function pkInit(g) { g.pk = []; g.pks = []; g.pkJ = 1; g.pkT = PK_FIRST; g.flowUntil = -1; g.sparks = 0; }
+  function pkSpawn(g, j, t) {
+    const { kind, x2 } = pkType(g.seed, j), size = Math.round(44 * scaleK() * (TOUCH ? 1.2 : 1)), A = TOUCH ? { l: 0, r: W } : arena();
+    const el = document.createElement('div'); el.className = 'pkup' + (x2 ? ' x2' : ''); el.textContent = x2 ? '🎁' : PK_INFO[kind].ico;
+    el.style.cssText = `width:${size}px;height:${size}px;font-size:${Math.round(size * .55)}px;border-color:${x2 ? '#9b5de5' : PK_INFO[kind].col};transform:translate(-999px,-999px)`;
+    snow.appendChild(el);
+    g.pks.push({ j, t, kind, x2, size, x: A.l + roll(g.seed, 7, j) * Math.max(0, A.r - A.l - size), el });
+  }
+  function pkTake(g, p, ms) {
+    const m = p.x2 ? 2 : 1; let pts = 0, txt;
+    if (p.kind === 'k') { pts = r3(PK_DROP * m * totalMult()); g.score += pts; ptsFx(g.f, pts, true, '💧'); txt = `💧 Kropla +${Math.round(pts)} pkt`; }
+    else if (p.kind === 'p') { g.flowUntil = Math.max(g.flowUntil, ms + PK_FLOW_MS * m); txt = `🌊 Przypływ: ×${PK_FLOW} punktów przez ${PK_FLOW_MS * m / 1000} s`; }
+    else { g.sparks += PK_SPARK_N * m; txt = `⚡ Iskra: ${PK_SPARK_N * m} ${podbic(PK_SPARK_N * m)} ×${PK_SPARK}`; }
+    g.pk.push([ms, p.j, g.hits, pts]);
+    flash((p.x2 ? '🎁 Skarb! ' : '') + txt, 1600); lastFlash = performance.now() + 500; drawHud();
+  }
+  // co klatkę: nowe nagrody wg harmonogramu (po przyjściu seeda; spóźnione o cały czas życia pomijamy), ruch w dół, zebranie dotknięciem piłeczki
+  function pkTick(g) {
+    if (!PK || g.seed == null) return;
+    const ms = Math.round(performance.now() - g.t0);
+    while (ms >= g.pkT) {
+      if (ms < g.pkT + PK_LIFE) pkSpawn(g, g.pkJ, g.pkT);
+      g.pkT += PK_GAP + Math.floor(roll(g.seed, 4, g.pkJ) * PK_GAP_R); g.pkJ++;
+    }
+    const f = g.f, fr = f.size / 2, fx = f.x + fr, fy = f.y + fr;
+    for (let n = g.pks.length - 1; n >= 0; n--) {
+      const p = g.pks[n], age = ms - p.t;
+      if (age > PK_LIFE) { p.el.remove(); g.pks.splice(n, 1); continue; }
+      const y = -p.size + age / PK_LIFE * (H + p.size), pr = p.size / 2;
+      if (Math.hypot(fx - p.x - pr, fy - y - pr) < fr + pr) { p.el.remove(); g.pks.splice(n, 1); pkTake(g, p, ms); continue; }
+      p.el.style.transform = `translate(${p.x}px,${y}px)`;
+    }
+  }
+  const getTicket =() => { const go = (n) => fetch(API + '/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ver: GRA_VER }) }).then((r) => r.json()).then((j) => { if (j.stale) { staleReload(); return null; } if (!j.g || !Number.isInteger(j.s)) throw 0; return { g: j.g, s: j.s }; }).catch(() => n > 0 ? new Promise((ok) => setTimeout(ok, 1500)).then(() => go(n - 1)) : null); return go(3); };
+  const verify = (vg, auth) => vg.log.length ? Promise.resolve(vg.ticket).then((t) => t ? fetch(API + '/end', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...auth, g: t.g, log: vg.log, pk: vg.pk, st: vg.st }) }).then((r) => r.json()) : { error: 'Brak połączenia z serwerem gry — wynik nie może być zapisany.' }).catch(() => ({ error: 'Błąd sieci przy sprawdzaniu wyniku.' })) : Promise.resolve({ error: 'Brak podbić.' });
   const eqAuth = () => tok() ? { token: tok() } : { key: getKey() };
   const eqPost = (path, body) => fetch(API + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     .then((r) => r.json().then((j) => {
@@ -748,7 +795,8 @@
     const r = (c, n, d) => `<div class="lgr"><b style="color:${c}">${n}</b><span>${d}</span></div>`;
     ov.innerHTML = `<div class="eqbox" style="width:min(380px,calc(100vw - 32px))"><h3 style="margin:0 0 10px">Legenda</h3>
       <h4>Jak grać</h4><div class="lgr"><span>Kliknij (na telefonie dotknij) spadający awatar — staje się piłeczką. Podbijaj ją, zanim spadnie na dół ekranu. Kliknięcie z boku odbija ją w przeciwną stronę.</span></div>
-      <div class="lgr"><span>Każde podbicie daje tyle punktów, ile wynosi mnożnik (u góry ekranu). Co 8 podbić piłeczka leci szybciej, a mnożnik rośnie o 0.1x.</span></div>
+      <div class="lgr"><span>Każde podbicie daje tyle punktów, ile wynosi mnożnik (u góry ekranu). Co 8 podbić piłeczka leci szybciej, a mnożnik rośnie o 0.1x.</span></div>${PK ? `
+      <div class="lgr"><span>Z góry co kilka sekund spada nagroda — zbierasz ją, gdy piłeczka jej dotknie (kliknąć jej się nie da): 💧 Kropla +${PK_DROP}× mnożnik pkt, 🌊 Przypływ ×${PK_FLOW} punktów przez ${PK_FLOW_MS / 1000} s, ⚡ Iskra ${PK_SPARK_N} następne podbicia ×${PK_SPARK}, 🎁 Skarb — jedna z nich podwójnie.</span></div>` : ''}
       <div class="lgr"><span>Mniejsza piłeczka = trudniej, ale większy mnożnik (plakietka x1.3 lub x1.7). Awatary osób z top 10 forum z ostatnich 24 h dają premię: 1. +0.6x, 2. +0.4x, 3. +0.3x, 4.–10. +0.1x; lider dnia ma złotą ramkę z koroną.</span></div>
       <div class="lgr"><span>Pierwsze 3 podbicia są lekkie. Na komputerze pole gry ma proporcje 1,5 : 1 (przerywane linie). Telefon ma większe piłeczki, mocniejsze podbicie i inne tempo — w rankingu widać, na czym padł wynik (📱/🖥️).</span></div>
       <div class="lgr"><span>W rankingu liczy się Twoja najlepsza pojedyncza gra: ogólnie, w tym tygodniu i dziś.</span></div>
@@ -1034,6 +1082,7 @@
       const sx = game && game.f === f ? 0 : Math.sin(f.ph) * f.sway;
       f.el.style.transform = `translate(${f.x + sx}px,${f.y}px) rotate(${f.rot}deg)`;
     }
+    if (game) pkTick(game);
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);

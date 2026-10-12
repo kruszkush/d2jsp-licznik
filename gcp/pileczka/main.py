@@ -1,6 +1,6 @@
 # Ranking gry "piłeczka": GET [?nick=] -> top 10 + ostatni + miejsce gracza + liczba graczy, POST {nick, score} -> jeden wpis na adres IP (najlepszy wynik, ostatni nick).
 # IP nie jest zapisywane wprost — tylko jego skrót (sha256 z solą).
-import base64, hashlib, hmac, json, math, ipaddress, os, random, re, secrets, time
+import base64, bisect, hashlib, hmac, json, math, ipaddress, os, random, re, secrets, time
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import functions_framework
@@ -337,8 +337,32 @@ def eq_view(req, j):  # publiczny podgląd cudzych slotów (po skrócie z rankin
 CAP = {"stlum": .3, "ciezki": .25, "zreczny": .6, "olb": .25, "rozp": .6, "lowcy": 1.5, "lucky": 100, "wytrw": .3, "brawur": .5, "zuch": .08, "echa": .25,
        "wzn": .08, "mar": .3, "rytm": 6, "kryt": .3, "zlota": .06}  # nowe (12.1-test): wznoszący, maratończyka, rytmu, krytyczny, złotej piłki
 BRAV_MAX, ZUCH_MAX = 1.5, 0.6
-GRA_MIN_VER = 3  # najstarsza wersja zasad punktacji klienta (GRA_VER w gra.js); podbij przy zmianie punktów/szans sprawdzanych w /end
+# najstarsza wersja zasad punktacji klienta (GRA_VER w gra.js); podbij przy zmianie punktów/szans sprawdzanych w /end.
+# Osobno dla testu: test i live mają osobne pliki gry, a main.py jest wspólny — podbicie tylko testowej wersji nie może przeładowywać live.
+GRA_MIN_VER = 4 if SUFFIX == "_test" else 3
 MIN_GAP_MS = 90  # klient ignoruje kliki szybsze niż 100 ms; luz na zaokrąglenia
+# Nagrody spadające z góry (tylko test, od GRA_VER 4): zbiera je piłeczka dotknięciem, nie zmieniają lotu. Kopia stałych i pkType/harmonogramu z docs/test/gra.js.
+# Harmonogram i rodzaj z seeda biletu (roll k=4 odstęp, k=5 rodzaj, k=6 rodzaj w Skarbie, k=7 pozycja x — tylko klient).
+# Kropla: +PK_DROP × mnożnik od razu; Przypływ: punkty ×PK_FLOW przez PK_FLOW_MS; Iskra: PK_SPARK_N następnych podbić ×PK_SPARK; Skarb: losowa z trzech, podwójna.
+PICKUPS = SUFFIX == "_test"
+PK_FIRST, PK_GAP, PK_GAP_R, PK_LIFE, PK_SKARB = 6000, 8000, 4000, 10000, .1
+PK_DROP, PK_FLOW, PK_FLOW_MS, PK_SPARK, PK_SPARK_N = 8, 1.5, 5000, 4, 3
+PK_KINDS = ("k", "p", "i")
+
+def pk_type(seed, j):
+    r = roll(seed, 5, j)
+    if r < PK_SKARB:
+        return PK_KINDS[min(2, int(roll(seed, 6, j) * 3))], True
+    return PK_KINDS[min(2, int((r - PK_SKARB) / (1 - PK_SKARB) * 3))], False
+
+def pk_spawns(seed, until):
+    """Czas pojawienia się nagrody j (ms od startu gry) dla wszystkich j z czasem <= until."""
+    out, t, j = {}, PK_FIRST, 1
+    while t <= until and j <= 2000:
+        out[j] = t
+        t += PK_GAP + int(roll(seed, 4, j) * PK_GAP_R)
+        j += 1
+    return out
 
 def sign_key():
     k = os.environ.get("ADMIN_SECRET", "")
@@ -409,15 +433,20 @@ def chance_mult(b, seed, i):
         m *= 10
     return m
 
-def gra_limit(b, i, t_ms=0, seed=None):
-    """Najwięcej punktów możliwych za i-te podbicie (od 1, t_ms = czas z logu): największa piłeczka (1.7) + Łowcy + premia top 10 (0.6) [+ Hełm]."""
+def gra_mult(b, i, t_ms=0):
+    """Największy mnożnik ogólny po i podbiciach (t_ms = czas z logu): największa piłeczka (1.7) + Łowcy + premia top 10 (0.6) [+ Hełm]."""
     base = 1.7 + b["lowcy"] + .6 + (.6 if b["korona"] else 0)
     lv = 1 + b["rozp"] + .1 * (i // 8)
     items = (b["impl"] + b["ostry"] + b["setMult"] + min(ZUCH_MAX, b["zuch"] * i) + b["serii"] * (i // 10)
              + b["wzn"] * (i // 8) + b["mar"] * (int(t_ms) // 30000) + (.1 if b["stlum"] else 0))  # Stłumiony od 400 pkt
+    return base * lv + items
+
+def gra_limit(b, i, t_ms=0, seed=None, boost=1, flow=1):
+    """Najwięcej punktów możliwych za i-te podbicie (od 1). boost: Iskra (×PK_SPARK), flow: Przypływ (×PK_FLOW, razem z Rytmem)."""
     brav = min(BRAV_MAX, b["brawur"] * i)
     rytm = b["rytm"] if i % 5 == 0 else 0  # stała premia na co 5. podbiciu (poza mnożnikami szans)
-    return (base * lv + items + brav) * chance_mult(b, seed, i) + rytm + .02
+    cm = chance_mult(b, seed, i) * boost
+    return ((gra_mult(b, i, t_ms) + brav) * cm + rytm) * flow + .02 + .006 * cm * flow  # luz: zaokrąglenie mnożnika klienta do 0.01
 
 def gra_start(req, j):
     if not sign_key():
@@ -452,7 +481,37 @@ def gra_end(req, j):
     def bad(why):
         print("gra odrzucona:", why, g["gid"])
         return cors(req, {"error": f"Wynik odrzucony: {why}.", "odrzucony": True}, 400)
-    prev, total, gaps, mvs, offs = -1, 0.0, [], [], []
+    # nagrody (tylko test): wpis [ms zebrania, nr nagrody j, liczba podbić przed zebraniem n, punkty (tylko Kropla)]; rodzaj i czas pojawienia się z seeda
+    seed, pk = g.get("s"), []
+    raw_pk = j.get("pk") if PICKUPS and g.get("s") is not None else None
+    if raw_pk is not None:
+        if not isinstance(raw_pk, list) or len(raw_pk) > 2000:
+            return cors(req, {"error": "zły log gry"}, 400)
+        seen = set()
+        for e in raw_pk:
+            if (not isinstance(e, list) or len(e) != 4 or not all(num(x) for x in e) or e[1] != int(e[1]) or e[2] != int(e[2])
+                    or e[0] < 0 or e[2] < 0 or e[3] < 0 or int(e[1]) in seen):
+                return cors(req, {"error": "zły log gry"}, 400)
+            seen.add(int(e[1])); pk.append((e[0], int(e[1]), int(e[2]), e[3]))
+    spawns = pk_spawns(seed, max((p[0] for p in pk), default=0)) if pk else {}
+    sparks_at, flows, pk_total = {}, [], 0.0
+    for c, pj, n, pts in pk:
+        s0 = spawns.get(pj)
+        if s0 is None or not s0 <= c <= s0 + PK_LIFE + 300:
+            return bad("nagroda zebrana poza czasem")
+        kind, x2 = pk_type(seed, pj)
+        m = 2 if x2 else 1
+        if kind == "k":
+            if pts > PK_DROP * m * gra_mult(b, n, c) + .1:
+                return bad("za dużo punktów za nagrodę")
+            pk_total += pts
+        elif pts:
+            return cors(req, {"error": "zły log gry"}, 400)
+        elif kind == "p":
+            flows.append((n, c + PK_FLOW_MS * m))
+        else:
+            sparks_at[n] = sparks_at.get(n, 0) + PK_SPARK_N * m
+    prev, total, gaps, mvs, offs, times, sparks = -1, 0.0, [], [], [], [], 0
     for i, e in enumerate(log, 1):
         if not isinstance(e, list) or len(e) != 4 or not all(num(x) for x in e) or e[1] < 0:
             return cors(req, {"error": "zły log gry"}, 400)
@@ -463,13 +522,23 @@ def gra_end(req, j):
             if t - prev < MIN_GAP_MS:
                 return bad("podbicia szybsze, niż pozwala gra")
             gaps.append(t - prev)
-        if pts > gra_limit(b, i, t, g.get("s")):
-            print("szczegóły:", {"i": i, "pts": pts, "limit": gra_limit(b, i, t, g.get("s")), "seed": g.get("s"), "eq": "token" if "token" in j else ("key" if eq_key(j) else "brak"), "b": {k: v for k, v in b.items() if v}})  # diagnoza fałszywych odrzuceń
+        # Iskra działa na kolejne podbicia po zebraniu (licznik jak w kliencie), Przypływ na podbicia po zebraniu do końca okna
+        sparks += sparks_at.pop(i - 1, 0)
+        boost = PK_SPARK if sparks > 0 else 1
+        sparks -= boost > 1
+        flow = PK_FLOW if any(n < i and t <= end + 1 for n, end in flows) else 1
+        if pts > gra_limit(b, i, t, seed, boost, flow):
+            print("szczegóły:", {"i": i, "pts": pts, "limit": gra_limit(b, i, t, seed, boost, flow), "seed": seed, "boost": boost, "flow": flow, "eq": "token" if "token" in j else ("key" if eq_key(j) else "brak"), "b": {k: v for k, v in b.items() if v}})  # diagnoza fałszywych odrzuceń
             return bad("za dużo punktów za podbicie")
         prev, total = t, total + pts
+        times.append(t)
     dur, sim = st.get("dur"), st.get("sim")
     if not num(dur) or not num(sim) or dur < prev:
         return cors(req, {"error": "zły log gry"}, 400)
+    for c, _, n, _ in pk:  # n = liczba podbić przed zebraniem (ten sam ms zaokrąglony może być po obu stronach)
+        if c > dur + 50 or not bisect.bisect_left(times, c) <= n <= bisect.bisect_right(times, c):
+            return bad("nagroda niezgodna z logiem podbić")
+    total += pk_total
     real = (time.time() - g["t"]) * 1000
     if dur > real + 5000:
         return bad("czas gry dłuższy, niż minął naprawdę")
