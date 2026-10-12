@@ -3,6 +3,11 @@
   // Wersja testowa (/test/): osobna funkcja i kolekcje; ekwipunek włączony tylko tam
   const TEST = location.pathname.includes('/test/');
   const SUFIT = true; // zasady od 2.10.2026 (pełna siła podbicia bez sufitu — piłeczka może wylecieć nad ekran, odbicia za punkty, zawis, start ×1,25) — na obu stronach
+  // test: odbijak zamiast klikania — piłeczka odbija się od belki sterowanej myszą (telefon: przesuwanie palcem w dowolnym miejscu), sufit odbija
+  const ODBIJAK = TEST;
+  // odbijak: szerokość (część areny; telefon: ekranu), grubość, odstęp od dołu (komputer) / pozycja w wysokości ekranu (telefon — z dala od paska gestów),
+  // czułość palca, px szerokości za punkt Lotnego, próg „brzegu” (Brawurowy/Zuchwały), wysokość lotu po odbiciu (część drogi do góry ekranu, losowo min–max)
+  const PAD_W = .16, PAD_W_TEL = .26, PAD_H = 14, PAD_BOT = 40, PAD_Y_TEL = .78, PAD_SENS = 1.2, PAD_LOT = 6, PAD_EDGE = .6, PAD_APEX = [.6, .8];
   const SAFE_HITS = 3; // pierwsze 3 podbicia lekkie (start tuż pod górą nie wyrzuca piłeczki za ekran)
   const TEST_SAVES = TEST ? Math.min(20, Number(new URLSearchParams(location.search).get('odbicia')) || 0) : 0; // test: ?odbicia=3 na start
   const MELLOW = new URL('mellow.png', document.currentScript?.src || location.href).href; // emotka :mellow: z d2jsp (kopia w docs/)
@@ -78,6 +83,7 @@
   #arenaEdges{display:none;position:fixed;top:0;bottom:0;z-index:38;pointer-events:none;border-left:2px dashed rgba(255,140,60,.25);border-right:2px dashed rgba(255,140,60,.25)}
   #sufit{display:none;position:fixed;left:0;right:0;top:0;height:4px;z-index:38;pointer-events:none;background:repeating-linear-gradient(90deg,#e5484d 0 14px,transparent 14px 24px);box-shadow:0 0 10px rgba(229,72,77,.7)}body.playing #sufit{display:block}
   #nad{position:fixed;top:98px;transform:translateX(-50%);z-index:61;pointer-events:none;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:2px 9px;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}#nad[hidden]{display:none}
+  #pad{position:fixed;top:0;left:0;z-index:62;pointer-events:none;border-radius:999px;background:linear-gradient(color-mix(in srgb,var(--acc) 75%,#fff),var(--acc) 55%,color-mix(in srgb,var(--acc) 70%,#000));box-shadow:0 3px 10px rgba(0,0,0,.45),inset 0 0 0 1px rgba(255,255,255,.2);will-change:transform}#pad[hidden]{display:none} /* odbijak (test) */
   .boomfx{position:fixed;z-index:61;pointer-events:none;border-radius:50%;background:radial-gradient(#fff3b0,#ff7a1a 45%,rgba(229,72,77,0) 70%);transform:translate(-50%,-50%);animation:boom .6s ease-out forwards}
   @keyframes boom{from{width:20px;height:20px;opacity:1}to{width:220px;height:220px;opacity:0}}
   .mellow{position:absolute;left:78%;bottom:88%;background:#fff;border:2px solid #141413;border-radius:14px;padding:4px 7px;line-height:0;pointer-events:none;animation:mlw .25s ease-out;transform-origin:0 100%}.mellow::after{content:'';position:absolute;left:8px;bottom:-9px;border:7px solid transparent;border-top-color:#141413;border-bottom:0}.mellow img{width:20px;height:20px;image-rendering:auto}
@@ -126,7 +132,7 @@
   function drawHint() {
     const h = card.querySelector('.pilhint');
     h.hidden = !!(ls.get('pilStart') || ls.get('pilGral') || ls.get('pilNick'));
-    h.innerHTML = on ? '👉 Kliknij (na telefonie dotknij) spadający awatar, żeby zagrać — podbijaj go, zanim spadnie na dół ekranu. Zasady w „Legendzie”.' : '👉 Grą są spadające awatary, a teraz są wyłączone. <a href="#" data-a="on">Włącz awatary</a>, żeby zagrać.';
+    h.innerHTML = on ? (ODBIJAK ? '👉 Kliknij (na telefonie dotknij) spadający awatar, żeby zagrać — odbijaj go odbijakiem (mysz; na telefonie przesuwaj palcem), żeby nie spadł. Zasady w „Legendzie”.' : '👉 Kliknij (na telefonie dotknij) spadający awatar, żeby zagrać — podbijaj go, zanim spadnie na dół ekranu. Zasady w „Legendzie”.') : '👉 Grą są spadające awatary, a teraz są wyłączone. <a href="#" data-a="on">Włącz awatary</a>, żeby zagrać.';
     h.querySelector('[data-a="on"]')?.addEventListener('click', (e) => { e.preventDefault(); btn.click(); });
   }
   drawHint();
@@ -187,7 +193,7 @@
   function flakeDown(f, e) {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     e.preventDefault();
-    if (game) { if (!e.isTrusted) { game.untr++; return; } game.clicks++; if (tooFast(game)) return; hit(f, e); return; }
+    if (game) { if (ODBIJAK) return; if (!e.isTrusted) { game.untr++; return; } game.clicks++; if (tooFast(game)) return; hit(f, e); return; }
     if (e.pointerType === 'touch') { tapStart = { f, id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() }; return; }
     startGame(f, e);
   }
@@ -224,7 +230,7 @@
   const CAP = { stlum: .3, ciezki: .25, zreczny: .6, olb: .25, rozp: .6, lowcy: 1.5, lucky: 100, wytrw: .3, brawur: .5, zuch: .08, echa: .25, lotny: 10, wzn: .08, mar: .3, rytm: 6, kryt: .3, zlota: .06 };
   // afiks → limit łączny jako tekst (np. „30%”, „+1.5x”)
   const CAPK = { stlumiony: 'stlum', ciezki: 'ciezki', zreczny: 'zreczny', olbrzyma: 'olb', rozpedzony: 'rozp', lowcy: 'lowcy', szczesliwy: 'lucky', wytrwalosci: 'wytrw', brawurowy: 'brawur', zuchwaly: 'zuch', echa: 'echa', lotny: 'lotny', wznoszacy: 'wzn', maratonczyka: 'mar', rytmu: 'rytm', krytyczny: 'kryt', zlota: 'zlota' };
-  const capTxt = (id) => { const k = CAPK[id]; if (!k) return ''; const v = CAP[k]; return k === 'lucky' ? '+100%' : k === 'lowcy' ? '+1.5x' : k === 'brawur' || k === 'zuch' || k === 'wzn' || k === 'mar' ? `+${v.toFixed(2)}x` : k === 'lotny' ? `+${v} px` : k === 'rytm' ? `+${v} pkt` : k === 'stlum' ? lowerPct(v * 100) + '%' : Math.round(v * 100) + '%'; };
+  const capTxt = (id) => { const k = CAPK[id]; if (!k) return ''; const v = CAP[k]; return k === 'lucky' ? '+100%' : k === 'lowcy' ? '+1.5x' : k === 'brawur' || k === 'zuch' || k === 'wzn' || k === 'mar' ? `+${v.toFixed(2)}x` : k === 'lotny' ? `+${ODBIJAK ? v * PAD_LOT : v} px` : k === 'rytm' ? `+${v} pkt` : k === 'stlum' ? lowerPct(v * 100) + '%' : Math.round(v * 100) + '%'; };
   function calcB(slots) {
     const b = zeroB();
     for (const it of Object.values(slots || {})) {
@@ -289,10 +295,25 @@
   // błysk przy zużyciu odbicia od dołu
   const sufitEl = document.createElement('div'); sufitEl.id = 'sufit'; sufitEl.title = 'Sufit — dotknięcie wysadza piłeczkę'; 
   const nadEl = document.createElement('div'); nadEl.id = 'nad'; nadEl.hidden = true; document.body.appendChild(nadEl);
+  const padEl = document.createElement('div'); padEl.id = 'pad'; padEl.hidden = true; document.body.appendChild(padEl);
+  // odbijak: jeden prostokąt — tym samym rysujemy belkę i liczymy odbicia; środek nie wychodzi poza arenę (telefon: ekran)
+  const padRect = (g) => {
+    const A = TOUCH ? { l: 0, r: W } : arena(), w = (A.r - A.l) * (TOUCH ? PAD_W_TEL : PAD_W) + (g.B.lotny || 0) * PAD_LOT, h = Math.round(PAD_H * g.k);
+    const x = Math.max(A.l + w / 2, Math.min(A.r - w / 2, g.padX)), t = Math.round(TOUCH ? H * PAD_Y_TEL : H - PAD_BOT * g.k - h);
+    return { l: x - w / 2, r: x + w / 2, t, w, h, x };
+  };
+  // mysz/pióro: środek odbijaka pod kursorem; palec: przesunięcie względne w dowolnym miejscu ekranu (nie trzeba sięgać do dołu, gdzie są gesty systemu)
+  function padMove(e) {
+    const g = game;
+    if (e.pointerType !== 'touch') g.padX = e.clientX;
+    else { if (g.tId === e.pointerId && g.tX != null) g.padX += (e.clientX - g.tX) * PAD_SENS; g.tX = e.clientX; g.tId = e.pointerId; }
+    g.padX = padRect(g).x;
+    if (g.hover) { g.hover = 0; g.warm = performance.now(); g.bubble?.remove(); g.bubble = null; } // „Zagraj jeszcze raz”: piłeczka rusza, gdy gracz ruszy odbijakiem
+  }
   function boomFx(x, y) { const e = document.createElement('div'); e.className = 'boomfx'; e.style.left = x + 'px'; e.style.top = y + 'px'; document.body.appendChild(e); setTimeout(() => e.remove(), 700); }
   function saveFx() { const e = document.createElement('div'); e.className = 'savefx'; document.body.appendChild(e); setTimeout(() => e.remove(), 900); }
   const flashEl = document.createElement('div'); flashEl.id = 'lvlup'; document.body.appendChild(flashEl);
-  let lastFlash = 0; const BRAV_MAX = 1.5, ZUCH_MAX = 0.6; // sufity premii z serii Brawurowego i nabitego Zuchwałego
+  let lastFlash = 0; const BRAV_MAX = 1.5, ZUCH_MAX = 0.6, LOWTXT = ODBIJAK ? 'trafienie brzegiem odbijaka' : 'podbicie tuż nad dołem ekranu'; // sufity premii z serii Brawurowego i nabitego Zuchwałego
   function flash(t, dur = 1100) { lastFlash = performance.now(); flashEl.textContent = t; flashEl.animate([{ opacity: 0, transform: 'translate(-50%,10px) scale(.8)' }, { opacity: 1, transform: 'translate(-50%,0) scale(1.1)', offset: Math.min(.2, 220 / dur) }, { opacity: 1, transform: 'translate(-50%,0) scale(1.1)', offset: Math.max(.2, 1 - 880 / dur) }, { opacity: 0, transform: 'translate(-50%,-18px) scale(1)' }], { duration: dur, easing: 'ease-out' }); }
   // pływające „+N” nad piłeczką przy każdym podbiciu (kolor jak duży mnożnik; większe przy Echu i Brawurze)
   function ptsFx(f, pts, big, tag = '') {
@@ -327,7 +348,8 @@
     game.emu = TOUCH && (outerWidth - innerWidth > 100 || outerHeight - innerHeight > 250); // tryb telefonu w narzędziach przeglądarki na komputerze
     game.ticket = getTicket(); const gm = game; game.ticket.then((t) => { if (t && game === gm) { gm.seed = t.s; drawHud(); } }); // do przyjścia biletu (seeda) szanse za podbicia nie działają
     applyLotny();
-    if (e) hit(f, e); else { game.hover = performance.now(); game.rot0 = f.rot; game.rotTo = Math.round(f.rot / 360) * 360; drawHud(); }
+    if (ODBIJAK) { game.padX = f.x + f.size / 2; padEl.hidden = false; if (e && f.y > H * .45) f.vy = -Math.sqrt(2 * G * (1 - B.ciezki) * game.k * (f.y - H * .15)); } // piłeczka wybrana nisko: najpierw leci w górę
+    if (e && ODBIJAK) drawHud(); else if (e) hit(f, e); else { game.hover = performance.now(); game.rot0 = f.rot; game.rotTo = Math.round(f.rot / 360) * 360; drawHud(); }
     return true;
   }
   // „Zagraj jeszcze raz”: od razu kilka spadających awatarów w górnej części ekranu (bez czekania) — piłeczkę wybiera gracz
@@ -347,13 +369,15 @@
     drawHud(); flash('Przedmioty wczytane');
   }
   // Kapcie Moderatora: pudło liczy się jako podbicie — tylko gdy piłeczka spada w dolnej połowie ekranu (🔨 w HUD wtedy świeci)
-  const kapArmed = (g) => !g.hover && !g.rise && g.f.vy > 0 && g.f.y + g.f.size / 2 > H / 2;
+  const kapArmed = (g) => ODBIJAK ? g.bans > 0 : !g.hover && !g.rise && g.f.vy > 0 && g.f.y + g.f.size / 2 > H / 2;
   document.addEventListener('pointerdown', (e) => {
     const cnt = e.target.closest?.('#hud .cnt'); if (cnt) { const on = !cnt.classList.contains('tip'); hud.querySelectorAll('.cnt.tip').forEach((x) => x.classList.remove('tip')); if (on) cnt.classList.add('tip'); return; }
+    if (ODBIJAK && game && e.pointerType === 'touch') { game.tX = e.clientX; game.tId = e.pointerId; } // początek przesuwania palcem
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     if (!game || e.target.closest?.('.ball, button, a, input, #over')) return;
     if (!e.isTrusted) { game.untr++; return; }
     game.clicks++; game.misses++;
+    if (ODBIJAK) return; // odbijak: kliknięcia nic nie robią (Kapcie działają przy odbijaku)
     if (tooFast(game) || !game.bans || !kapArmed(game)) return;
     game.bans--; flash('🔨 Ban! Kapcie Moderatora uratowały piłeczkę'); hit(game.f, { clientX: game.f.el.getBoundingClientRect().left + game.f.size / 2 });
   });
@@ -365,7 +389,7 @@
   }
   // w trakcie gry prawy przycisk nie otwiera menu, a środkowy nie włącza autoprzewijania
   addEventListener('contextmenu', (e) => { if (game) e.preventDefault(); });
-  addEventListener('pointermove', (e) => { if (game && e.isTrusted && e.pointerType === 'mouse') game.mv++; });
+  addEventListener('pointermove', (e) => { if (game && e.isTrusted && e.pointerType === 'mouse') game.mv++; if (ODBIJAK && game && e.isTrusted) padMove(e); });
   addEventListener('mousedown', (e) => { if (game && e.button === 1) e.preventDefault(); });
   function hit(f, e) {
     if (!game || game.f !== f) return;
@@ -376,7 +400,7 @@
     // Brawurowy: podbicie w dolnych 15% ekranu daje dodatkowy mnożnik; Echa: szansa, że podbicie liczy się podwójnie
     // podbicie tuż nad dołem (dolne 15%): Brawurowy — premia rosnąca z każdym kolejnym takim podbiciem z rzędu (wyższe podbicie zeruje serię),
     // Zuchwały — stały przyrost mnożnika do końca gry; Echa — szansa, że punkty za podbicie liczą się podwójnie
-    const low = (game.B.brawur || game.B.zuch) && f.y + f.size / 2 > H * .85;
+    const low = (game.B.brawur || game.B.zuch) && (e.pad != null ? Math.abs(e.pad) > PAD_EDGE : f.y + f.size / 2 > H * .85); // odbijak: trafienie brzegiem
     // szanse z seeda biletu (i = numer podbicia od 1); bez seeda (bilet jeszcze nie przyszedł) — bez szans, serwer liczy tak samo
     const sd = game.seed, hi = game.hits, echo = sd != null && game.B.echa > 0 && roll(sd, 1, hi) < game.B.echa, crit = sd != null && game.B.kryt > 0 && roll(sd, 2, hi) < game.B.kryt, gold = sd != null && game.B.zlota > 0 && roll(sd, 3, hi) < game.B.zlota;
     // anty-bot: ruchy myszy od poprzedniego podbicia i odległość kliku od środka piłeczki (% promienia); -1 = nie dotyczy (dotyk/pióro, Kapcie)
@@ -399,6 +423,13 @@
     if (!up && performance.now() - lastFlash > 1200) if (gold) flash('✨ Złota Piłka! ×10'); else if (crit) flash('Krytyk! ×3'); else if (echo) flash('Echo! x2'); else if (rytm) flash(`Rytm! +${rytm} pkt`); else if (brav) flash(`Brawura x${game.lowRun}! +${fm(brav)}x`);
     if (up) { game.lvl++; flash(`Szybciej! x${fm(totalMult())}`); showMult(game.lvl, true); }
     if (game.best && !game.rec && Math.round(game.score) > game.best) { game.rec = true; flash('🏆 Nowy rekord!', 1600); lastFlash = performance.now() + 800; } // przebicie rekordu ogólnego
+    // odbijak: wysokość lotu = losowa część drogi do góry ekranu (Stłumiony obniża, Ciężki nie zmienia wysokości); w bok tym mocniej, im bliżej brzegu
+    if (e.pad != null) {
+      const P = padRect(game), Ge = G * (1 - game.B.ciezki) * game.k, ap = PAD_APEX[0] + Math.random() * (PAD_APEX[1] - PAD_APEX[0]);
+      f.vy = -Math.sqrt(2 * Ge * Math.max(0, P.t - f.size) * ap) * (1 - stlumNow(game.B.stlum, game.score));
+      f.vx = Math.max(-480, Math.min(480, e.pad * 380 + (Math.random() - .5) * 80)) * game.k * (1 - game.B.zreczny); f.vr = e.pad * 360;
+      drawHud(); return;
+    }
     const r = f.el.getBoundingClientRect(), off = ((e.clientX - (r.left + r.width / 2)) / (r.width / 2)) || 0;
     // podbicie nie wyrzuca ponad górną krawędź: siła ograniczona tak, żeby szczyt lotu był ok. 12 px pod górą ekranu
     const room = Math.max(0, f.y - 12), vMax = Math.sqrt(2 * G * (1 - game.B.ciezki) * game.k * room), jump = JUMP * (1 - stlumNow(game.B.stlum, game.score)) * (TOUCH ? 1.3 : 1); // telefon: podbicie ~1,7× wyżej (dłuższy lot, mniej gorączkowe klikanie)
@@ -409,10 +440,10 @@
   }
   function drawHud() {
     const P = partsOf(game), best = game.best ? (game.rec ? ' · <b style="color:var(--acc)">🏆 nowy rekord!</b>' : ` · 🏆 ${game.best}`) : '';
-    hud.hidden = false; hud.innerHTML = `${game.saves || SUFIT ? `<span class="cnt" data-tip="🛡 Odbicia od dołu: gdy piłeczka spadnie, odbije się wysoko zamiast końca gry. Masz ${game.saves}.${SUFIT ? ` Kolejne dostaniesz przy ${game.nextSave} pkt.` : ''}">🛡${game.saves}${SUFIT ? `<small>→${game.nextSave}</small>` : ''}</span>` : ''}${game.bans ? `<span class="cnt kap${game.armed ? ' arm' : ''}" data-tip="🔨 Kapcie Moderatora: pudło, gdy piłeczka spada w dolnej połowie ekranu, liczy się jako podbicie (🔨 wtedy świeci). Zostało: ${game.bans}.">🔨${game.bans}</span>` : ''}${game.sparks ? `<span class="cnt" data-tip="⚡ Iskra: następne podbicia dają ×${PK_SPARK} punktów. Zostało: ${game.sparks}.">⚡${game.sparks}</span>` : ''}${performance.now() - game.t0 <= game.flowUntil ? `<span class="cnt" data-tip="🌊 Przypływ: przez chwilę każde podbicie daje ×${PK_FLOW} punktów.">🌊</span>` : ''}${Math.round(game.score)}<small>pkt${TOUCH ? ` · x${fm(P.total)}` : ` · ${P.b > 1 ? `x${fm(P.b)} more · ` : ''}+${Math.round((P.lv - 1) * 100)}% increased${P.items ? ` + ${fm(P.items)} przedmioty` : ''} = x${fm(P.total)} · ${game.hits} podbić`}${best}${game.bWait ? ' · ⏳ wczytuję przedmioty…' : ''}</small>`;
+    hud.hidden = false; hud.innerHTML = `${game.saves || SUFIT ? `<span class="cnt" data-tip="🛡 Odbicia od dołu: gdy piłeczka spadnie, odbije się wysoko zamiast końca gry. Masz ${game.saves}.${SUFIT ? ` Kolejne dostaniesz przy ${game.nextSave} pkt.` : ''}">🛡${game.saves}${SUFIT ? `<small>→${game.nextSave}</small>` : ''}</span>` : ''}${game.bans ? `<span class="cnt kap${game.armed ? ' arm' : ''}" data-tip="🔨 Kapcie Moderatora: pudło, gdy piłeczka spada w dolnej połowie ekranu, liczy się jako podbicie (🔨 wtedy świeci). Zostało: ${game.bans}.">🔨${game.bans}</span>` : ''}${game.sparks ? `<span class="cnt" data-tip="⚡ Iskra: następne podbicia dają ×${PK_SPARK} punktów. Zostało: ${game.sparks}.">⚡${game.sparks}</span>` : ''}${performance.now() - game.t0 <= game.flowUntil ? `<span class="cnt" data-tip="🌊 Przypływ: przez chwilę każde podbicie daje ×${PK_FLOW} punktów.">🌊</span>` : ''}${Math.round(game.score)}<small>pkt${TOUCH ? ` · x${fm(P.total)}` : ` · ${P.b > 1 ? `x${fm(P.b)} more · ` : ''}+${Math.round((P.lv - 1) * 100)}% increased${P.items ? ` + ${fm(P.items)} przedmioty` : ''} = x${fm(P.total)} · ${game.hits} ${ODBIJAK ? 'odbić' : 'podbić'}`}${best}${game.bWait ? ' · ⏳ wczytuję przedmioty…' : ''}</small>`;
   }
   function endGame() {
-    nadEl.hidden = true; for (const p of game.pks) p.el.remove();
+    nadEl.hidden = true; padEl.hidden = true; for (const p of game.pks) p.el.remove();
     const vg = { ticket: game.ticket, log: game.log, pk: game.pk, st: { dur: Math.round(performance.now() - game.t0), sim: Math.round(game.sim), clicks: game.clicks, misses: game.misses, untr: game.untr, emu: game.emu, wd: navigator.webdriver === true } };
     const boom = game.boom, small = game.small, gLvlN = game.lvl + 1, score = Math.round(game.score), f = game.f, gHits = game.hits, gZuch = game.zuchAcc || 0, P = partsOf(game); game = null; document.body.classList.remove('playing'); hideMult();
     f.el.remove(); flakes.clear(); hud.hidden = true;
@@ -420,7 +451,7 @@
     const av = D.avatars?.[f.u], who = D.users[f.u] || '?', hits = gHits;
     ov.innerHTML = `<div class="box lock"><h3>${boom ? '💥 Piłeczka uderzyła w sufit!' : small ? 'Okno za małe — koniec gry' : 'Koniec gry!'}</h3>
       <div class="ball" style="border-color:${f.el.style.borderColor};${av ? `background-image:url('${esc(av)}')` : ''}">${av ? '' : esc(who[0].toUpperCase())}</div>
-      <div class="txt">${(tok() ? accNick() : ls.get('pilNick')) ? `<b style="color:var(--ink)">${esc(tok() ? accNick() : ls.get('pilNick'))}</b>, podbiłeś` : 'Podbiłeś'} <b style="color:var(--ink)">${esc(who)}</b> ${hits} ${hits === 1 ? 'raz' : 'razy'}</div>
+      <div class="txt">${(tok() ? accNick() : ls.get('pilNick')) ? `<b style="color:var(--ink)">${esc(tok() ? accNick() : ls.get('pilNick'))}</b>, ${ODBIJAK ? 'odbiłeś' : 'podbiłeś'}` : ODBIJAK ? 'Odbiłeś' : 'Podbiłeś'} <b style="color:var(--ink)">${esc(who)}</b> ${hits} ${hits === 1 ? 'raz' : 'razy'}</div>
       <div class="sc">${score}<small> pkt</small></div>
       <div class="eq">${P.b > 1 ? `<span class="ch" style="background:${BADGE[f.base] || '#d9264a'};color:#fff"><b>×${fm(P.b)}</b><i>piłeczka</i></span><span class="op">×</span>` : ''}<span class="ch"><b>×${fm(P.lv)}</b><i>poziom ${gLvlN}</i></span>${P.items ? `<span class="op">+</span><span class="ch"><b>+${fm(P.items)}${gZuch ? `<sup class="zsup" title="w tym nabite podbiciami tuż nad dołem ekranu">+${fm(gZuch)}</sup>` : ''}</b><i>przedmioty</i></span>` : ''}<span class="op">=</span><span class="ch tot"><b>×${fm(P.total)}</b><i>na koniec</i></span></div>
       ${EQON ? chancesHtml(score) : ''}
@@ -509,7 +540,7 @@
   const stlumNow = (v, score) => v * Math.max(0, Math.min(1, (STLUM_ZERO - score) / (STLUM_ZERO - STLUM_FROM)));
   const stlumNote = () => `; od ${STLUM_FROM} pkt słabnie, od ${STLUM_ZERO} pkt zamiast tego +${STLUM_PTS} pkt za podbicie`;
   const lowerPct = (v) => Math.round((1 - (1 - v / 100) ** 2) * 100); // słabsze podbicie o v% → wysokość lotu niższa o tyle %
-  const kapTxt = (n) => `${n > 1 ? `${n} razy` : 'Raz'} na grę: pudło, gdy piłeczka spada w dolnej połowie ekranu, liczy się jako podbicie`;
+  const kapTxt = (n) => ODBIJAK ? `${n > 1 ? `${n} razy` : 'Raz'} na grę: piłeczka, która minie odbijak o włos, odbija się mimo to` : `${n > 1 ? `${n} razy` : 'Raz'} na grę: pudło, gdy piłeczka spada w dolnej połowie ekranu, liczy się jako podbicie`;
   // afiksy: [typ p/s, nazwa, min, max, krok, przymiotnik m/ż/lm albo dopełniacz, opis(v)]
   const AFF = {
     ostry: ['p', 'Ostry', 0.4, 1.0, 0.1, ['Ostry', 'Ostra', 'Ostre'], (v) => `+${v.toFixed(1)}x mnożnika`],
@@ -517,8 +548,8 @@
     ciezki: ['p', 'Ciężki', 5, 10, 1, ['Ciężki', 'Ciężka', 'Ciężkie'], (v) => `Grawitacja słabsza o ${v}%`],
     zreczny: ['p', 'Zręczny', 10, 30, 1, ['Zręczny', 'Zręczna', 'Zręczne'], (v) => `Odbicie w bok mniejsze o ${v}%`],
     szczesliwy: ['p', 'Szczęśliwy', 30, 60, 1, ['Szczęśliwy', 'Szczęśliwa', 'Szczęśliwe'], (v) => `+${v}% magic find (sumuje się z magic find z punktów)`],
-    brawurowy: ['p', 'Brawurowy', 0.15, 0.25, 0.01, ['Brawurowy', 'Brawurowa', 'Brawurowe'], (v) => `+${v.toFixed(2)}x mnożnika za każde kolejne podbicie z rzędu tuż nad dołem ekranu (seria maks. +${BRAV_MAX}x)`],
-    zuchwaly: ['p', 'Zuchwały', 0.02, 0.04, 0.01, ['Zuchwały', 'Zuchwała', 'Zuchwałe'], (v) => `+${v.toFixed(2)}x mnożnika na stałe za każde podbicie tuż nad dołem ekranu (od 2. poziomu, nabija się maks. do +${ZUCH_MAX}x)`],
+    brawurowy: ['p', 'Brawurowy', 0.15, 0.25, 0.01, ['Brawurowy', 'Brawurowa', 'Brawurowe'], (v) => `+${v.toFixed(2)}x mnożnika za każde kolejne ${LOWTXT} z rzędu (seria maks. +${BRAV_MAX}x)`],
+    zuchwaly: ['p', 'Zuchwały', 0.02, 0.04, 0.01, ['Zuchwały', 'Zuchwała', 'Zuchwałe'], (v) => `+${v.toFixed(2)}x mnożnika na stałe za każde ${LOWTXT} (od 2. poziomu, nabija się maks. do +${ZUCH_MAX}x)`],
     rozpedzony: ['p', 'Rozpędzony', 10, 20, 1, ['Rozpędzony', 'Rozpędzona', 'Rozpędzone'], (v) => `Rozpocznij z mnożnikiem ogólnym zwiększonym o ${v}%`],
     wytrwalosci: ['s', 'Wytrwałości', 5, 15, 1, 'Wytrwałości', (v) => `Piłeczka przyspiesza o ${v}% wolniej`],
     olbrzyma: ['s', 'Olbrzyma', 5, 10, 1, 'Olbrzyma', (v) => `Większa piłeczka o ${v}%`],
@@ -526,7 +557,7 @@
     echa: ['s', 'Echa', 10, 20, 1, 'Echa', (v) => `+${v}% szansy na podwójne punkty za podbicie`],
     stroza: ['s', 'Stróża', 1, 1, 1, 'Stróża', () => SUFIT ? '3 razy na grę: odbicie od dołu zamiast końca gry' : 'Raz na grę: odbicie od dołu zamiast końca gry'],
     serii: ['s', 'Serii', 0.10, 0.25, 0.01, 'Serii', (v) => `+${v.toFixed(2)}x mnożnika za każde 10 podbić`],
-    lotny: ['p', 'Lotny', 2, 5, 1, ['Lotny', 'Lotna', 'Lotne'], (v) => `Obszar trafienia piłeczki większy o ${v} px`],
+    lotny: ['p', 'Lotny', 2, 5, 1, ['Lotny', 'Lotna', 'Lotne'], (v) => ODBIJAK ? `Odbijak szerszy o ${v * PAD_LOT} px` : `Obszar trafienia piłeczki większy o ${v} px`],
     wznoszacy: ['p', 'Wznoszący', 0.02, 0.04, 0.01, ['Wznoszący', 'Wznosząca', 'Wznoszące'], (v) => `+${v.toFixed(2)}x mnożnika za każdy osiągnięty poziom (dodawane do części „przedmioty”)`],
     krytyczny: ['p', 'Krytyczny', 3, 10, 1, ['Krytyczny', 'Krytyczna', 'Krytyczne'], (v) => `+${v}% szansy na potrójne punkty za podbicie (napis „KRYT ×3”)`],
     maratonczyka: ['s', 'Maratończyka', 0.05, 0.15, 0.01, 'Maratończyka', (v) => `+${v.toFixed(2)}x mnożnika za każde pełne 30 s gry (dodawane do części „przedmioty”)`],
@@ -553,14 +584,14 @@
     const mult = r3(b.impl + b.ostry); if (mult) L.push(`+${fm(mult)}x mnożnika`);
     if (b.setN) L.push(`Zestaw ${D.users[b.setUid] || ''} (${b.setN}/4): +${fm(b.setMult)} pkt za każde podbicie piłeczki${b.setN === 4 ? ' i odbicie od dołu' : ''}`);
     if (b.serii) L.push(`+${b.serii.toFixed(2)}x za każde 10 podbić`);
-    if (b.brawur) L.push(`+${b.brawur.toFixed(2)}x mnożnika za każde kolejne podbicie z rzędu tuż nad dołem ekranu (seria maks. +${BRAV_MAX}x)${c('brawur')}`);
-    if (b.zuch) L.push(`+${b.zuch.toFixed(2)}x mnożnika na stałe za każde podbicie tuż nad dołem ekranu (od 2. poziomu, nabija się maks. do +${ZUCH_MAX}x)${c('zuch')}`);
+    if (b.brawur) L.push(`+${b.brawur.toFixed(2)}x mnożnika za każde kolejne ${LOWTXT} z rzędu (seria maks. +${BRAV_MAX}x)${c('brawur')}`);
+    if (b.zuch) L.push(`+${b.zuch.toFixed(2)}x mnożnika na stałe za każde ${LOWTXT} (od 2. poziomu, nabija się maks. do +${ZUCH_MAX}x)${c('zuch')}`);
     if (b.wzn) L.push(`+${b.wzn.toFixed(2)}x mnożnika za każdy osiągnięty poziom${c('wzn')}`);
     if (b.mar) L.push(`+${b.mar.toFixed(2)}x mnożnika za każde pełne 30 s gry${c('mar')}`);
     if (b.rytm) L.push(`+${b.rytm} pkt za co 5. podbicie${c('rytm')}`);
     if (b.kryt) L.push(`+${pct(b.kryt)}% szansy na potrójne punkty za podbicie${c('kryt')}`);
     if (b.zlota) L.push(`+${pct(b.zlota)}% szansy na dziesięciokrotne punkty za podbicie${c('zlota')}`);
-    if (b.lotny) L.push(`Obszar trafienia piłeczki większy o ${b.lotny} px${c('lotny')}`);
+    if (b.lotny) L.push(`${ODBIJAK ? `Odbijak szerszy o ${b.lotny * PAD_LOT}` : `Obszar trafienia piłeczki większy o ${b.lotny}`} px${c('lotny')}`);
     if (b.echa) L.push(`+${pct(b.echa)}% szansy na podwójne punkty za podbicie${c('echa')}`);
     if (b.lowcy) L.push(`+${b.lowcy.toFixed(1)}x do mnożnika małych i średnich piłeczek (x1.3, x1.7)${c('lowcy')}`);
     if (b.rozp) L.push(`Rozpocznij z mnożnikiem ogólnym zwiększonym o ${pct(b.rozp)}%${c('rozp')}`);
@@ -600,7 +631,7 @@
   // bilet gry z /start (ponawiany; krótka gra może skończyć się przed odpowiedzią serwera) i weryfikacja w /end — raz na grę
   // rzuty szans za podbicia (Echa k=1, Krytyczny k=2, Złotej Piłki k=3) liczone z seeda z biletu — serwer w /end liczy te same rzuty (kopia: roll() w main.py)
   // wersja zasad punktacji: podbij razem z GRA_MIN_VER w main.py przy każdej zmianie, którą sprawdza serwer (punkty, szanse) — stara karta przeładuje się sama zamiast dostać odrzucony wynik
-  const GRA_VER = 4; // 4: nagrody spadające z góry (tylko test)
+  const GRA_VER = 5; // 4: nagrody spadające z góry, 5: odbijak (tylko test)
   const staleReload = () => { if (game) { flash('Nowa wersja gry — przeładowuję…', 2000); game = null; } setTimeout(() => location.reload(), 1200); };
   const roll = (seed, k, i) => { let x = (seed ^ Math.imul(k, 0x9E3779B1) ^ Math.imul(i, 0x85EBCA77)) >>> 0; x ^= x >>> 16; x = Math.imul(x, 0x85EBCA6B) >>> 0; x ^= x >>> 13; x = Math.imul(x, 0xC2B2AE35) >>> 0; x ^= x >>> 16; return (x >>> 0) / 2 ** 32; };
   // Nagrody spadające z góry (tylko /test/): zbiera je piłeczka dotknięciem, nie zmieniają jej lotu i nie da się ich kliknąć.
@@ -794,7 +825,7 @@
     const ov = document.createElement('div'); ov.className = 'eqo';
     const r = (c, n, d) => `<div class="lgr"><b style="color:${c}">${n}</b><span>${d}</span></div>`;
     ov.innerHTML = `<div class="eqbox" style="width:min(380px,calc(100vw - 32px))"><h3 style="margin:0 0 10px">Legenda</h3>
-      <h4>Jak grać</h4><div class="lgr"><span>Kliknij (na telefonie dotknij) spadający awatar — staje się piłeczką. Podbijaj ją, zanim spadnie na dół ekranu. Kliknięcie z boku odbija ją w przeciwną stronę.</span></div>
+      <h4>Jak grać</h4><div class="lgr"><span>${ODBIJAK ? 'Kliknij (na telefonie dotknij) spadający awatar — staje się piłeczką. Odbijaj ją odbijakiem: na komputerze jeździ za myszą, na telefonie przesuwaj palcem w dowolnym miejscu ekranu. Trafienie bliżej brzegu odbijaka posyła piłeczkę mocniej w tę stronę. Gra kończy się, gdy piłeczka minie odbijak.' : 'Kliknij (na telefonie dotknij) spadający awatar — staje się piłeczką. Podbijaj ją, zanim spadnie na dół ekranu. Kliknięcie z boku odbija ją w przeciwną stronę.'}</span></div>
       <div class="lgr"><span>Każde podbicie daje tyle punktów, ile wynosi mnożnik (u góry ekranu). Co 8 podbić piłeczka leci szybciej, a mnożnik rośnie o 0.1x.</span></div>${PK ? `
       <div class="lgr"><span>Z góry co kilka sekund spada nagroda — zbierasz ją, gdy piłeczka jej dotknie (kliknąć jej się nie da): 💧 Kropla +${PK_DROP}× mnożnik pkt, 🌊 Przypływ ×${PK_FLOW} punktów przez ${PK_FLOW_MS / 1000} s, ⚡ Iskra ${PK_SPARK_N} następne podbicia ×${PK_SPARK}, 🎁 Skarb — jedna z nich podwójnie.</span></div>` : ''}
       <div class="lgr"><span>Mniejsza piłeczka = trudniej, ale większy mnożnik (plakietka x1.3 lub x1.7). Awatary osób z top 10 forum z ostatnich 24 h dają premię: 1. +0.6x, 2. +0.4x, 3. +0.3x, 4.–10. +0.1x; lider dnia ma złotą ramkę z koroną.</span></div>
@@ -1054,7 +1085,7 @@
         const sd = dt * game.spd * (game.slow > t ? .45 : 1) * (.4 + .6 * wk * wk * (3 - 2 * wk)); // rozpędzanie 40% → 100% (płynnie) // po odbiciu od dołu chwilowe spowolnienie
         // test: po odbiciu od dołu piłeczka zatrzymuje się na szczycie i czeka na kliknięcie (chwila przerwy); po 1.5 s dymek :mellow:
         if (game.rise) { const p = Math.min(1, (t - game.rise.t0) / 3000); f.y = game.rise.y0 - game.rise.dy * (1 - (1 - p) ** 3); f.rot += f.vr * dt * (1 - p); // wznoszenie coraz wolniej (ease-out); obrót swobodny, wygasa razem z lotem
-          if (p >= 1) { game.rise = null; game.hover = t; f.vx = 0; f.vy = 0; f.vr = 0; game.rot0 = f.rot; game.rotTo = Math.round(f.rot / 360) * 360; } }
+          if (p >= 1 && ODBIJAK) { game.rise = null; game.warm = t; f.vx = 0; f.vy = 0; f.vr = 0; } else if (p >= 1) { game.rise = null; game.hover = t; f.vx = 0; f.vy = 0; f.vr = 0; game.rot0 = f.rot; game.rotTo = Math.round(f.rot / 360) * 360; } }
         // w bezruchu przez 1.5 s piłeczka płynnie obraca się do pionu, potem dymek :mellow:
         if (game.hover) { const k = Math.min(1, (t - game.hover) / 1500), e = k < .5 ? 2 * k * k : 1 - (2 - 2 * k) ** 2 / 2; f.rot = game.rot0 + (game.rotTo - game.rot0) * e; }
         if (game.hover || game.rise) { if (game.hover && !game.bubble && t - game.hover > 1500) { game.bubble = document.createElement('div'); game.bubble.className = 'mellow'; game.bubble.innerHTML = '<img src="' + MELLOW + '" alt=":mellow:">'; f.el.appendChild(game.bubble); } }
@@ -1064,8 +1095,18 @@
         if (f.x < A.l) { f.x = A.l; f.vx = Math.max(Math.abs(f.vx), 180 * game.k); }
         if (f.x > A.r - f.size) { f.x = A.r - f.size; f.vx = -Math.max(Math.abs(f.vx), 180 * game.k); }
         // brak sufitu: za mocno podbita piłeczka wylatuje nad ekran (nie da się jej wtedy kliknąć) — wskaźnik pokazuje, jak wysoko jest
-        if (SUFIT) { const above = Math.round(-(f.y + f.size)); if (above > 0) { nadEl.hidden = false; nadEl.style.left = (f.x + f.size / 2) + 'px'; nadEl.textContent = `↑ ${above} px`; } else nadEl.hidden = true; }
-        if (f.y < 0 && !SUFIT) { f.y = 0; f.vy = Math.max(Math.abs(f.vy) * .8, 260 * game.k); }
+        if (SUFIT && !ODBIJAK) { const above = Math.round(-(f.y + f.size)); if (above > 0) { nadEl.hidden = false; nadEl.style.left = (f.x + f.size / 2) + 'px'; nadEl.textContent = `↑ ${above} px`; } else nadEl.hidden = true; }
+        if (f.y < 0 && (!SUFIT || ODBIJAK)) { f.y = 0; f.vy = Math.max(Math.abs(f.vy) * .8, 260 * game.k); }
+        // odbijak: dół piłeczki przeciął w tej klatce górę belki, a piłeczka (do pół promienia poza brzegiem) jest nad nią → odbicie; Kapcie łapią do 1,5 promienia
+        if (ODBIJAK && !game.hover && !game.rise) {
+          const P = padRect(game), bot = f.y + f.size, cx = f.x + f.size / 2, r = f.size / 2;
+          if (f.vy > 0 && bot >= P.t && bot - f.vy * sd <= P.t + 1) {
+            const d = cx < P.l ? P.l - cx : cx > P.r ? cx - P.r : 0;
+            if (d <= r * .5) { f.y = P.t - f.size; hit(f, { pad: Math.max(-1, Math.min(1, (cx - P.x) / (P.w / 2 + r * .5))) }); }
+            else if (game.bans && d <= r * 1.5) { game.bans--; flash('🔨 Ban! Kapcie Moderatora uratowały piłeczkę'); f.y = P.t - f.size; hit(f, { pad: cx < P.x ? -1 : 1 }); }
+          }
+        }
+        if (ODBIJAK && game) { const P = padRect(game), ws = P.w + 'px'; if (padEl.style.width !== ws) { padEl.style.width = ws; padEl.style.height = P.h + 'px'; } padEl.style.transform = `translate(${P.l}px,${P.t}px)`; }
         // Kapcie: 🔨 w HUD świeci, gdy pudło liczy się jako podbicie
         if (game.bans) { const a = kapArmed(game); if (a !== !!game.armed) { game.armed = a; hud.querySelector('.kap')?.classList.toggle('arm', a); } }
         if (!TOUCH && (H < MIN_H || W < H * ASPECT)) { game.small = true; endGame(); break; } // okno zmniejszone w trakcie: normalny koniec gry z zapisem wyniku

@@ -339,7 +339,7 @@ CAP = {"stlum": .3, "ciezki": .25, "zreczny": .6, "olb": .25, "rozp": .6, "lowcy
 BRAV_MAX, ZUCH_MAX = 1.5, 0.6
 # najstarsza wersja zasad punktacji klienta (GRA_VER w gra.js); podbij przy zmianie punktów/szans sprawdzanych w /end.
 # Osobno dla testu: test i live mają osobne pliki gry, a main.py jest wspólny — podbicie tylko testowej wersji nie może przeładowywać live.
-GRA_MIN_VER = 4 if SUFFIX == "_test" else 3
+GRA_MIN_VER = 5 if SUFFIX == "_test" else 3  # test 5: odbijak
 MIN_GAP_MS = 90  # klient ignoruje kliki szybsze niż 100 ms; luz na zaokrąglenia
 # Nagrody spadające z góry (tylko test, od GRA_VER 4): zbiera je piłeczka dotknięciem, nie zmieniają lotu. Kopia stałych i pkType/harmonogramu z docs/test/gra.js.
 # Harmonogram i rodzaj z seeda biletu (roll k=4 odstęp, k=5 rodzaj, k=6 rodzaj w Skarbie, k=7 pozycja x — tylko klient).
@@ -563,7 +563,7 @@ def gra_end(req, j):
         flags.append("emu")  # tryb telefonu w narzędziach przeglądarki na komputerze (heurystyka)
     if num(st.get("untr")) and st["untr"] > 0:
         flags.append("skrypt")  # kliknięcia wywołane skryptem (gra je ignoruje)
-    if len(gaps) >= 30:
+    if len(gaps) >= 30 and SUFFIX != "_test":  # test: odbijak — odbicia mają naturalnie równe odstępy
         m = sum(gaps) / len(gaps)
         cv = math.sqrt(sum((x - m) ** 2 for x in gaps) / len(gaps)) / m if m else 0
         if cv < .1:
