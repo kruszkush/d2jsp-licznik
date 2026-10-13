@@ -893,6 +893,7 @@ def acc_admin(req, j):
     return cors(req, {**info, "kod": code[:4] + "-" + code[4:], "kod_wazny_do": upd["reset"]["exp"], "ekwipunek_rekordu": bool(upd.get("eq") or d.get("eq") and not d.get("pw"))})
 
 ACC_ROUTES = {acc_register, acc_login, acc_logout, acc_sessions, acc_password, acc_redeem, acc_merge, acc_admin}
+WYLACZONA = True  # 14.10.2026: gra i ranking schowane (oszustwa z rekordami); dane zostają w bazie — False, żeby przywrócić
 EQ_ROUTES = {"/start": gra_start, "/end": gra_end, "/drop": eq_drop, "/inv": eq_inv, "/equip": eq_equip, "/grant": eq_grant, "/view": eq_view,
              "/register": acc_register, "/login": acc_login, "/logout": acc_logout, "/sessions": acc_sessions,
              "/password": acc_password, "/redeem": acc_redeem, "/merge": acc_merge, "/admin": acc_admin}
@@ -901,6 +902,8 @@ EQ_ROUTES = {"/start": gra_start, "/end": gra_end, "/drop": eq_drop, "/inv": eq_
 def pileczka(req):
     if req.method == "OPTIONS":
         return cors(req, "", 204)
+    if WYLACZONA and (req.path.rstrip("/") or "/") in ("/", "/start", "/end", "/drop"):  # gra, zapis i ranking schowane
+        return cors(req, {"error": "Piłeczka jest wyłączona.", "top": [], "total": 0}, 403)
     h = EQ_ROUTES.get(req.path.rstrip("/") or "/")
     if h in ACC_ROUTES and not KONTA:
         return cors(req, {"error": "niedostępne"}, 404)

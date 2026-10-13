@@ -1,5 +1,7 @@
 // Spadające awatary + gra w podbijanie awatara. Ranking wspólny (funkcja w Google Cloud).
 (() => {
+  const WYLACZONA = true; // 14.10.2026: gra i ranking piłeczki schowane (oszustwa z rekordami) — false, żeby przywrócić
+  if (WYLACZONA) return;
   // Wersja testowa (/test/): osobna funkcja i kolekcje; ekwipunek włączony tylko tam
   const TEST = location.pathname.includes('/test/');
   const SUFIT = true; // zasady od 2.10.2026 (pełna siła podbicia bez sufitu — piłeczka może wylecieć nad ekran, odbicia za punkty, zawis, start ×1,25) — na obu stronach
