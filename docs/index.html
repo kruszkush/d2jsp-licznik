@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Licznik postów d2jsp 10.7</title>
+<title>Licznik postów d2jsp 10.8</title>
 <style>
 :root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e4e2dc;--acc:#b4441f;--bar:#d9825f;
  --gold:#c9961a;--gold2:#f3d46b;--goldbg:#fff8e3;--goldline:#efd89a;--silver:#9aa0a6;--bronze:#b3713f}
@@ -166,6 +166,10 @@ aside{position:sticky;top:16px}
 .cup.fire .fl{animation:flick .4s ease-in-out infinite alternate}
 @keyframes flick{from{transform:scale(.9,.84) skewX(-3deg)}to{transform:scale(1.06,1.1) skewX(3deg)}}
 .lavadrop{position:fixed;left:0;top:0;width:2.5px;height:2.5px;border-radius:50%;background:#ff4a1a;box-shadow:0 0 3px 1px rgba(255,60,10,.7);pointer-events:none;z-index:39}
+#snowfall{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:38;--sf:#8fb6d9} /* śnieg: drobne płatki nad treścią, pod grą i oknami (z-index 40+) */
+@media (prefers-color-scheme:dark){#snowfall{--sf:#eef6ff}}
+#snowfall i{position:absolute;top:0;left:0;border-radius:50%;background:var(--sf);will-change:transform;contain:layout}
+#snowfall i.f{background:none;border-radius:0;font-style:normal;line-height:1;color:var(--sf)} /* śnieżynka ❄ */
 .legend{max-width:1200px;margin:0 auto;padding:8px 16px 48px}
 .legend h2{font-size:15px;margin:0 0 10px}
 .lg{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
@@ -220,7 +224,7 @@ aside{position:sticky;top:16px}
 <div class="vtop" id="vtop"></div>
 <div class="wrap">
 <main>
-<h1>Licznik postów — d2jsp Polska <span class="ver">10.7</span></h1>
+<h1>Licznik postów — d2jsp Polska <span class="ver">10.8</span></h1>
 <p class="sub" id="sub">Ładowanie danych…</p>
 
 <div class="ranges" id="ranges">
@@ -474,6 +478,45 @@ document.addEventListener('scroll', () => { $('pie').hidden = true; }, { passive
     }
     requestAnimationFrame(loop);
   })(performance.now());
+})();
+
+// Śnieg: drobne płatki padają z góry i kołyszą się na boki (dekoracja strony, niezależna od gry — gra jest wyłączona).
+// Jedna pętla na wszystkie płatki, tylko transform (bez cieni, filtrów i pełnoekranowej przezroczystej warstwy) — tanio; bez ruchu przy reduced-motion.
+(() => {
+  const mq = matchMedia('(prefers-reduced-motion: reduce)');
+  if (mq.matches) return;
+  const box = document.createElement('div'); box.id = 'snowfall'; document.body.appendChild(box);
+  const ps = [];
+  let W = innerWidth, H = innerHeight, last = performance.now(), dead = false;
+  const want = () => innerWidth < 600 ? 26 : 44; // telefon: mniej płatków (szersze tło zasłonięte kartami)
+  function addFlake() {
+    const dot = Math.random() < .7, s = dot ? 2 + Math.random() * 3 : 9 + Math.random() * 5;
+    const el = document.createElement('i');
+    el.style.opacity = (.25 + Math.random() * .4).toFixed(2);
+    if (dot) el.style.width = el.style.height = s.toFixed(1) + 'px';
+    else { el.className = 'f'; el.textContent = '❄'; el.style.fontSize = s.toFixed(1) + 'px'; }
+    box.appendChild(el);
+    ps.push({ el, x: Math.random() * W, y: Math.random() * H, vy: 16 + Math.random() * 30, amp: 8 + Math.random() * 24, ph: Math.random() * 6.283, fr: .4 + Math.random() * 1.2, rot: Math.random() * 360, vr: (Math.random() - .5) * 60 });
+  }
+  const fill = () => { while (ps.length < want()) addFlake(); };
+  addEventListener('resize', () => {
+    W = innerWidth; H = innerHeight;
+    for (const p of ps) if (p.x > W) p.x = Math.random() * W;
+    fill();
+  });
+  mq.addEventListener?.('change', (e) => { if (e.matches) { dead = true; box.remove(); ps.length = 0; } });
+  fill();
+  (function tick(t) {
+    if (dead) return;
+    if (document.hidden) { last = t; requestAnimationFrame(tick); return; } // ukryta karta: bez pracy
+    const dt = Math.min(.05, (t - last) / 1000); last = t;
+    for (const p of ps) {
+      p.y += p.vy * dt; p.ph += p.fr * dt; p.rot += p.vr * dt;
+      if (p.y > H + 12) { p.y = -12; p.x = Math.random() * W; } // płatek poza dołem wraca na górę (bez tworzenia elementów)
+      p.el.style.transform = `translate3d(${(p.x + Math.sin(p.ph) * p.amp).toFixed(1)}px,${p.y.toFixed(1)}px,0) rotate(${p.rot.toFixed(0)}deg)`;
+    }
+    requestAnimationFrame(tick);
+  })(last);
 })();
 
 // Legenda na dole strony (ikony te same co w rankingu)
