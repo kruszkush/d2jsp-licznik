@@ -18,6 +18,8 @@ $env:CHROME_PATH = 'C:\Program Files\Google\Chrome\Application\chrome.exe'
 $env:PROFILE = "$env:LOCALAPPDATA\d2jsp-licznik-profil"
 $env:OFFSCREEN = '1'
 $env:D2_SOURCE = 'pc'
+# Lotnik: kody weryfikacji nicku i top 3 → serwer gry (scripts/lotnik-sync.mjs; sekret z E:\Vibe coding\lotnik-serwer.env)
+$env:LOTNIK_SYNC = 'https://us-east1-rich-chimera-344319.cloudfunctions.net/lotnik-test'
 node scripts/update.mjs *>> $log
 $code = $LASTEXITCODE
 node scripts/sync.mjs publish "Dane (PC): $(Get-Date -Format 'yyyy-MM-dd HH:mm')" *>> $log
