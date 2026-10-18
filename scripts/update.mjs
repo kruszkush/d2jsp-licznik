@@ -6,6 +6,7 @@
 import puppeteer from 'puppeteer-core';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { sourceState, canFinish, collectTopic, topicChanged } from './collector.mjs';
+import { VERIFY_T, queueCodes, lotnikSync } from './lotnik-sync.mjs';
 
 const F = Number(process.argv[2] || 230);
 const FILE = 'docs/data.json', STATE = 'state.json';
@@ -17,6 +18,7 @@ const FLOOR_OVERLAP = 6 * 3600e3; // dla tematów bez stanu: posty od (ostatni p
 const data = JSON.parse(readFileSync(FILE, 'utf8'));
 const st = existsSync(STATE) ? JSON.parse(readFileSync(STATE, 'utf8')) : { topics: {} };
 const START = Date.now();
+const LOTNIK = process.env.LOTNIK_SYNC || ''; // adres serwera Lotnika (scripts/lotnik-sync.mjs); puste = wyłączone
 const SOURCE = process.env.D2_SOURCE || (process.platform === 'win32' ? 'pc' : 'server');
 const src = sourceState(st, SOURCE);
 const report = (status, reason = '') => {
@@ -84,14 +86,17 @@ async function list(o) {
 }
 async function topicPage(t, o) { // o === 'last' → ostatnia strona (link „Goto last post”)
   await open(o === 'last' ? `topic.php?t=${t}&f=${F}&v=1` : `topic.php?t=${t}&f=${F}&o=${o}`);
-  return page.evaluate((t) => ({
+  return page.evaluate((t, withText) => ({
     pager: [...new Set([...document.querySelectorAll(`a[href*="topic.php?t=${t}&"]`)].map((a) => (a.getAttribute('href').match(/&o=(\d+)/) || [])[1]).filter(Boolean).map(Number))].sort((a, b) => a - b),
     title: (document.title || '').replace(/ - Topic - d2jsp$/, ''),
     posts: [...document.querySelectorAll('.ppc')].map((p) => {
       const u = p.querySelector('.pU a[href^="user.php"]');
-      return { id: p.querySelector('.bts')?.id.slice(2), user: u?.textContent.trim(), uid: u?.getAttribute('href').split('=')[1], date: p.querySelector('[id^="td"]')?.textContent, av: p.querySelector('.pU img.av')?.getAttribute('src') || '' };
+      // Lotnik: treść posta bez cytatów (kod LOT-xxxx) tylko w temacie weryfikacji i tylko z włączonym LOTNIK_SYNC
+      let text;
+      if (withText) { const b = p.querySelector('.bts')?.cloneNode(true); b?.querySelectorAll('.quote1,.quote2').forEach((q) => q.remove()); b?.querySelectorAll('br').forEach((x) => x.replaceWith('\n')); text = b?.textContent || ''; }
+      return { id: p.querySelector('.bts')?.id.slice(2), user: u?.textContent.trim(), uid: u?.getAttribute('href').split('=')[1], date: p.querySelector('[id^="td"]')?.textContent, av: p.querySelector('.pU img.av')?.getAttribute('src') || '', text };
     }).filter((p) => p.id),
-  }), t);
+  }), t, !!LOTNIK && String(t) === VERIFY_T);
 }
 
 // Pobiera nowe posty tematu: od ostatniej strony w dół, dopóki na stronie są posty nowsze od granicy.
@@ -100,6 +105,7 @@ async function doTopic(row) {
     exhausted: () => pages >= MAX_PAGES, save, started: START,
     seen(p) { if (p.uid) { data.users[p.uid] = p.user; if (p.av) (data.avatars ||= {})[p.uid] = p.av; } },
     consume(p, topic) {
+      if (LOTNIK && p.text) queueCodes(st, p, Math.round(ts(p.date) / 1000));
       if (known.has(p.id)) return;
       known.add(p.id); added++;
       data.posts.push([p.id, topic, p.uid || p.user, Math.round(ts(p.date) / 1000)]);
@@ -145,6 +151,7 @@ try {
 if (!complete && !reason) reason = 'pozostały tematy do uzupełnienia';
 report(complete ? 'complete' : src.blockedUntil > Date.now() ? 'blocked' : 'partial', reason);
 if (src.status !== 'blocked') src.okAt = Date.now(); // udana próba bez blokady (patrz pcHealthy)
+if (LOTNIK) console.log(await lotnikSync(st, data, { url: LOTNIK }).catch((e) => 'lotnik: błąd ' + e.message));
 const day = new Date().toISOString().slice(0, 10); (st.pagesByDay ||= {})[day] = (st.pagesByDay[day] || 0) + pages;
 save(); await browser.close();
 console.log(`${complete ? 'KOMPLET' : 'NIEDOKOŃCZONE: ' + reason} · podstron ${pages} · dodano ${added} · razem ${data.posts.length}`);
