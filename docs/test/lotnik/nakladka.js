@@ -4,13 +4,13 @@
 // Importy UI z ?v= (ta sama wartość wszędzie, podbijana razem z ?v= w strona/index.html), żeby
 // przeglądarka nie mieszała nowych i starych modułów. Moduły UI importują też sim.js i replay.js z ?v=;
 // tylko replay.js importuje './sim.js' bez ?v= (deploy.sh podmienia ten import na serwerze).
-import { createGame } from './game.js?v=33';
-import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=33';
-import { createInventory } from './inventory.js?v=33';
-import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=33';
-import { createKonto, KONTO_CSS } from './konto.js?v=33';
-import { createRanking, RANKING_CSS } from './ranking.js?v=33';
-import { KARTA_CSS, renderBall, renderMf, renderDrop, itemBox } from './karta.js?v=33';
+import { createGame } from './game.js?v=34';
+import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=34';
+import { createInventory } from './inventory.js?v=34';
+import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=34';
+import { createKonto, KONTO_CSS } from './konto.js?v=34';
+import { createRanking, RANKING_CSS } from './ranking.js?v=34';
+import { KARTA_CSS, renderBall, renderMf, renderDrop, itemBox } from './karta.js?v=34';
 
 const CSS = `
 .lotnik-fall{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:80}
@@ -561,16 +561,15 @@ let gate = null;
 function showGate() {
   if (gate) return;
   gate = el('form', 'lotnik-gate');
-  const label = el('span', 'lotnik-gate-t', 'Lotnik (test)');
   const input = el('input');
   input.type = 'password';
   input.placeholder = 'hasło';
   input.autocomplete = 'current-password';
   input.name = 'password';
-  const ok = el('button', 'lotnik-btn', 'Graj');
+  const ok = el('button', 'lotnik-btn', 'Zaloguj');
   ok.type = 'submit';
   const msg = el('div', 'lotnik-gate-m');
-  gate.append(label, input, ok, msg);
+  gate.append(input, ok, msg);
   gate.addEventListener('submit', function (e) {
     e.preventDefault();
     const val = input.value.trim();

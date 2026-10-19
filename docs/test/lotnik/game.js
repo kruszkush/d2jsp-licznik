@@ -1,10 +1,10 @@
 // game.js — gra-nakładka: pętla, wejście, kamera. Fizyka w sim.js, rysowanie w draw.js.
 // Canvas jest przezroczysty (clearRect) — przyciemniona strona licznika przebija spod spodu.
-import { create, step, DT, GEOM, START_TICKS_BACK, TICK, SPEED, SIM_VER, MAX_FLY_STEPS } from './sim.js?v=33';
-import { AIM_MAX_STEPS } from './replay.js?v=33';
-import { drawScene, COLORS } from './draw.js?v=33';
-import { createEfekty } from './efekty.js?v=33';
-import { modsFor } from './items.js?v=33';
+import { create, step, DT, GEOM, START_TICKS_BACK, TICK, SPEED, SIM_VER, MAX_FLY_STEPS } from './sim.js?v=34';
+import { AIM_MAX_STEPS } from './replay.js?v=34';
+import { drawScene, COLORS } from './draw.js?v=34';
+import { createEfekty } from './efekty.js?v=34';
+import { modsFor } from './items.js?v=34';
 
 const GROUND_MARGIN = 56;        // ile px zostawiamy pod linią ziemi
 const bestKey = 'lotnik.best';

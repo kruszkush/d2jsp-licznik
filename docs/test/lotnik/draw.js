@@ -1,8 +1,8 @@
 // draw.js — całe rysowanie nakładki. Tylko canvas 2D, bez fizyki.
 // Canvas jest przezroczysty: rysujemy postać, procę, bomby, platformy i HUD,
 // a przyciemniona strona licznika przebija z pod spodu (jeden div w nakladka.js).
-import { GEOM, TICK, PICKUP_BASE, arcMult, previewShot } from './sim.js?v=33';
-import { mfFromMeters } from './items.js?v=33';
+import { GEOM, TICK, PICKUP_BASE, arcMult, previewShot } from './sim.js?v=34';
+import { mfFromMeters } from './items.js?v=34';
 
 const TAU = Math.PI * 2;
 // Jeden pasek na środku u góry: dystans, MF za dystans, rekord, podrzuty. MF na żywo: równanie po lewej (drawMfLine).
