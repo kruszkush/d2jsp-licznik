@@ -4,13 +4,13 @@
 // Importy UI z ?v= (ta sama wartość wszędzie, podbijana razem z ?v= w strona/index.html), żeby
 // przeglądarka nie mieszała nowych i starych modułów. Moduły UI importują też sim.js i replay.js z ?v=;
 // tylko replay.js importuje './sim.js' bez ?v= (deploy.sh podmienia ten import na serwerze).
-import { createGame } from './game.js?v=34';
-import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=34';
-import { createInventory } from './inventory.js?v=34';
-import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=34';
-import { createKonto, KONTO_CSS } from './konto.js?v=34';
-import { createRanking, RANKING_CSS } from './ranking.js?v=34';
-import { KARTA_CSS, renderBall, renderMf, renderDrop, itemBox } from './karta.js?v=34';
+import { createGame } from './game.js?v=35';
+import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=35';
+import { createInventory } from './inventory.js?v=35';
+import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=35';
+import { createKonto, KONTO_CSS } from './konto.js?v=35';
+import { createRanking, RANKING_CSS } from './ranking.js?v=35';
+import { KARTA_CSS, renderBall, renderMf, renderDrop, itemBox } from './karta.js?v=35';
 
 const CSS = `
 .lotnik-fall{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:80}
@@ -358,7 +358,7 @@ function spawnOne(delay) {
   btn.type = 'button';
   btn.title = item.nick;
   btn.setAttribute('aria-label', 'Zagraj awatarem ' + item.nick);
-  const size = 34 + Math.random() * 18;
+  const size = 42 + Math.random() * 23;   // 42–65 px (20.10: +25% względem 34–52)
   btn.style.setProperty('--s', size.toFixed(0) + 'px');
   btn.style.setProperty('--t', (7 + Math.random() * 5).toFixed(2) + 's');
   btn.style.setProperty('--dx', ((Math.random() - 0.5) * 120).toFixed(0) + 'px');
