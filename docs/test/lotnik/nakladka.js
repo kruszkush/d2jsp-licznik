@@ -1,0 +1,667 @@
+// nakladka.js — gra „Lotnik” jako nakładka na stronie licznika postów d2jsp.
+// Wejście: strona/index.html (ładuje ../nakladka.js). Czeka na globalne D, sypie
+// awatarami graczy, a po kliknięciu awatara przyciemnia stronę i uruchamia grę.
+// Importy UI z ?v= (ta sama wartość wszędzie, podbijana razem z ?v= w strona/index.html), żeby
+// przeglądarka nie mieszała nowych i starych modułów. Moduły UI importują też sim.js i replay.js z ?v=;
+// tylko replay.js importuje './sim.js' bez ?v= (deploy.sh podmienia ten import na serwerze).
+import { createGame } from './game.js?v=33';
+import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=33';
+import { createInventory } from './inventory.js?v=33';
+import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=33';
+import { createKonto, KONTO_CSS } from './konto.js?v=33';
+import { createRanking, RANKING_CSS } from './ranking.js?v=33';
+import { KARTA_CSS, renderBall, renderMf, renderDrop, itemBox } from './karta.js?v=33';
+
+const CSS = `
+.lotnik-fall{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:80}
+.lotnik-fall button{position:absolute;top:-80px;pointer-events:auto;touch-action:manipulation;width:var(--s,42px);height:var(--s,42px);padding:0;border:2px solid rgba(255,255,255,.45);border-radius:50%;background-color:#334155;background-position:center;background-size:cover;background-repeat:no-repeat;box-shadow:0 3px 10px rgba(0,0,0,.35);cursor:pointer;animation:lotnikFall var(--t,10s) linear forwards;will-change:transform;-webkit-tap-highlight-color:transparent;color:#fff;font:700 15px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.lotnik-fall button:focus-visible{outline:3px solid #fbbf24;outline-offset:2px}
+@keyframes lotnikFall{from{transform:translate3d(0,0,0) rotate(0)}to{transform:translate3d(var(--dx,0px),calc(100vh + 100px),0) rotate(var(--r,40deg))}}
+.lotnik-tip{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:81;pointer-events:none;background:rgba(15,23,42,.86);color:#f8fafc;font:600 12px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:9px 14px;border-radius:999px;border:1px solid rgba(248,250,252,.22);white-space:nowrap;max-width:calc(100vw - 24px);overflow:hidden;text-overflow:ellipsis}
+.lotnik-dim{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:90}
+.lotnik-stage{position:fixed;inset:0;z-index:91}
+.lotnik-canvas{display:block;width:100%;height:100%;touch-action:none;background:transparent;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;cursor:pointer}
+.lotnik-top{position:absolute;top:10px;right:10px;display:flex;gap:8px;align-items:flex-start;z-index:2}
+.lotnik-btn{font:600 12px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#f8fafc;background:rgba(15,23,42,.86);border:1px solid rgba(248,250,252,.25);border-radius:999px;padding:10px 14px;cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent}
+.lotnik-btn:hover{border-color:rgba(251,191,36,.85)}
+.lotnik-x{width:35px;height:35px;padding:0;font-size:15px;line-height:1}
+.lotnik-card{position:absolute;left:50%;top:calc(50% + 24px);transform:translate(-50%,-50%);width:min(340px,calc(100vw - 32px));max-height:calc(100vh - 72px);max-height:calc(100dvh - 72px);overflow:auto;box-sizing:border-box;background:rgba(15,23,42,.985);border:1px solid rgba(248,250,252,.22);border-radius:16px;padding:18px 16px 16px;text-align:center;color:#f8fafc;box-shadow:0 18px 50px rgba(0,0,0,.5);z-index:3;font:500 13px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.lotnik-card .lt-top{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:2px}
+.lotnik-card .lt-top .lt-acc-nick{margin:0;min-width:0;font-size:17px}
+.lotnik-card .lt-top .lt-acc-nick>a,.lotnik-card .lt-top .lt-acc-nick>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lotnik-card .lt-top .lt-av{width:34px;height:34px}
+.lotnik-card .lt-dot{color:#64748b;font-size:22px;font-weight:800}
+.lotnik-card .lt-top .lt-acc-nick[hidden]+.lt-dot{display:none}
+.lotnik-card .lt-score{flex:none;font-size:34px;font-weight:800;line-height:1.1;color:#fbbf24;white-space:nowrap}
+.lotnik-card .lt-note{font-size:12px;font-weight:600;color:#e2e8f0}
+.lotnik-card .lt-win{margin-top:6px;font-size:15px;font-weight:700;color:#facc15;line-height:1.35}
+.lotnik-card .lt-win small{display:block;font-size:12px;font-weight:600;color:#fde68a}
+.lotnik-card .lt-meta{font-size:11px;color:#94a3b8;margin-top:4px;white-space:pre-line}
+.lotnik-card .lt-meta:empty{display:none}
+.lotnik-card .lt-meta-err{color:#fca5a5}
+.lotnik-card .lt-row{display:flex;gap:8px;margin-top:14px}
+.lotnik-card .lt-btn{flex:1;padding:13px 8px;border-radius:10px;font-size:14px}
+.lotnik-card .lt-primary{background:#fbbf24;border-color:#fbbf24;color:#111827;font-weight:800}
+.lotnik-card .lt-primary:hover{background:#fcd34d}
+.lotnik-card .lt-row2{display:flex;gap:8px;margin-top:8px}
+.lotnik-card .lt-row2 .lotnik-btn{flex:1;padding:9px 8px;font-size:11px}
+.lotnik-inv{position:absolute;left:50%;top:7%;transform:translateX(-50%);width:min(420px,calc(100vw - 24px));max-height:86vh;overflow:auto;background:rgba(15,23,42,.98);border:1px solid rgba(248,250,252,.22);border-radius:16px;padding:14px;color:#f8fafc;box-shadow:0 18px 50px rgba(0,0,0,.55);z-index:4;font:500 12px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.lotnik-inv h3{font-size:15px;margin:0 0 10px;padding-right:34px}
+.lotnik-inv .lt-slot{border-top:1px solid rgba(248,250,252,.12);padding:8px 0}
+.lotnik-inv .lt-slot:first-child{border-top:0;padding-top:0}
+.lotnik-inv .lt-slot-label{font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em}
+.lotnik-inv .lt-item{margin-top:5px}
+.lotnik-inv .lt-slot-empty{font-size:11px;color:#64748b;margin-top:2px}
+.lotnik-inv .lt-inv-mods{margin-top:10px;padding-top:8px;border-top:1px solid rgba(248,250,252,.12);font-size:10px;color:#94a3b8;line-height:1.5}
+.lotnik-inv .lt-inv-close{position:absolute;right:8px;top:8px;width:30px;height:30px;padding:0;font-size:13px;line-height:1}
+.lotnik-gate{position:fixed;right:12px;bottom:12px;z-index:81;display:flex;flex-wrap:wrap;gap:6px;align-items:center;max-width:calc(100vw - 24px);box-sizing:border-box;background:rgba(15,23,42,.92);border:1px solid rgba(248,250,252,.22);border-radius:12px;padding:8px 10px;color:#f8fafc;font:600 12px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.lotnik-gate input{width:120px;font:500 14px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:8px 10px;border-radius:8px;border:1px solid rgba(248,250,252,.3);background:#0f172a;color:#f8fafc}
+.lotnik-gate-m{flex-basis:100%;color:#fca5a5;font-weight:500}
+.lotnik-gate-m:empty{display:none}
+.lotnik-fall[hidden],.lotnik-tip[hidden],.lotnik-dim[hidden],.lotnik-stage[hidden],.lotnik-card[hidden],.lotnik-inv[hidden]{display:none!important}
+`;
+
+const SPAWN_MS = 700;        // co ile pojawia się nowy awatar
+const MAX_FALLING = 10;      // ile awatarów naraz na ekranie
+const POOL_MAX = 32;
+
+let pool = [];
+
+// Top 3 rankingu (kolejność `pool` = wg liczby postów) to właściciele łuków Magic Find.
+const OWNER_PLACES = [{ mult: 4, size: 10 }, { mult: 3, size: 8 }, { mult: 2, size: 6 }];
+function topOwners(list) {
+  return list.slice(0, OWNER_PLACES.length).map(function (it, i) {
+    return { mult: OWNER_PLACES[i].mult, size: OWNER_PLACES[i].size, uid: it.uid, url: it.url };
+  });
+}
+
+let layer = null, tip = null, dim = null, stage = null, canvas = null;
+let card = null, cardScore = null, cardWin = null, cardNote = null, cardMeta = null, cardBall = null, cardMf = null;
+let curItem = null;
+let cardDrop = null, cardInv = null, konto = null, ranking = null, cardStatus = null;
+let invPanel = null, invBody = null;
+let inventory = null, ekw = null;            // inventory.js (serwer) i panel ekwipunek.js
+let pendingDrop = null, dropState = null;    // drop z /end i jego stan na karcie
+let eqVer = 0;                               // zmiana założonych przedmiotów unieważnia bilet w zapasie (stare mody)
+let spawnTimer = 0;
+let game = null;
+let active = false;
+let opening = false;
+const TIP_TEXT = 'Kliknij spadający awatar, żeby zagrać';
+
+// --- serwer: bilet partii (/start) i zapis wyniku (/end) ----------------------
+// Bez sieci gra działa dalej, wynik jest „niezapisany” (game.js: bez biletu ziarno lokalne).
+const API = 'https://us-east1-rich-chimera-344319.cloudfunctions.net/lotnik-test';
+const TICKET_FRESH_MS = 90 * 1000;   // starszy bilet w zapasie pobieramy od nowa (serwer liczy czas od /start)
+let spare = null;                    // { t: bilet, at: ms } — zapas na „Zagraj jeszcze raz”
+let fetching = null;
+let spareTimer = 0;
+let endSeq = 0;
+
+// Hasło testerów (serwer testowy wymaga go w nagłówku). Odpowiedź z `haslo` = złe/zmienione: kasujemy zapis,
+// a po zamknięciu gry wraca panel hasła (gateIfLocked).
+const HASLO_KEY = 'lotnik.haslo';
+function haslo() {
+  try { return localStorage.getItem(HASLO_KEY) || ''; } catch (err) { return ''; }
+}
+
+function apiPost(path, body, ms) {
+  const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+  const tm = ctl ? setTimeout(function () { ctl.abort(); }, ms) : 0;
+  const headers = { 'Content-Type': 'application/json' };
+  if (haslo()) headers['X-Lotnik-Haslo'] = haslo();
+  return fetch(API + path, {
+    method: 'POST',
+    headers: headers,
+    body: JSON.stringify(body || {}),
+    signal: ctl ? ctl.signal : undefined
+  }).then(function (r) {
+    return r.json().catch(function () { return {}; }).then(function (j) {
+      if (j && j.haslo) { try { localStorage.removeItem(HASLO_KEY); } catch (err) { /* bez zapisu */ } }
+      return { ok: r.ok, j: j || {} };
+    });
+  }).catch(function () {
+    return { ok: false, j: { error: 'brak połączenia' } };
+  }).finally(function () { clearTimeout(tm); });
+}
+
+// Serwer podaje top 3 jako uid (z licznika, /sync) — obrazki łuków bierzemy z awatarów strony.
+function withOwnerUrls(t) {
+  const data = readData(), av = (data && data.avatars) || {};
+  if (Array.isArray(t.owners)) t.owners = t.owners.map(function (o) { return Object.assign({}, o, { url: av[o.uid] || '' }); });
+  return t;
+}
+
+// Bilet niesie mody z założonych przedmiotów (serwer liczy je z ekwipunku token|key).
+function fetchTicket() {
+  if (fetching) return fetching;
+  const ver = eqVer;
+  fetching = apiPost('/start', inventory ? inventory.ident() : {}, 4000).then(function (r) {
+    fetching = null;
+    if (ver !== eqVer) return fetchTicket();   // w międzyczasie zmiana ekwipunku: ten bilet ma stare mody
+    if (r.ok && typeof r.j.g === 'string' && Number.isInteger(r.j.seed)) spare = { t: withOwnerUrls(r.j), at: Date.now() };
+    return spare;
+  });
+  return fetching;
+}
+
+function onEquipChange(slotsChanged) {
+  if (!slotsChanged) return;
+  eqVer++;
+  spare = null;
+  if (game) game.setLoadout(inventory.equipped());   // partia lokalna (bez biletu) gra z tym, co założone
+  if (active) fetchTicket();
+}
+
+function freshSpare() {
+  return spare && Date.now() - spare.at < TICKET_FRESH_MS ? spare.t : null;
+}
+
+// Dla game.js (restart): bilet z zapasu albo null (= partia lokalna); od razu pobiera kolejny.
+function takeTicket() {
+  const t = freshSpare();
+  spare = null;
+  fetchTicket();
+  return t;
+}
+
+// Bilet na pierwszą partię: czekamy krótko na serwer (plansza powstaje z ziarna przy starcie gry).
+function firstTicket() {
+  const t = freshSpare();
+  if (t) return Promise.resolve(takeTicket());
+  return new Promise(function (res) {
+    let done = false;
+    const tm = setTimeout(function () { done = true; res(null); }, 3000);
+    fetchTicket().then(function () {
+      if (done) return;              // za późno: bilet zostaje w zapasie na restart
+      done = true;
+      clearTimeout(tm);
+      res(takeTicket());
+    });
+  });
+}
+
+// Zapas biletu odświeżany, póki gra jest otwarta (żeby restart nie czekał na serwer).
+function keepSpare() {
+  if (active && !freshSpare()) fetchTicket();
+}
+
+// Wynik partii z biletem idzie do serwera; serwer sam odtwarza lot i odsyła metry.
+function sendResult(onDone) {
+  const run = window.lotnikLastRun;
+  if (!run || !run.saved || !run.ticket || !run.ticket.g) { onDone({ saved: false, why: 'gra bez połączenia' }); return; }
+  const body = Object.assign({ g: run.ticket.g, inputs: run.inputs, ball: curItem ? { uid: curItem.uid, nick: curItem.nick } : null },
+    inventory ? inventory.ident() : {});
+  apiPost('/end', body, 15000).then(function (r) {
+    if (r.ok && typeof r.j.r === 'string') onDone({ saved: true, meters: r.j.meters, r: r.j.r, gid: r.j.gid, przedmiot: r.j.przedmiot || null });
+    else onDone({ saved: false, why: r.j.stale ? 'odśwież stronę' : (r.j.error || 'błąd serwera') });
+  });
+}
+
+function el(tag, cls, text) {
+  const node = document.createElement(tag);
+  if (cls) node.className = cls;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function injectCss() {
+  const style = el('style');
+  style.textContent = CSS + KARTA_CSS + KONTO_CSS + RANKING_CSS + EKW_CSS;
+  document.head.appendChild(style);
+}
+
+// --- spadające awatary -------------------------------------------------------
+
+function build() {
+  layer = el('div', 'lotnik-fall');
+  tip = el('div', 'lotnik-tip', TIP_TEXT);
+  dim = el('div', 'lotnik-dim');
+  dim.hidden = true;
+
+  stage = el('div', 'lotnik-stage');
+  stage.hidden = true;
+  canvas = el('canvas', 'lotnik-canvas');
+
+  const top = el('div', 'lotnik-top');
+  const closeBtn = el('button', 'lotnik-btn lotnik-x', '✕');
+  closeBtn.type = 'button';
+  closeBtn.setAttribute('aria-label', 'Zamknij grę');
+  top.appendChild(closeBtn);
+
+  card = el('div', 'lotnik-card');
+  card.hidden = true;
+  cardScore = el('div', 'lt-score');
+  // Lot do bezpiecznika 10 min: koniec gry, dalej się nie da.
+  cardWin = el('div', 'lt-win');
+  cardWin.appendChild(document.createTextNode('Koniec gry! Pokonałeś grę, gratulacje!'));
+  cardWin.appendChild(el('small', null, 'Doleciałeś do granicy 10 minut lotu, dalej się już nie da.'));
+  cardWin.hidden = true;
+  cardNote = el('div', 'lt-note');
+  cardMeta = el('div', 'lt-meta');
+  cardBall = el('div', 'lt-ball');
+  cardMf = el('div', 'lt-mf');
+  cardDrop = el('div', 'lt-drop');
+  cardDrop.hidden = true;
+  // Jeden główny przycisk („Zagraj jeszcze raz”), reszta drugorzędna w rzędzie pod nim.
+  const row = el('div', 'lt-row');
+  const again = el('button', 'lotnik-btn lt-btn lt-primary', 'Zagraj jeszcze raz');
+  again.type = 'button';
+  row.appendChild(again);
+  konto = createKonto(apiPost, el, function () { const d = readData(); return d && d.avatars; }, function (msg, err) {
+    if (cardStatus) cardStatus(msg, err);
+  }, function (loggedIn) {
+    // Logowanie/rejestracja: /inv z tokenem i kluczem scala przedmioty gościa; wylogowanie: nowy klucz gościa.
+    if (!loggedIn) inventory.rotateKey();
+    inventory.load();
+  });
+  inventory = createInventory(apiPost, konto.token);
+  inventory.onChange(onEquipChange);
+  // Góra karty: [awatar] nick · metry (nick tylko z kontem; bez konta same metry).
+  const cardTop = el('div', 'lt-top');
+  cardTop.appendChild(konto.player);
+  cardTop.appendChild(el('span', 'lt-dot', '·'));
+  cardTop.appendChild(cardScore);
+  card.appendChild(cardTop);
+  card.appendChild(cardWin);
+  card.appendChild(cardNote);
+  card.appendChild(cardBall);
+  card.appendChild(cardMeta);
+  card.appendChild(cardMf);
+  card.appendChild(cardDrop);
+  card.appendChild(konto.node);
+  card.appendChild(el('div', 'lt-sep'));
+  card.appendChild(row);
+  const row2 = el('div', 'lt-row2');
+  cardInv = el('button', 'lotnik-btn lt-inv', 'Ekwipunek');
+  cardInv.type = 'button';
+  const cardRank = el('button', 'lotnik-btn lt-rank-btn', 'Ranking');
+  cardRank.type = 'button';
+  const quit = el('button', 'lotnik-btn lt-quit', 'Zamknij');
+  quit.type = 'button';
+  row2.appendChild(cardInv);
+  row2.appendChild(cardRank);
+  row2.appendChild(quit);
+  card.appendChild(row2);
+  card.appendChild(konto.out);
+  ranking = createRanking(apiPost, el, konto.token, function () { const d = readData(); return d && d.avatars; });
+
+  invPanel = el('div', 'lotnik-inv');
+  invPanel.hidden = true;
+  const invTitle = el('h3', null, 'Ekwipunek');
+  const invClose = el('button', 'lotnik-btn lotnik-x lt-inv-close', '✕');
+  invClose.type = 'button';
+  invClose.setAttribute('aria-label', 'Zamknij ekwipunek');
+  invBody = el('div');
+  invPanel.appendChild(invTitle);
+  invPanel.appendChild(invClose);
+  invPanel.appendChild(invBody);
+  ekw = createEkwipunek({ inv: inventory, el: el, body: invBody, avatars: function () { const d = readData(); return d && d.avatars; } });
+  inventory.onChange(function () { if (!invPanel.hidden) ekw.render(); if (pendingDrop) showDrop(pendingDrop); });
+
+  stage.appendChild(canvas);
+  stage.appendChild(top);
+  stage.appendChild(card);
+  stage.appendChild(invPanel);
+  stage.appendChild(ranking.node);
+
+  document.body.appendChild(layer);
+  document.body.appendChild(tip);
+  document.body.appendChild(dim);
+  document.body.appendChild(stage);
+
+  closeBtn.addEventListener('click', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    closeGame();
+  });
+  again.addEventListener('click', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    card.hidden = true;
+    showDrop(null);
+    invPanel.hidden = true;
+    ranking.hide();
+    pendingDrop = null;
+    dropState = null;
+    if (game) game.restart(true);
+  });
+  quit.addEventListener('click', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    closeGame();
+  });
+  cardInv.addEventListener('click', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    ranking.hide();
+    openInventory();
+  });
+  cardRank.addEventListener('click', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    invPanel.hidden = true;
+    ranking.open();
+  });
+  invClose.addEventListener('click', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    invPanel.hidden = true;
+    if (pendingDrop) showDrop(pendingDrop);   // po zniszczeniu czegoś drop da się już zatrzymać
+  });
+}
+
+function spawnOne(delay) {
+  if (active || !layer || layer.childElementCount >= MAX_FALLING || pool.length === 0) return;
+  const item = pool[Math.floor(Math.random() * pool.length)];
+  const btn = el('button');
+  btn.type = 'button';
+  btn.title = item.nick;
+  btn.setAttribute('aria-label', 'Zagraj awatarem ' + item.nick);
+  const size = 34 + Math.random() * 18;
+  btn.style.setProperty('--s', size.toFixed(0) + 'px');
+  btn.style.setProperty('--t', (7 + Math.random() * 5).toFixed(2) + 's');
+  btn.style.setProperty('--dx', ((Math.random() - 0.5) * 120).toFixed(0) + 'px');
+  btn.style.setProperty('--r', ((Math.random() - 0.5) * 160).toFixed(0) + 'deg');
+  btn.style.left = (4 + Math.random() * 88).toFixed(1) + '%';
+  btn.style.backgroundImage = 'url("' + item.url.replace(/"/g, '%22') + '")';
+  // Ujemne opóźnienie = awatar zaczyna lot w środku ekranu (pierwsze sztuki).
+  if (delay) btn.style.animationDelay = '-' + delay + 's';
+  btn.addEventListener('animationend', function () { btn.remove(); });
+  btn.addEventListener('click', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    openGame(item);
+  });
+  layer.appendChild(btn);
+}
+
+function startSpawning() {
+  if (spawnTimer || active || !layer || pool.length === 0) return;
+  layer.hidden = false;
+  tip.hidden = false;
+  spawnOne(2.5);
+  spawnOne(6);
+  spawnTimer = setInterval(spawnOne, SPAWN_MS);
+}
+
+function stopSpawning() {
+  if (spawnTimer) {
+    clearInterval(spawnTimer);
+    spawnTimer = 0;
+  }
+}
+
+// --- start / koniec gry ------------------------------------------------------
+
+
+function openGame(item) {
+  if (active || opening || !item) return;
+  opening = true;
+  tip.textContent = 'Łączenie z serwerem…';
+  firstTicket().then(function (ticket) {
+    opening = false;
+    tip.textContent = TIP_TEXT;
+    startGame(item, ticket);
+  });
+}
+
+function startGame(item, ticket) {
+  if (active) return;
+  active = true;
+  curItem = item;
+  clearInterval(spareTimer);
+  spareTimer = setInterval(keepSpare, 30 * 1000);
+  stopSpawning();
+  layer.hidden = true;
+  // Czyścimy spadające awatary: ich animacje i tak są wstrzymane, a po powrocie
+  // do strony startSpawning() od razu wpuszcza nowe.
+  layer.replaceChildren();
+  tip.hidden = true;
+  card.hidden = true;
+  showDrop(null);
+  invPanel.hidden = true;
+  ranking.hide();
+  pendingDrop = null;
+  dropState = null;
+  if (!inventory.loaded()) inventory.load();
+  dim.hidden = false;
+  stage.hidden = false;
+  // Strona pod spodem stoi (bez przewijania i animacji), ranking prześwituje.
+  document.body.classList.add('playing');
+  document.documentElement.style.overflow = 'hidden';
+
+  game = createGame({
+    canvas: canvas,
+    avatarUrl: item.url,
+    owners: topOwners(pool),
+    nick: item.nick,
+    loadout: inventory.equipped(),
+    ticket: ticket,
+    nextTicket: takeTicket,
+    onEnd: showResult,
+    onClose: closeGame
+  });
+  // Podgląd partii w konsoli (faza, dystans, ziarno) — do sprawdzania bez UI.
+  window.lotnikInfo = function () { return game ? game.info() : null; };
+}
+
+function showResult(result) {
+  cardScore.textContent = result.meters + ' m';
+  cardWin.hidden = !result.beaten;
+  cardNote.textContent = result.newRecord ? 'Nowy rekord!' : 'Rekord: ' + result.best + ' m';
+  renderBall(cardBall, curItem);
+  renderMf(cardMf, result.mf || 0, result.meters);
+  pendingDrop = null;
+  dropState = null;
+  showDrop(null);
+  card.hidden = false;
+  const seq = ++endSeq;
+  // Linia statusu (bez statystyk lotu): zapis na serwerze, potem komunikat konta (konto.js) w jej miejscu; błąd na czerwono.
+  // Pusty msg = linia znika (wynik na koncie widać po nicku obok metrów).
+  const status = function (msg, err) {
+    cardMeta.textContent = '';
+    if (msg) cardMeta.appendChild(el('span', err ? 'lt-meta-err' : null, msg));
+  };
+  cardStatus = function (msg, err) { if (seq === endSeq) status(msg, err); };
+  konto.hide();
+  status(result.saved ? 'Zapisywanie wyniku…' : 'Wynik niezapisany (gra bez połączenia)');
+  if (!result.saved) return;
+  sendResult(function (res) {
+    if (seq !== endSeq || !active) return;   // w międzyczasie nowa partia albo zamknięta gra
+    if (res.saved) {
+      cardScore.textContent = res.meters + ' m';
+      status('Wynik zapisany na serwerze');
+      const p = res.przedmiot;
+      if (p && p.inv) inventory.set(p.inv);
+      if (p && p.drop) {
+        pendingDrop = p.drop;
+        dropState = { equipped: !!p.equipped, msg: p.lost ? 'Poprzedni nierozstrzygnięty przedmiot przepadł (pełna skrzynia).' : '' };
+        showDrop(pendingDrop);
+      }
+    } else {
+      status('Wynik niezapisany (' + res.why + ')');
+    }
+    konto.onResult(res);
+  });
+}
+
+// --- drop i ekwipunek --------------------------------------------------------
+
+// Drop na karcie (karta.js); póki czeka na decyzję, „Ekwipunek” jest pod Załóż/Odrzuć, nie w dolnym rzędzie.
+// „Masz” = założony przedmiot tego typu.
+function currentFor(type) {
+  const doc = inventory.doc();
+  for (let i = 0; i < SLOT_ORDER.length; i++) {
+    const s = SLOT_ORDER[i];
+    if (slotAccepts(s, type) && doc.slots[s]) return doc.slots[s];
+  }
+  return null;
+}
+
+function showDrop(drop) {
+  const st = drop ? Object.assign({}, dropState, { full: !(dropState && dropState.equipped) && inventory.free() === 0 }) : null;
+  renderDrop(cardDrop, drop, drop && !(st && st.equipped) ? currentFor(drop.type) : null, {
+    equip: function () { dropAct('equip', 'Założono: '); },
+    keep: function () { dropAct('keep', 'Do skrzyni: '); },
+    toss: function () { dropAct('destroy', 'Odrzucono: '); },
+    inv: function () { ranking.hide(); openInventory(); }
+  }, st);
+  cardInv.hidden = !!drop && !(st && st.equipped);
+}
+
+function dropAct(action, label) {
+  const drop = pendingDrop;
+  if (!drop || (dropState && dropState.equipped)) return;
+  inventory.act(action, drop.id).then(function (r) {
+    if (pendingDrop !== drop) return;
+    if (r.error) {
+      dropState = Object.assign({}, dropState, { msg: r.error });
+      showDrop(drop);
+      return;
+    }
+    pendingDrop = null;
+    dropState = null;
+    showDrop(null);
+    cardNote.textContent = label + itemName(drop);
+  });
+}
+
+function openInventory() {
+  ekw.open();
+  invPanel.hidden = false;
+}
+
+function closeGame() {
+  if (!active) return;
+  if (game) {
+    game.destroy();
+    game = null;
+  }
+  active = false;
+  clearInterval(spareTimer);
+  endSeq++;
+  window.lotnikInfo = null;
+  pendingDrop = null;
+  dropState = null;
+  card.hidden = true;
+  showDrop(null);
+  invPanel.hidden = true;
+  ranking.hide();
+  stage.hidden = true;
+  dim.hidden = true;
+  document.body.classList.remove('playing');
+  document.documentElement.style.overflow = '';
+  if (!gateIfLocked()) setTimeout(startSpawning, 400);
+}
+
+// --- panel hasła testerów ----------------------------------------------------
+// Bez zapisanego hasła zamiast awatarów jest mały panel w rogu; dobre hasło → zapis i awatary.
+let gate = null;
+function showGate() {
+  if (gate) return;
+  gate = el('form', 'lotnik-gate');
+  const label = el('span', 'lotnik-gate-t', 'Lotnik (test)');
+  const input = el('input');
+  input.type = 'password';
+  input.placeholder = 'hasło';
+  input.autocomplete = 'current-password';
+  input.name = 'password';
+  const ok = el('button', 'lotnik-btn', 'Graj');
+  ok.type = 'submit';
+  const msg = el('div', 'lotnik-gate-m');
+  gate.append(label, input, ok, msg);
+  gate.addEventListener('submit', function (e) {
+    e.preventDefault();
+    const val = input.value.trim();
+    if (!val) return;
+    ok.disabled = true;
+    msg.textContent = '';
+    try { localStorage.setItem(HASLO_KEY, val); } catch (err) { /* bez zapisu nie zadziała */ }
+    apiPost('/haslo', {}, 6000).then(function (r) {
+      ok.disabled = false;
+      if (r.ok && r.j.ok) {
+        gate.remove();
+        gate = null;
+        startSpawning();
+        return;
+      }
+      if (!r.j.haslo) { try { localStorage.removeItem(HASLO_KEY); } catch (err) { /* nic */ } }
+      msg.textContent = r.j.haslo ? 'Złe hasło' : (r.j.error || 'Brak połączenia');
+    });
+  });
+  document.body.appendChild(gate);
+}
+
+// Brak hasła: chowa awatary i pokazuje panel. Zwraca true, gdy zablokowane.
+function gateIfLocked() {
+  if (haslo()) return false;
+  stopSpawning();
+  if (layer) layer.hidden = true;
+  if (tip) tip.hidden = true;
+  showGate();
+  return true;
+}
+
+// --- dane strony -------------------------------------------------------------
+
+// Strona licznika trzyma dane w globalnym `let D` (klasyczny <script>).
+// Moduł czyta ten sam globalny zasięg; w razie TDZ/braku danych po prostu czekamy.
+function readData() {
+  try {
+    if (typeof D !== 'undefined' && D && Array.isArray(D.posts)) return D;
+  } catch (err) { /* D jeszcze nie istnieje */ }
+  return null;
+}
+
+function buildPool(data) {
+  const avatars = data.avatars || {};
+  const users = data.users || {};
+  const counts = new Map();
+  for (let i = 0; i < data.posts.length; i++) {
+    const uid = String(data.posts[i][2]);
+    counts.set(uid, (counts.get(uid) || 0) + 1);
+  }
+  const list = [];
+  const seen = new Set();
+  const sorted = Array.from(counts.entries()).sort(function (a, b) { return b[1] - a[1]; });
+  for (let i = 0; i < sorted.length && list.length < POOL_MAX; i++) {
+    const uid = sorted[i][0];
+    const url = avatars[uid];
+    if (!url || seen.has(url)) continue;
+    seen.add(url);
+    list.push({ uid: uid, url: url, nick: users[uid] || uid });
+  }
+  if (list.length === 0) {
+    // Gdyby nikt z piszących nie miał awatara — bierzemy wszystkich, którzy mają.
+    const keys = Object.keys(avatars);
+    for (let i = 0; i < keys.length && list.length < POOL_MAX; i++) {
+      list.push({ uid: keys[i], url: avatars[keys[i]], nick: users[keys[i]] || keys[i] });
+    }
+  }
+  return list;
+}
+
+function init() {
+  let tries = 0;
+  const timer = setInterval(function () {
+    tries++;
+    const data = readData();
+    if (!data) {
+      if (tries > 600) clearInterval(timer);   // ~60 s czekania i koniec
+      return;
+    }
+    clearInterval(timer);
+    pool = buildPool(data);
+    if (pool.length === 0) return;             // brak awatarów — nie ma czego uruchamiać
+    injectCss();
+    build();
+    if (!gateIfLocked()) startSpawning();
+  }, 100);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
