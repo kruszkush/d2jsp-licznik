@@ -22,6 +22,8 @@ export const KONTO_CSS = `
 .lotnik-card .lt-logout-yes{color:#f87171}
 .lotnik-card .lt-acc-red{color:#f87171}
 .lotnik-card .lt-acc-msg{margin-top:5px;color:#cbd5e1;line-height:1.35;white-space:pre-line}
+.lotnik-card .lt-acc-msg.lt-acc-red{color:#f87171}
+.lotnik-card .lt-acc-warn{font-weight:700;text-align:center}
 .lotnik-card .lt-acc-err{color:#fca5a5}
 .lotnik-card .lt-acc-kod{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .lotnik-card .lt-acc-copy{padding:4px 8px;font-size:10px;line-height:1.2}
@@ -70,6 +72,7 @@ export function createKonto(apiPost, el, avatars, status, onAuth, lsPrefix) {
   out.hidden = true;
   let acc = load();
   let lastR = null;
+  let savedOn = '';   // nick konta, na które /claim zapisał wynik tej karty (po wylogowaniu wynik zostaje na nim)
   let seq = 0;
 
   function stop(fn) {
@@ -129,6 +132,7 @@ export function createKonto(apiPost, el, avatars, status, onAuth, lsPrefix) {
     }
     if (msg) box.appendChild(el('div', 'lt-acc-msg' + (err ? ' lt-acc-err' : ''), msg));
     if (!k.verified) {
+      box.appendChild(el('div', 'lt-acc-msg lt-acc-red lt-acc-warn', 'NICK MUSI BYĆ TAKI SAM JAK NA D2JSP'));
       const row = el('div', 'lt-acc-row');
       row.appendChild(button('Zweryfikuj', '', verify));
       box.appendChild(row);
@@ -141,6 +145,7 @@ export function createKonto(apiPost, el, avatars, status, onAuth, lsPrefix) {
     out.hidden = true;
     renderPlayer();
     box.appendChild(el('div', 'lt-acc-msg', withCode ? 'Kod od admina: wpisz nick, kod i nowe hasło.'
+      : savedOn ? 'Ten wynik jest zapisany na koncie ' + savedOn + '. Zaloguj się albo załóż konto na następne gry.'
       : 'Aby zapisać wynik, zaloguj się albo załóż konto. Nick taki sam jak na d2jsp.'));
     const nick = el('input');
     nick.placeholder = 'Nick (jak na d2jsp)';
@@ -178,6 +183,7 @@ export function createKonto(apiPost, el, avatars, status, onAuth, lsPrefix) {
           if (r.j.wynik) lastR = null;
           showAccount();
           if (r.j.wynik || r.j.wynikBlad) status(r.j.wynik ? '' : r.j.wynikBlad, !!r.j.wynikBlad);
+          else if (savedOn && savedOn !== acc.konto.nick) status('Ten wynik jest zapisany na koncie ' + savedOn + '.');
         });
       };
     };
@@ -213,6 +219,7 @@ export function createKonto(apiPost, el, avatars, status, onAuth, lsPrefix) {
   function onResult(res) {
     const my = ++seq;
     lastR = res && res.saved && res.r ? res.r : null;
+    savedOn = '';
     if (!lastR) { box.hidden = true; out.hidden = true; return; }
     if (!acc) { showForm(); return; }
     showAccount();
@@ -229,6 +236,7 @@ export function createKonto(apiPost, el, avatars, status, onAuth, lsPrefix) {
         acc.konto = r.j.konto;
         store(acc);
         lastR = null;
+        savedOn = acc.konto.nick;
         showAccount();
         status('');   // zapisany: bez komunikatu, nick stoi obok metrów
       } else {
@@ -240,6 +248,7 @@ export function createKonto(apiPost, el, avatars, status, onAuth, lsPrefix) {
   function hide() {
     seq++;
     lastR = null;
+    savedOn = '';
     box.hidden = true;
     out.hidden = true;
     outLink(false);

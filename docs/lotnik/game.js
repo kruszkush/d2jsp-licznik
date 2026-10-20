@@ -1,10 +1,10 @@
 // game.js — gra-nakładka: pętla, wejście, kamera. Fizyka w sim.js, rysowanie w draw.js.
 // Canvas jest przezroczysty (clearRect) — przyciemniona strona licznika przebija spod spodu.
-import { create, step, DT, GEOM, START_TICKS_BACK, TICK, SPEED, SIM_VER, MAX_FLY_STEPS } from './sim.js?v=41';
-import { AIM_MAX_STEPS } from './replay.js?v=41';
-import { drawScene, COLORS, zoneLevels } from './draw.js?v=41';
-import { createEfekty } from './efekty.js?v=41';
-import { modsFor } from './items.js?v=41';
+import { create, step, DT, GEOM, START_TICKS_BACK, TICK, SPEED, SIM_VER, MAX_FLY_STEPS } from './sim.js?v=44';
+import { AIM_MAX_STEPS, STEPS_PER_SEC } from './replay.js?v=44';
+import { drawScene, COLORS, zoneLevels } from './draw.js?v=44';
+import { createEfekty } from './efekty.js?v=44';
+import { modsFor } from './items.js?v=44';
 
 const GROUND_MARGIN = 56;        // ile px zostawiamy pod linią ziemi
 const BEST_KEY = 'lotnik.best';
@@ -77,6 +77,9 @@ export function createGame(opts) {
     let t = firstTicket;
     firstTicket = null;
     if (!t && nextTicket) t = nextTicket();
+    useTicket(t);
+  }
+  function useTicket(t) {
     if (t && t.simVer !== SIM_VER) t = null;   // stara karta / inna fizyka: gramy lokalnie
     if (TEST) t = null;
     ticket = t || null;
@@ -172,6 +175,7 @@ export function createGame(opts) {
     runLoadout = loadout.slice();
     if (freshSeed) takeTicket();
     else { ticket = null; runMods = testMods(mods); }
+    lateAt = freshSeed && !ticket && nextTicket && !TEST ? 0 : -1;
     sim = create(seed, runMods, { owners: runOwners, dense: TEST });
     pending = [];
     log = [];
@@ -183,6 +187,23 @@ export function createGame(opts) {
     updateView();
     cam.x = startCamX();
     cam.y = 0;
+  }
+
+  // Partia bez biletu (zapas unieważniony zmianą ekwipunku, wolny serwer): póki nic nie wystrzelone, raz na sekundę
+  // pytamy o bilet i po jego przyjściu zaczynamy tę partię od nowa z ziarnem serwera (inaczej wynik bez zapisu i dropu).
+  const LATE_STEPS = STEPS_PER_SEC * 10;   // po 10 s celowania już nie podmieniamy planszy
+  let lateAt = -1;
+  function lateTicket() {
+    if (sim.phase !== 'aim' || log.length || drag || sim.step >= LATE_STEPS) { lateAt = -1; return; }
+    if (sim.step < lateAt) return;
+    lateAt = sim.step + STEPS_PER_SEC;
+    const t = nextTicket();
+    if (!t || t.simVer !== SIM_VER) return;
+    useTicket(t);
+    lateAt = -1;
+    sim = create(seed, runMods, { owners: runOwners, dense: TEST });
+    pending = [];
+    acc = 0;
   }
 
   // Ekwipunek ustawiany z zewnątrz (przyszły panel przedmiotów). Wpływa na
@@ -204,6 +225,7 @@ export function createGame(opts) {
     // zwolnienie po łuku: wolniej tyka symulacja (kroki stałe DT, więc tor lotu się nie zmienia)
     const ts = fx.tick(dt);
 
+    if (lateAt >= 0) lateTicket();
     if (sim.phase !== 'over') {
       acc += dt * ts;
       let guard = 0;

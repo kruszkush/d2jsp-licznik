@@ -4,13 +4,13 @@
 // Importy UI z ?v= (ta sama wartość wszędzie, podbijana razem z ?v= w strona/index.html), żeby
 // przeglądarka nie mieszała nowych i starych modułów. Moduły UI importują też sim.js i replay.js z ?v=;
 // tylko replay.js importuje './sim.js' bez ?v= (deploy.sh podmienia ten import na serwerze).
-import { createGame } from './game.js?v=41';
-import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=41';
-import { createInventory } from './inventory.js?v=41';
-import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=41';
-import { createKonto, KONTO_CSS } from './konto.js?v=41';
-import { createRanking, mountPageRanking, RANKING_CSS } from './ranking.js?v=41';
-import { KARTA_CSS, renderBall, renderMf, renderDrop, itemBox } from './karta.js?v=41';
+import { createGame } from './game.js?v=44';
+import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=44';
+import { createInventory } from './inventory.js?v=44';
+import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=44';
+import { createKonto, KONTO_CSS } from './konto.js?v=44';
+import { createRanking, mountPageRanking, RANKING_CSS } from './ranking.js?v=44';
+import { KARTA_CSS, renderBall, renderMf, renderDrop, itemBox } from './karta.js?v=44';
 
 const CSS = `
 .lotnik-fall{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:80}
@@ -39,6 +39,8 @@ const CSS = `
 .lotnik-card .lt-meta{font-size:11px;color:#94a3b8;margin-top:4px;white-space:pre-line}
 .lotnik-card .lt-meta:empty{display:none}
 .lotnik-card .lt-meta-err{color:#fca5a5}
+.lotnik-card .lt-new:not([hidden]){display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;font-size:12px;font-weight:700;color:#fbbf24}
+.lotnik-card .lt-new button{padding:5px 10px;font-size:12px}
 .lotnik-card .lt-row{display:flex;gap:8px;margin-top:14px}
 .lotnik-card .lt-btn{flex:1;padding:13px 8px;border-radius:10px;font-size:14px}
 .lotnik-card .lt-primary{background:#fbbf24;border-color:#fbbf24;color:#111827;font-weight:800}
@@ -304,6 +306,13 @@ function build() {
   card.appendChild(cardNote);
   card.appendChild(cardBall);
   card.appendChild(cardMeta);
+  cardNew = el('div', 'lt-new', 'Jest nowa wersja gry.');
+  cardNew.hidden = true;
+  const reload = el('button', 'lotnik-btn', 'Odśwież');
+  reload.type = 'button';
+  reload.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); location.reload(); });
+  cardNew.appendChild(reload);
+  card.appendChild(cardNew);
   // Magic Find + drop w jednej kolumnie: w pionie zwykła kolejność (display:contents), w poziomie na telefonie
   // prawa kolumna z własnym przewijaniem, a wynik i przyciski zostają widoczne po lewej.
   const cardSide = el('div', 'lt-side');
@@ -558,6 +567,22 @@ function setDimZone(space, hell) {
 }
 let dimOpaque = '#000';
 
+// Nowa wersja na stronie (publikacja w trakcie gry): po końcu partii, najwyżej raz na 5 min, czytamy HTML strony
+// i porównujemy ?v= nakladka.js z własnym. Trwająca partia gra dalej starym kodem (serwer trzyma stare fizyki).
+const MY_V = Number((import.meta.url.match(/[?&]v=(\d+)/) || [])[1]) || 0;
+let cardNew = null;
+let verAt = 0;
+let newVer = false;
+function checkVersion() {
+  if (!MY_V || newVer || Date.now() - verAt < 5 * 60 * 1000) return Promise.resolve(newVer);
+  verAt = Date.now();
+  return fetch(location.href.split('#')[0], { cache: 'no-store' }).then(function (r) { return r.text(); }).then(function (t) {
+    const m = t.match(/nakladka\.js\?v=(\d+)/);
+    newVer = !!m && Number(m[1]) > MY_V;
+    return newVer;
+  }).catch(function () { return false; });
+}
+
 function showResult(result) {
   cardScore.textContent = result.meters + ' m';
   cardWin.hidden = !result.beaten;
@@ -577,6 +602,8 @@ function showResult(result) {
   };
   cardStatus = function (msg, err) { if (seq === endSeq) status(msg, err); };
   konto.hide();
+  cardNew.hidden = !newVer;
+  checkVersion().then(function (v) { if (v && seq === endSeq) cardNew.hidden = false; });
   status(result.saved ? 'Zapisywanie wyniku…' : 'Wynik niezapisany (gra bez połączenia)');
   if (!result.saved) return;
   sendResult(function (res) {
