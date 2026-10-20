@@ -4,15 +4,15 @@
 // Importy UI z ?v= (ta sama wartość wszędzie, podbijana razem z ?v= w strona/index.html), żeby
 // przeglądarka nie mieszała nowych i starych modułów. Moduły UI importują też sim.js i replay.js z ?v=;
 // tylko replay.js importuje './sim.js' bez ?v= (deploy.sh podmienia ten import na serwerze).
-import { createGame } from './game.js?v=51';
-import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=51';
-import { createInventory } from './inventory.js?v=51';
-import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=51';
-import { createKonto, KONTO_CSS } from './konto.js?v=51';
-import { createRanking, mountPageRanking, RANKING_CSS } from './ranking.js?v=51';
-import { KARTA_CSS, renderBall, renderMf, renderDrop, itemBox } from './karta.js?v=51';
+import { createGame } from './game.js?v=53';
+import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=53';
+import { createInventory } from './inventory.js?v=53';
+import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=53';
+import { createKonto, KONTO_CSS } from './konto.js?v=53';
+import { createRanking, mountPageRanking, RANKING_CSS } from './ranking.js?v=53';
+import { KARTA_CSS, renderHero, renderMf, renderDrop, itemBox } from './karta.js?v=53';
 
-const CSS = `
+export const CSS = `;   // eksport tylko dla out/karta-stany.html (zrzuty stanów karty)
 .lotnik-fall{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:80}
 .lotnik-fall button{position:absolute;top:-80px;pointer-events:auto;touch-action:manipulation;width:var(--s,42px);height:var(--s,42px);padding:0;border:2px solid rgba(255,255,255,.45);border-radius:50%;background-color:#334155;background-position:center;background-size:cover;background-repeat:no-repeat;box-shadow:0 3px 10px rgba(0,0,0,.35);cursor:pointer;animation:lotnikFall var(--t,10s) linear forwards;will-change:transform;-webkit-tap-highlight-color:transparent;color:#fff;font:700 15px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 .lotnik-fall button:focus-visible{outline:3px solid #fbbf24;outline-offset:2px}
@@ -26,14 +26,6 @@ const CSS = `
 .lotnik-btn:hover{border-color:rgba(251,191,36,.85)}
 .lotnik-x,.lotnik-fs{width:35px;height:35px;padding:0;font-size:15px;line-height:1}
 .lotnik-card{position:absolute;left:50%;top:calc(50% + 24px);transform:translate(-50%,-50%);width:min(340px,calc(100vw - 32px));max-height:calc(100vh - 72px);max-height:calc(100dvh - 72px);overflow:auto;display:flex;flex-direction:column;box-sizing:border-box;background:rgba(15,23,42,.985);border:1px solid rgba(248,250,252,.22);border-radius:16px;padding:18px 16px 16px;text-align:center;color:#f8fafc;box-shadow:0 18px 50px rgba(0,0,0,.5);z-index:3;font:500 13px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-.lotnik-card .lt-top{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:2px}
-.lotnik-card .lt-top .lt-acc-nick{margin:0;min-width:0;font-size:17px}
-.lotnik-card .lt-top .lt-acc-nick>a,.lotnik-card .lt-top .lt-acc-nick>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.lotnik-card .lt-top .lt-av{width:34px;height:34px}
-.lotnik-card .lt-dot{color:#64748b;font-size:22px;font-weight:800}
-.lotnik-card .lt-top .lt-acc-nick[hidden]+.lt-dot{display:none}
-.lotnik-card .lt-score{flex:none;font-size:34px;font-weight:800;line-height:1.1;color:#fbbf24;white-space:nowrap}
-.lotnik-card .lt-note{font-size:12px;font-weight:600;color:#e2e8f0}
 .lotnik-card .lt-win{margin-top:6px;font-size:15px;font-weight:700;color:#facc15;line-height:1.35}
 .lotnik-card .lt-win small{display:block;font-size:12px;font-weight:600;color:#fde68a}
 .lotnik-card .lt-meta{font-size:11px;color:#94a3b8;margin-top:4px;white-space:pre-line}
@@ -43,11 +35,11 @@ const CSS = `
 .lotnik-card .lt-new button{padding:5px 10px;font-size:12px}
 .lotnik-card .lt-row{display:flex;gap:8px;margin-top:14px}
 .lotnik-card .lt-btn{flex:1;padding:13px 8px;border-radius:10px;font-size:14px}
-.lotnik-card .lt-primary{background:#fbbf24;border-color:#fbbf24;color:#111827;font-weight:800}
-.lotnik-card .lt-primary:hover{background:#fcd34d}
+.lotnik-card .lt-primary{background:#22c55e;border-color:#22c55e;color:#052e16;font-weight:800}
+.lotnik-card .lt-primary:hover{background:#4ade80}
 .lotnik-card .lt-row2{display:flex;gap:8px;margin-top:8px}
 .lotnik-card .lt-row2 .lotnik-btn{flex:1;padding:9px 8px;font-size:11px}
-.lotnik-inv{position:absolute;left:50%;top:7%;transform:translateX(-50%);width:min(420px,calc(100vw - 24px));max-height:86vh;overflow:auto;background:rgba(15,23,42,.98);border:1px solid rgba(248,250,252,.22);border-radius:16px;padding:14px;color:#f8fafc;box-shadow:0 18px 50px rgba(0,0,0,.55);z-index:4;font:500 12px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.lotnik-inv{position:absolute;left:50%;top:7%;transform:translateX(-50%);box-sizing:border-box;width:min(420px,calc(100vw - 24px));max-height:86vh;overflow:auto;background:rgba(15,23,42,.98);border:1px solid rgba(248,250,252,.22);border-radius:16px;padding:14px;color:#f8fafc;box-shadow:0 18px 50px rgba(0,0,0,.55);z-index:4;font:500 12px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 .lotnik-inv h3{font-size:15px;margin:0 0 10px;padding-right:34px}
 .lotnik-inv .lt-slot{border-top:1px solid rgba(248,250,252,.12);padding:8px 0}
 .lotnik-inv .lt-slot:first-child{border-top:0;padding-top:0}
@@ -70,11 +62,20 @@ const CSS = `
 .lotnik-card>*{grid-column:1}
 .lotnik-card .lt-side{display:block;grid-column:2;grid-row:1/span 14;overflow:auto;max-height:calc(100dvh - 42px);min-height:0}
 .lotnik-card .lt-side>.lt-mf{margin-top:0}
-.lotnik-card .lt-score{font-size:28px}
 .lotnik-card .lt-row{margin-top:10px}
 .lotnik-card .lt-btn{padding:10px 8px}
 .lotnik-stage .lotnik-card .lt-sep{margin-top:10px}
 .lotnik-stage .lotnik-inv,.lotnik-stage .lotnik-rank{top:8px;max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px)}
+}
+/* Komputer (wariant A z out/makieta-uklad.html, 20.10): szersza kolumna, środek bez własnego przewijania
+   (przy braku miejsca przewija się cała karta), MF w jednym rzędzie. */
+@media (min-width:600px) and (min-height:521px){
+.lotnik-stage .lotnik-card{width:min(460px,calc(100vw - 32px))}
+.lotnik-stage .lotnik-card .lt-side{flex:none;overflow:visible;scrollbar-gutter:auto}
+.lotnik-stage .lotnik-card .lt-mf{display:grid;grid-template-columns:auto;grid-auto-columns:1fr;grid-auto-flow:column;align-items:center;column-gap:4px;padding:8px 12px}
+.lotnik-stage .lotnik-card .lt-mf-head{grid-row:1;grid-column:1;padding:0;gap:10px;justify-content:flex-start}
+.lotnik-stage .lotnik-card .lt-mf-low{grid-row:2;grid-column:1;border:0;padding:0;font-size:11px}
+.lotnik-stage .lotnik-card .lt-mfr{grid-row:1/span 2;flex-direction:column;align-items:center;gap:1px;border:0;border-left:1px solid rgba(248,250,252,.09);padding:0 0 0 6px;font-size:12px}
 }
 body.playing>:not(.lotnik-stage),body.playing>:not(.lotnik-stage) *,body.playing>:not(.lotnik-stage) ::before,body.playing>:not(.lotnik-stage) ::after{animation-play-state:paused!important}
 body.playing .lavadrop{display:none!important}
@@ -98,7 +99,7 @@ function topOwners(list) {
 }
 
 let layer = null, tip = null, dim = null, stage = null, canvas = null;
-let card = null, cardScore = null, cardWin = null, cardNote = null, cardMeta = null, cardBall = null, cardMf = null;
+let card = null, cardHero = null, cardWho = null, cardWin = null, cardMeta = null, cardMf = null;
 let curItem = null;
 let cardDrop = null, cardInv = null, konto = null, ranking = null, cardStatus = null;
 let pageRank = null, eqView = null, eqTitle = null, eqBody = null, eqNote = null, eqDoc = null, eqUi = null, eqSeq = 0;   // karta rankingu na stronie, podgląd ekwipunku
@@ -320,15 +321,13 @@ function build() {
 
   card = el('div', 'lotnik-card');
   card.hidden = true;
-  cardScore = el('div', 'lt-score');
+  cardHero = el('div', 'lt-hcore');
   // Lot do bezpiecznika 10 min: koniec gry, dalej się nie da.
   cardWin = el('div', 'lt-win');
   cardWin.appendChild(document.createTextNode('Koniec gry! Pokonałeś grę, gratulacje!'));
   cardWin.appendChild(el('small', null, 'Doleciałeś do granicy 10 minut lotu, dalej się już nie da.'));
   cardWin.hidden = true;
-  cardNote = el('div', 'lt-note');
   cardMeta = el('div', 'lt-meta');
-  cardBall = el('div', 'lt-ball');
   cardMf = el('div', 'lt-mf');
   cardDrop = el('div', 'lt-drop');
   cardDrop.hidden = true;
@@ -346,16 +345,17 @@ function build() {
   }, LS_PREFIX);
   inventory = createInventory(apiPost, konto.token, LS_PREFIX);
   inventory.onChange(onEquipChange);
-  // Góra karty: [awatar] nick · metry (nick tylko z kontem; bez konta same metry).
-  const cardTop = el('div', 'lt-top');
-  cardTop.appendChild(konto.player);
-  cardTop.appendChild(el('span', 'lt-dot', '·'));
-  cardTop.appendChild(cardScore);
-  card.appendChild(cardTop);
+  // Góra karty (makieta out/makieta-koniec.html): kto grał (nick z konta albo „Gość”: przełącza sam CSS, więc
+  // logowanie przy otwartej karcie też), wynik z rekordem albo paskiem do rekordu (karta.js renderHero; nick w jednej linii z wynikiem), status.
+  const hero = el('div', 'lt-hero');
+  const who = cardWho = el('div', 'lt-who');
+  const guest = el('div', 'lt-guest');
+  guest.append(el('span', 'lt-av', '?'), el('span', null, 'Gość'));
+  who.append(konto.player, guest);
+  hero.append(cardHero, cardMeta);
+  cardHero.appendChild(who);
+  card.appendChild(hero);
   card.appendChild(cardWin);
-  card.appendChild(cardNote);
-  card.appendChild(cardBall);
-  card.appendChild(cardMeta);
   cardNew = el('div', 'lt-new', 'Jest nowa wersja gry.');
   cardNew.hidden = true;
   const reload = el('button', 'lotnik-btn', 'Odśwież');
@@ -634,10 +634,14 @@ function checkVersion() {
 }
 
 function showResult(result) {
-  cardScore.textContent = result.meters + ' m';
+  const hero = { meters: result.meters, rec: result.newRecord, prevBest: result.prevBest, best: result.best, test: result.test };
+  // Zalogowany: rekord liczy konto (/claim), nie to urządzenie; do odpowiedzi rekord konta zapamiętany tutaj albo bez rekordu.
+  if (konto.token() && result.saved) {
+    const kb = konto.best();
+    if (kb == null) hero.wait = true; else hero.acc = { prev: kb };
+  }
+  renderHero(cardHero, hero, cardWho);
   cardWin.hidden = !result.beaten;
-  cardNote.textContent = result.newRecord ? 'Nowy rekord!' : 'Rekord: ' + result.best + ' m';
-  renderBall(cardBall, curItem);
   renderMf(cardMf, result.mf || 0, result.meters);
   pendingDrop = null;
   dropState = null;
@@ -660,20 +664,32 @@ function showResult(result) {
   sendResult(function (res) {
     if (seq !== endSeq || !active) return;   // w międzyczasie nowa partia albo zamknięta gra
     if (res.saved) {
-      cardScore.textContent = res.meters + ' m';
+      // Serwer odtworzył partię: inny wynik (w praktyce się nie zdarza) = delta i pasek z jego metrów.
+      if (Number.isFinite(res.meters) && Math.floor(res.meters) !== Math.floor(hero.meters)) {
+        hero.meters = res.meters;
+        renderHero(cardHero, hero, cardWho);
+      }
       status('Wynik zapisany na serwerze');
       const p = res.przedmiot;
       if (res.dup) inventory.load();   // ponowiony zapis: drop (jeśli był) już w ekwipunku na serwerze
       if (p && p.inv) inventory.set(p.inv);
       if (p && p.drop) {
         pendingDrop = p.drop;
-        dropState = { equipped: !!p.equipped, msg: p.lost ? 'Poprzedni nierozstrzygnięty przedmiot przepadł (pełna skrzynia).' : '' };
+        dropState = { equipped: !!p.equipped, old: null, msg: p.lost ? 'Poprzedni nierozstrzygnięty przedmiot przepadł (pełna skrzynia).' : '' };
         showDrop(pendingDrop);
       }
+      if (res.would && !hero.acc) { hero.would = res.would; renderHero(cardHero, hero, cardWho); }
     } else {
       status('Wynik niezapisany (' + res.why + ')');
     }
-    konto.onResult(res);
+    konto.onResult(res, function (rank) {
+      if (seq !== endSeq) return;
+      const av = (readData() || {}).avatars || {};
+      const url = function (p) { return p ? { ...p, url: p.uid ? av[p.uid] || '' : '' } : null; };
+      hero.acc = { ...rank, over: url(rank.over), gap: url(rank.gap) };
+      hero.wait = false;
+      renderHero(cardHero, hero, cardWho);
+    });
   }, retry);
 }
 
@@ -691,30 +707,54 @@ function currentFor(type) {
 }
 
 function showDrop(drop) {
-  const st = drop ? Object.assign({}, dropState, { full: !(dropState && dropState.equipped) && inventory.free() === 0 }) : null;
-  renderDrop(cardDrop, drop, drop && !(st && st.equipped) ? currentFor(drop.type) : null, {
-    equip: function () { dropAct('equip', 'Założono: '); },
-    keep: function () { dropAct('keep', 'Do skrzyni: '); },
-    toss: function () { dropAct('destroy', 'Odrzucono: '); },
-    inv: function () { ranking.hide(); openInventory(); }
+  const decided = !!(dropState && (dropState.equipped || dropState.done));
+  const st = drop ? Object.assign({}, dropState, { full: !decided && inventory.free() === 0 }) : null;
+  renderDrop(cardDrop, drop, drop && !decided ? currentFor(drop.type) : null, {
+    equip: function () { dropAct('equip'); },
+    keep: function () { dropAct('keep'); },
+    toss: function () { dropAct('destroy'); },
+    inv: function () { ranking.hide(); openInventory(); },
+    oldX: oldX
   }, st);
-  cardInv.hidden = !!drop && !(st && st.equipped);
+  cardInv.hidden = !!drop && !decided;
 }
 
-function dropAct(action, label) {
+// Decyzja o dropie: stan na karcie ustawiony PRZED inventory.act (onChange z nowym ekwipunkiem rysuje już ten stan,
+// bez chwilowego „Masz: ten sam przedmiot”), błąd serwera przywraca przyciski z komunikatem.
+// Załóż = ramka zostaje ze stemplem, stary przedmiot (jeśli był) w skrzyni z ✗; Do skrzyni / Odrzuć = krótka linijka.
+// Stempel nie śledzi późniejszych zmian w Ekwipunku: karta to podsumowanie partii.
+function dropAct(action) {
   const drop = pendingDrop;
-  if (!drop || (dropState && dropState.equipped)) return;
+  const before = dropState || {};
+  if (!drop || before.equipped || before.done) return;
+  dropState = action === 'equip'
+    ? { equipped: true, old: currentFor(drop.type), msg: before.msg }
+    : { done: (action === 'keep' ? 'Do skrzyni: ' : 'Odrzucono: ') + itemName(drop), msg: before.msg };
+  showDrop(drop);
   inventory.act(action, drop.id).then(function (r) {
+    if (pendingDrop !== drop || !r.error) return;
+    dropState = Object.assign({}, before, { msg: r.error });
+    showDrop(drop);
+  });
+}
+
+// ✗ przy starym przedmiocie (zdjętym do skrzyni po „Załóż”): pierwsze kliknięcie pyta „Na pewno?”, drugie niszczy.
+function oldX() {
+  const drop = pendingDrop, s = dropState;
+  if (!drop || !s || !s.old || s.oldBusy || s.oldMsg) return;
+  if (!s.oldAsk) {
+    dropState = Object.assign({}, s, { oldAsk: true });
+    showDrop(drop);
+    return;
+  }
+  const old = s.old;
+  dropState = Object.assign({}, s, { oldBusy: true });
+  showDrop(drop);
+  inventory.act('destroy', old.id).then(function (r) {
     if (pendingDrop !== drop) return;
-    if (r.error) {
-      dropState = Object.assign({}, dropState, { msg: r.error });
-      showDrop(drop);
-      return;
-    }
-    pendingDrop = null;
-    dropState = null;
-    showDrop(null);
-    cardNote.textContent = label + itemName(drop);
+    dropState = Object.assign({}, dropState, r.error ? { oldBusy: false, oldAsk: false, msg: r.error }
+      : { oldBusy: false, oldMsg: 'Zniszczono: ' + itemName(old) });
+    showDrop(drop);
   });
 }
 
@@ -794,6 +834,13 @@ function showGate() {
   ok.type = 'submit';
   const msg = el('div', 'lotnik-gate-m');
   gate.append(input, ok, msg);
+  // Lokalnie (python -m http.server w katalogu gry) hasło z pliku haslo.local.txt obok gry (poza repo): bez wpisywania.
+  if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
+    fetch('/haslo.local.txt', { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : ''; }).then(function (t) {
+      t = String(t || '').trim();
+      if (t && gate) { input.value = t; gate.requestSubmit(); }
+    }).catch(function () { /* brak pliku: zwykły panel */ });
+  }
   gate.addEventListener('submit', function (e) {
     e.preventDefault();
     const val = input.value.trim();

@@ -14,6 +14,7 @@ export const KONTO_CSS = `
 .lotnik-card .lt-acc-nick{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;font-size:15px;font-weight:800}
 .lotnik-card .lt-acc-nick a{color:inherit;text-decoration:none}
 .lotnik-card .lt-acc-nick a:hover{text-decoration:underline}
+.lotnik-card .lt-ver{flex:none;display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;background:#22c55e;color:#052e16;font-size:10px;font-weight:900}
 .lotnik-card .lt-av{flex:none;width:26px;height:26px;border-radius:50%;background:#334155 center/cover no-repeat;border:1px solid rgba(248,250,252,.35)}
 .lotnik-card .lt-out{margin-top:14px;padding-top:8px;border-top:1px solid rgba(248,250,252,.1)}
 .lotnik-card .lt-logout{background:none;border:0;padding:4px 8px;color:#64748b;font:500 11px/1.2 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;cursor:pointer;text-decoration:underline}
@@ -92,6 +93,20 @@ export function createKonto(apiPost, el, avatars, status, onAuth, lsPrefix) {
   let lastR = null;
   let savedOn = '';   // nick konta, na które /claim zapisał wynik tej karty (po wylogowaniu wynik zostaje na nim)
   let seq = 0;
+  let onWynik = null;   // karta tej partii: rekord konta i miejsce w rankingu z /claim (wynik.rank)
+  const bestKey = function () { return (lsPrefix || '') + 'lotnik.best.' + (acc && acc.konto.id); };
+  function gotWynik(w, my) {
+    if (!w || !w.rank || my !== seq) return;
+    try { localStorage.setItem(bestKey(), String(Math.floor(w.rank.best || 0))); } catch (e) { /* ignoruj */ }
+    if (onWynik) onWynik(w.rank);
+  }
+  // Najlepszy wynik konta zapamiętany na tym urządzeniu po ostatnim /claim (null = nieznany, np. nowe urządzenie).
+  function best() {
+    if (!acc) return null;
+    let v = null;
+    try { v = localStorage.getItem(bestKey()); } catch (e) { v = null; }
+    return v == null ? null : Number(v) || 0;
+  }
 
   function stop(fn) {
     return function (e) { e.preventDefault(); e.stopPropagation(); fn(); };
@@ -127,6 +142,11 @@ export function createKonto(apiPost, el, avatars, status, onAuth, lsPrefix) {
       row.appendChild(a);
     } else {
       row.appendChild(el('span', null, k.nick));
+    }
+    if (k.verified) {
+      const v = el('span', 'lt-ver', '✓');
+      v.title = 'Konto zweryfikowane';
+      row.appendChild(v);
     }
   }
 
@@ -259,6 +279,7 @@ export function createKonto(apiPost, el, avatars, status, onAuth, lsPrefix) {
         if (lastR) body.r = lastR;
         err.hidden = false;
         err.textContent = 'Chwila…';
+        const my = seq;
         apiPost(path, body, 10000).then(function (r) {
           if (!r.ok || typeof r.j.token !== 'string') {
             err.textContent = r.j.error || 'błąd serwera';
@@ -269,6 +290,7 @@ export function createKonto(apiPost, el, avatars, status, onAuth, lsPrefix) {
           auth(true);
           if (r.j.wynik) lastR = null;
           showAccount();
+          gotWynik(r.j.wynik, my);
           if (r.j.wynik || r.j.wynikBlad) status(r.j.wynik ? '' : r.j.wynikBlad, !!r.j.wynikBlad);
           else if (savedOn && savedOn !== acc.konto.nick) status('Ten wynik jest zapisany na koncie ' + savedOn + '.');
         });
@@ -304,8 +326,9 @@ export function createKonto(apiPost, el, avatars, status, onAuth, lsPrefix) {
   }
 
   // Wynik zapisany na serwerze (`r` z /end): zalogowany → na konto, inaczej formularz.
-  function onResult(res) {
+  function onResult(res, cb) {
     const my = ++seq;
+    onWynik = cb || null;
     lastR = res && res.saved && res.r ? res.r : null;
     savedOn = '';
     if (!lastR) { box.hidden = true; out.hidden = true; return; }
@@ -327,6 +350,7 @@ export function createKonto(apiPost, el, avatars, status, onAuth, lsPrefix) {
         savedOn = acc.konto.nick;
         showAccount();
         status('');   // zapisany: bez komunikatu, nick stoi obok metrów
+        gotWynik(r.j.wynik, my);
       } else {
         status('Wynik nie trafił na konto: ' + (r.j.error || 'błąd serwera'), true);
       }
@@ -355,5 +379,5 @@ export function createKonto(apiPost, el, avatars, status, onAuth, lsPrefix) {
     out.appendChild(button('Nie', 'lt-logout', function () { outLink(false); }));
   }
   outLink(false);
-  return { node: box, out: out, player: player, onResult: onResult, hide: hide, token: function () { return acc ? acc.token : null; } };
+  return { node: box, out: out, player: player, onResult: onResult, hide: hide, best: best, token: function () { return acc ? acc.token : null; } };
 }

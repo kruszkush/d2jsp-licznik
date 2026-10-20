@@ -1,10 +1,10 @@
 // game.js — gra-nakładka: pętla, wejście, kamera. Fizyka w sim.js, rysowanie w draw.js.
 // Canvas jest przezroczysty (clearRect) — przyciemniona strona licznika przebija spod spodu.
-import { create, step, DT, GEOM, START_TICKS_BACK, TICK, SPEED, SIM_VER, MAX_FLY_STEPS } from './sim.js?v=51';
-import { AIM_MAX_STEPS, STEPS_PER_SEC } from './replay.js?v=51';
-import { drawScene, COLORS, zoneLevels } from './draw.js?v=51';
-import { createEfekty } from './efekty.js?v=51';
-import { modsFor } from './items.js?v=51';
+import { create, step, DT, GEOM, START_TICKS_BACK, TICK, SPEED, SIM_VER, MAX_FLY_STEPS } from './sim.js?v=53';
+import { AIM_MAX_STEPS, STEPS_PER_SEC } from './replay.js?v=53';
+import { drawScene, COLORS, zoneLevels } from './draw.js?v=53';
+import { createEfekty } from './efekty.js?v=53';
+import { modsFor } from './items.js?v=53';
 
 const GROUND_MARGIN = 56;        // ile px zostawiamy pod linią ziemi
 const BEST_KEY = 'lotnik.best';
@@ -21,10 +21,6 @@ const ZONES_ON = PARAMS.get('strefy') !== '0';
 // pod spodem. Próba na rwanie kolorów na telefonie (strona i tak ukryta).
 const OPAQUE = PARAMS.get('tlo') === '1';
 const TOUCH = typeof matchMedia === 'function' && matchMedia('(pointer:coarse)').matches;
-// Tempo lotu: dotyk 0,8 (wybór użytkownika po próbie A/B 20.10; mały ekran, palec zasłania, wolniejszy dotyk),
-// mysz 1; ?tempo=0.5–1 nadpisuje. Mnoży tylko czas rzeczywisty, kroki fizyki stałe DT, więc wynik, MF
-// i powtórka bez zmian; serwer sprawdza tylko grę za szybką.
-const TEMPO = Math.min(1, Math.max(0.5, Number(PARAMS.get('tempo')) || (TOUCH ? 0.8 : 1)));
 
 function newSeed() {
   return Math.floor(Math.random() * 4294967296);
@@ -231,7 +227,7 @@ export function createGame(opts) {
 
     if (lateAt >= 0) lateTicket();
     if (sim.phase !== 'over') {
-      acc += dt * ts * (sim.phase === 'fly' ? TEMPO : 1);
+      acc += dt * ts;
       let guard = 0;
       while (acc >= DT && guard < 40) {
         const acts = takeActions(sim.step);
@@ -260,6 +256,7 @@ export function createGame(opts) {
 
   function finishRun() {
     finished = true;
+    const prevBest = best;   // rekord sprzed partii (0 = pierwszy lot na tym urządzeniu), karta pokazuje różnicę
     const isRecord = !TEST && sim.meters > best;
     if (isRecord) {
       best = Math.floor(sim.meters);
@@ -283,7 +280,9 @@ export function createGame(opts) {
     onEnd({
       meters: sim.meters,
       best: best,
+      prevBest: prevBest,
       newRecord: isRecord,
+      test: TEST,
       beaten: sim.flySteps > MAX_FLY_STEPS,   // lot do bezpiecznika 10 min = koniec gry
       nick: nick,
       seed: sim.seed,
@@ -601,9 +600,6 @@ export function createGame(opts) {
         sling: { x: Math.round(sx(GEOM.slingX)), y: Math.round(sy(GEOM.slingY)) },
         scale: scale,
         zoom: Math.round(zoom * 1000) / 1000,
-        viewW: Math.round(view.w),
-        ahead: Math.round(cam.x + view.w - sim.x),   // jednostki świata widoczne przed piłeczką
-        tempo: TEMPO,
         tickPx: TICK * scale,
         startTicksBack: START_TICKS_BACK
       };

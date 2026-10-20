@@ -1,8 +1,8 @@
 // draw.js — całe rysowanie nakładki. Tylko canvas 2D, bez fizyki.
 // Canvas jest przezroczysty: rysujemy postać, procę, bomby, platformy i HUD,
 // a przyciemniona strona licznika przebija z pod spodu (jeden div w nakladka.js).
-import { GEOM, TICK, PICKUP_BASE, arcMult, previewShot } from './sim.js?v=51';
-import { mfFromMeters } from './items.js?v=51';
+import { GEOM, TICK, PICKUP_BASE, arcMult, previewShot } from './sim.js?v=53';
+import { mfFromMeters } from './items.js?v=53';
 
 const TAU = Math.PI * 2;
 // Jeden pasek na środku u góry: dystans, MF za dystans, rekord, podrzuty. MF na żywo: równanie po lewej (drawMfLine).
@@ -1174,8 +1174,97 @@ function drawMfLine(r) {
   ctx.drawImage(mfl.canvas, Math.round(W * 0.025), y, bw, bh);
 }
 
+// Podpowiedź dla nowego gracza (makieta out/makieta-podpowiedz.html, warianty B+C): przy procy dymek „Pociągnij i puść”
+// z ręką, dopóki gracz ani razu nie strzelił; w locie duży napis „Klikaj, żeby podrzucić!”, dopóki ani razu nie podrzucił.
+// Nauczone zapamiętuje localStorage, więc stały gracz tego już nie widzi.
+const UMIE_KEY = 'lotnik.umie';
+let umie = null;
+function learned(what) {
+  if (!umie) {
+    try { umie = JSON.parse(localStorage.getItem(UMIE_KEY)) || {}; } catch (e) { umie = {}; }
+  }
+  return !!umie[what];
+}
+function learn(what) {
+  if (learned(what)) return;
+  umie[what] = 1;
+  try { localStorage.setItem(UMIE_KEY, JSON.stringify(umie)); } catch (e) { /* ignoruj */ }
+}
+
+function plPuffs(n) {
+  const d = n % 10, dd = n % 100;
+  if (n === 1) return '1 podrzut';
+  return n + (d >= 2 && d <= 4 && (dd < 12 || dd > 14) ? ' podrzuty' : ' podrzutów');
+}
+
+// B: żółty dymek obok piłeczki w procy i ręka, która pokazuje ruch (pociągnij w tył i puść).
+function drawShotHint(r) {
+  const { ctx, W, sx, sy, p, scale, now } = r;
+  const rad = Math.max(11, GEOM.radius * scale);
+  const bx = sx(p.x), by = sy(p.y);
+  const t1 = 'Pociągnij i puść', t2 = 'W locie klikaj, żeby podrzucić';
+  ctx.font = '800 14px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+  const w1 = ctx.measureText(t1).width;
+  ctx.font = '600 11px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+  const bw = Math.max(w1, ctx.measureText(t2).width) + 24, bh = 44;
+  let x = bx + rad + 22;
+  if (x + bw > W - 8) x = Math.max(8, W - 8 - bw);
+  const y = by - rad - bh - 6;
+  panel(ctx, x + 2, y + 5, bw, bh, 12, 'rgba(0,0,0,0.3)');
+  panel(ctx, x, y, bw, bh, 12, '#fbbf24');
+  ctx.beginPath();   // ogonek w stronę piłeczki
+  ctx.moveTo(x + 14, y + bh - 1);
+  ctx.lineTo(x + 6, y + bh + 10);
+  ctx.lineTo(x + 28, y + bh - 1);
+  ctx.fill();
+  label(ctx, t1, x + 12, y + 20, 14, '#111827', 'left', 800);
+  label(ctx, t2, x + 12, y + 36, 11, '#422006', 'left', 600);
+  // Ręka: od piłeczki w tył i w dół (jak naciąganie), chwila, znika; pętla 1,6 s.
+  const k = Math.max(0.6, Math.min(1.2, scale * 1.4));
+  const t = (now / 1600) % 1;
+  const e = t < 0.15 ? 0 : t < 0.6 ? (t - 0.15) / 0.45 : 1;
+  const ease = e * e * (3 - 2 * e);
+  const a = t < 0.8 ? 1 : 1 - (t - 0.8) / 0.2;
+  ctx.save();
+  ctx.globalAlpha = a;
+  ctx.font = Math.round(30 * k) + 'px system-ui, "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('👆', bx - 56 * k * ease, by + rad + 16 * k + 34 * k * ease);
+  ctx.restore();
+}
+
+// C: duży napis w locie i pulsujące kółko wokół piłeczki.
+function drawPuffHint(r) {
+  const { ctx, W, H, sx, sy, p, scale, sim, now } = r;
+  const narrow = W < 640;
+  const rad = Math.max(11, GEOM.radius * scale);
+  const by = sy(p.y);
+  let top = Math.max(hudBottom(W, H) + (narrow ? 44 : 60), H * 0.26);
+  if (Math.abs(by - top) < rad + 50) top = by + rad + 60;   // piłeczka na wysokości napisu: napis pod nią
+  outlined(ctx, 'Klikaj, żeby podrzucić!', W / 2, top, narrow ? 22 : 30, 900, 'center', '#f8fafc');
+  const t = 'Masz ' + plPuffs(sim.puffs);
+  ctx.font = '600 12px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+  const w = ctx.measureText(t).width + 26;
+  panel(ctx, (W - w) / 2, top + 12, w, 26, 13, COLORS.panel);
+  label(ctx, t, W / 2, top + 30, 12, '#cbd5e1', 'center', 600);
+  const ph = (now / 1200) % 1;
+  ctx.save();
+  ctx.globalAlpha = 1 - ph;
+  ctx.strokeStyle = '#fbbf24';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.arc(sx(p.x), by, rad + 6 + ph * 34, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawHint(r) {
   const { ctx, W, H, sim } = r;
+  if (sim.phase === 'fly') learn('strzal');
+  if (sim.phase === 'fly' && sim.puffsUsed > 0) learn('podrzut');
+  if (sim.phase === 'aim' && !r.drag && !learned('strzal')) drawShotHint(r);
+  if (sim.phase === 'fly' && sim.puffs > 0 && !learned('podrzut')) { drawPuffHint(r); return; }
   // Telefon w pionie na celowaniu: podpowiedź, że w poziomie widać dalej.
   if (sim.phase === 'aim' && r.portrait) {
     const t = 'Obróć telefon, zobaczysz dalej';
