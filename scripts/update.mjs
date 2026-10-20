@@ -151,7 +151,10 @@ try {
 if (!complete && !reason) reason = 'pozostały tematy do uzupełnienia';
 report(complete ? 'complete' : src.blockedUntil > Date.now() ? 'blocked' : 'partial', reason);
 if (src.status !== 'blocked') src.okAt = Date.now(); // udana próba bez blokady (patrz pcHealthy)
-if (LOTNIK) console.log(await lotnikSync(st, data, { url: LOTNIK }).catch((e) => 'lotnik: błąd ' + e.message));
+// Kilka adresów (spacja): pierwszy = prod, trzyma kolejkę kodów i `verified` w state.json; kolejne (test) dostają kopię stanu.
+const [lotMain, ...lotRest] = LOTNIK.split(/\s+/).filter(Boolean);
+for (const url of lotRest) console.log(url.replace(/.*\//, '') + ': ' + await lotnikSync(structuredClone(st), data, { url }).catch((e) => 'lotnik: błąd ' + e.message));
+if (lotMain) console.log(await lotnikSync(st, data, { url: lotMain }).catch((e) => 'lotnik: błąd ' + e.message));
 const day = new Date().toISOString().slice(0, 10); (st.pagesByDay ||= {})[day] = (st.pagesByDay[day] || 0) + pages;
 save(); await browser.close();
 console.log(`${complete ? 'KOMPLET' : 'NIEDOKOŃCZONE: ' + reason} · podstron ${pages} · dodano ${added} · razem ${data.posts.length}`);
