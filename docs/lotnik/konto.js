@@ -25,7 +25,25 @@ export const KONTO_CSS = `
 .lotnik-card .lt-acc-msg.lt-acc-red{color:#f87171}
 .lotnik-card .lt-acc-warn{font-weight:700;text-align:center}
 .lotnik-card .lt-acc-err{color:#fca5a5}
-.lotnik-card .lt-acc-kod{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.lotnik-card .lt-acc-head{text-align:center;font-weight:700;font-size:12px;margin-top:0}
+.lotnik-card .lt-acc-code{display:block;margin:7px auto 0;padding:7px 16px;border:2px dashed #f87171;border-radius:10px;background:none;font:800 20px/1.2 ui-monospace,Consolas,monospace;letter-spacing:2px;color:#fecaca;cursor:pointer}
+.lotnik-card .lt-acc-code:hover{background:rgba(248,113,113,.12)}
+.lotnik-card .lt-acc-go{background:#fbbf24;border-color:#fbbf24;color:#111827;font-weight:800}
+.lotnik-card .lt-acc-go:hover{background:#fcd34d}
+.lotnik-card .lt-acc-days{color:#fbbf24}
+.lotnik-card .lt-acc-wait{text-align:center;font-weight:700;font-size:12px;color:#fbbf24}
+.lotnik-card .lt-acc-tip{margin-top:7px;padding:6px 8px;border-radius:8px;background:rgba(248,113,113,.1);color:#fecaca;line-height:1.35}
+.lotnik-card .lt-acc-line{display:flex;justify-content:center;align-items:center;gap:6px;flex-wrap:wrap;margin-top:7px;color:#94a3b8}
+.lotnik-card .lt-acc-chip{padding:2px 8px;border:1px dashed #f87171;border-radius:6px;background:none;font:700 12px/1.3 ui-monospace,Consolas,monospace;color:#fecaca;cursor:pointer}
+.lotnik-card .lt-acc-line .lt-acc-link{padding:0;font-size:11px;color:#93c5fd}
+.lotnik-card .lt-acc.lt-acc-green{border-color:rgba(74,222,128,.45);background:rgba(74,222,128,.08)}
+.lotnik-card .lt-acc-ok{text-align:center;color:#86efac;font-weight:800;font-size:13px}
+.lotnik-card .lt-acc-ok-sub{font-weight:500;font-size:11px;margin-top:3px;color:#bbf7d0}
+.lotnik-card .lt-acc-hint{text-align:center;font-size:10px;color:#94a3b8;margin-top:3px}
+.lotnik-card .lt-acc-how{text-align:center;margin-top:7px}
+.lotnik-card .lt-acc-more{margin-top:7px;color:#cbd5e1}
+.lotnik-card .lt-acc-more summary{cursor:pointer;color:#93c5fd;text-align:center;font-size:11px}
+.lotnik-card .lt-acc-more ul{margin:5px 0 0;padding-left:16px;line-height:1.35}
 .lotnik-card .lt-acc-copy{padding:4px 8px;font-size:10px;line-height:1.2}
 .lotnik-card .lt-acc[hidden],.lotnik-card .lt-out[hidden],.lotnik-card .lt-acc-nick[hidden]{display:none!important}
 `;
@@ -112,31 +130,100 @@ export function createKonto(apiPost, el, avatars, status, onAuth, lsPrefix) {
     }
   }
 
-  // Ramka konta tylko dla niezweryfikowanego (kod, „Zweryfikuj”); msg = komunikat weryfikacji w ramce.
+  // Stan weryfikacji na tym urządzeniu (localStorage, per konto): { seen: widziane niezweryfikowane, at: kiedy kliknięto
+  // „Zweryfikuj” (0 = jeszcze nie), ok: pokazano „zweryfikowane” }.
+  const verKey = function (k) { return (lsPrefix || '') + 'lotnik.wer.' + k.id; };
+  function verGet(k) {
+    try { return JSON.parse(localStorage.getItem(verKey(k)) || 'null') || {}; } catch (e) { return {}; }
+  }
+  function verSet(k, v) {
+    try { localStorage.setItem(verKey(k), JSON.stringify(v)); } catch (e) { /* tryb prywatny */ }
+  }
+  // „Zostały 2 dni 14 h” do końca 3 dni od założenia (created z serwera); brak daty = null.
+  function timeLeft(k) {
+    if (!Number.isFinite(k.created)) return null;
+    const s = Math.max(0, k.created + 3 * 86400 - Date.now() / 1000);
+    const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600);
+    return d ? d + (d === 1 ? ' dzień ' : ' dni ') + h + ' h' : h + ' h';
+  }
+  function daysLine(k, long) {
+    const left = timeLeft(k);
+    const line = el('div', 'lt-acc-msg lt-acc-how');
+    if (left == null) line.textContent = 'Masz 3 dni od założenia konta, inaczej wynik nie trafi do rankingu.';
+    else if (long) line.append('Na weryfikację zostały ', el('b', 'lt-acc-days', left), ', potem wynik zniknie z rankingu.');
+    else line.append('Zostały ', el('b', 'lt-acc-days', left), '.');
+    return line;
+  }
+  function copyKod(k) {
+    showAccount(copyText(k.kod) ? 'Kod ' + k.kod + ' skopiowany.' : 'Nie udało się skopiować, przepisz kod ręcznie.', false);
+  }
+
+  // Ramka konta: niezweryfikowane (przed kliknięciem „Zweryfikuj” pełna, potem mała „w toku”, po 6 h z podpowiedzią),
+  // zweryfikowane: raz zielone potwierdzenie, potem bez ramki. msg = komunikat w ramce. Makieta: out/makieta-weryfikacja.html.
   function showAccount(msg, err) {
     box.replaceChildren();
     const k = acc.konto;
+    const v = verGet(k);
     renderPlayer();
     out.hidden = false;
-    box.hidden = !!k.verified;
-    if (!k.verified) {
-      const line = el('div', 'lt-acc-msg lt-acc-red lt-acc-kod', 'Konto niezweryfikowane · kod ' + k.kod + ' ');
-      line.appendChild(button('Skopiuj', 'lt-acc-copy', function () {
-        showAccount(copyText(k.kod) ? 'Kod ' + k.kod + ' skopiowany.' : 'Nie udało się skopiować, przepisz kod ręcznie.', false);
-      }));
-      box.appendChild(line);
-      box.appendChild(el('div', 'lt-acc-msg',
-        '„Zweryfikuj” kopiuje kod i otwiera temat na forum: napisz tam NOWY post z kodem (edycji starego posta nie widać). ' +
-        'Nick na d2jsp musi być dokładnie taki jak tu. Sprawdzenie trwa do kilku godzin.\n' +
-        'Masz 3 dni od założenia konta, inaczej wynik nie trafi do rankingu.'));
+    if (k.verified) {
+      box.hidden = !v.seen || v.ok;   // potwierdzenie tylko, gdy to urządzenie widziało konto niezweryfikowane
+      if (box.hidden) return;
+      verSet(k, { seen: true, at: v.at, ok: true });
+      const ok = el('div', 'lt-acc-ok', '✓ Konto zweryfikowane');
+      ok.appendChild(el('div', 'lt-acc-ok-sub', 'Twoje wyniki są w rankingu, a nick jest zarezerwowany.'));
+      box.appendChild(ok);
+      box.classList.add('lt-acc-green');
+      return;
     }
-    if (msg) box.appendChild(el('div', 'lt-acc-msg' + (err ? ' lt-acc-err' : ''), msg));
-    if (!k.verified) {
-      box.appendChild(el('div', 'lt-acc-msg lt-acc-red lt-acc-warn', 'NICK MUSI BYĆ TAKI SAM JAK NA D2JSP'));
-      const row = el('div', 'lt-acc-row');
-      row.appendChild(button('Zweryfikuj', '', verify));
+    box.classList.remove('lt-acc-green');
+    box.hidden = false;
+    if (!v.seen) verSet(k, { seen: true, at: 0 });   // „widziane niezweryfikowane” → po weryfikacji jedno potwierdzenie
+    if (v.at > 0) {
+      box.appendChild(el('div', 'lt-acc-wait', '⏳ Weryfikacja w toku'));
+      if (Date.now() - v.at > 6 * 3600 * 1000) {
+        const tip = el('div', 'lt-acc-tip');
+        tip.append('Długo to trwa. Sprawdź, czy nick na d2jsp jest ', el('b', null, 'taki sam'), ' jak tu i czy kod jest w ',
+          el('b', null, 'nowym'), ' poście (edycji nie widać).');
+        box.appendChild(tip);
+      } else {
+        const how = el('div', 'lt-acc-msg lt-acc-how');
+        how.append('Zwykle trwa około ', el('b', null, '2 godzin'), '. Nic więcej nie musisz robić.');
+        box.appendChild(how);
+      }
+      const row = el('div', 'lt-acc-line');
+      row.append('kod ');
+      const chip = button(k.kod, 'lt-acc-chip', function () { copyKod(k); });
+      chip.title = 'Kliknij, aby skopiować';
+      row.appendChild(chip);
+      row.appendChild(button('Otwórz temat jeszcze raz', 'lt-acc-link', verify));
       box.appendChild(row);
+      if (msg) box.appendChild(el('div', 'lt-acc-msg' + (err ? ' lt-acc-err' : ''), msg));
+      box.appendChild(daysLine(k, false));
+      return;
     }
+    box.appendChild(el('div', 'lt-acc-msg lt-acc-red lt-acc-head', '⚠ Konto niezweryfikowane'));
+    // Duży kod w przerywanej ramce: klik kopiuje.
+    const code = button(k.kod, 'lt-acc-code', function () { copyKod(k); });
+    code.title = 'Kliknij, aby skopiować';
+    box.appendChild(code);
+    box.appendChild(el('div', 'lt-acc-hint', 'kliknij kod, aby skopiować'));
+    const how = el('div', 'lt-acc-msg lt-acc-how');
+    how.append('Wklej kod w ', el('b', null, 'nowym poście'), ' w temacie licznika. Sprawdzenie trwa około ',
+      el('b', null, '2 godzin'), '.');
+    box.appendChild(how);
+    if (msg) box.appendChild(el('div', 'lt-acc-msg' + (err ? ' lt-acc-err' : ''), msg));
+    box.appendChild(el('div', 'lt-acc-msg lt-acc-red lt-acc-warn', 'NICK MUSI BYĆ TAKI SAM JAK NA D2JSP'));
+    const row = el('div', 'lt-acc-row');
+    row.appendChild(button('Zweryfikuj', 'lt-acc-go', verify));
+    box.appendChild(row);
+    box.appendChild(daysLine(k, true));
+    const more = el('details', 'lt-acc-more');
+    more.appendChild(el('summary', null, 'Jak to działa?'));
+    const ul = el('ul');
+    ['„Zweryfikuj” kopiuje kod i otwiera temat licznika na forum.', 'Edycji starego posta nie widać, musi być nowy post.'].forEach(function (t) { ul.appendChild(el('li', null, t)); });
+    more.appendChild(ul);
+    box.appendChild(more);
   }
 
   function showForm(msg, withCode) {
@@ -203,6 +290,7 @@ export function createKonto(apiPost, el, avatars, status, onAuth, lsPrefix) {
     const kod = acc && acc.konto.kod;
     const ok = kod && copyText(kod);
     window.open(VERIFY_URL, '_blank', 'noopener');
+    if (kod && !(verGet(acc.konto).at > 0)) verSet(acc.konto, { seen: true, at: Date.now() });   // od teraz mała ramka „w toku”
     if (kod) showAccount(ok ? 'Kod ' + kod + ' skopiowany, wklej go w nowym poście.' : 'Nie udało się skopiować, przepisz kod ' + kod + ' w poście.', !ok);
   }
 
