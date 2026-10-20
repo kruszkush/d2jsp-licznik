@@ -4,13 +4,13 @@
 // Importy UI z ?v= (ta sama wartość wszędzie, podbijana razem z ?v= w strona/index.html), żeby
 // przeglądarka nie mieszała nowych i starych modułów. Moduły UI importują też sim.js i replay.js z ?v=;
 // tylko replay.js importuje './sim.js' bez ?v= (deploy.sh podmienia ten import na serwerze).
-import { createGame } from './game.js?v=55';
-import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=55';
-import { createInventory } from './inventory.js?v=55';
-import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=55';
-import { createKonto, KONTO_CSS } from './konto.js?v=55';
-import { createRanking, mountPageRanking, RANKING_CSS } from './ranking.js?v=55';
-import { KARTA_CSS, renderHero, renderMf, renderDrop, itemBox } from './karta.js?v=55';
+import { createGame } from './game.js?v=57';
+import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=57';
+import { createInventory } from './inventory.js?v=57';
+import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=57';
+import { createKonto, KONTO_CSS } from './konto.js?v=57';
+import { createRanking, mountPageRanking, RANKING_CSS } from './ranking.js?v=57';
+import { KARTA_CSS, renderHero, renderMf, renderDrop, itemBox } from './karta.js?v=57';
 
 export const CSS = `;   // eksport tylko dla out/karta-stany.html (zrzuty stanów karty)
 .lotnik-fall{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:80}
@@ -52,6 +52,16 @@ export const CSS = `;   // eksport tylko dla out/karta-stany.html (zrzuty stanó
 .lotnik-ekwv[hidden]{display:none!important}
 .lotnik-ekwv h3 a{color:inherit}
 .lotnik-ekwv .lt-eqv-note{margin-top:8px;font-size:10px;color:#94a3b8;line-height:1.45}
+.lotnik-ekwv .lotnik-inv{padding-top:0}
+.lotnik-ekwv .lotnik-inv h3{margin:0}
+.lt-eqv-head{position:sticky;top:0;z-index:5;background:rgba(15,23,42,.98);padding:14px 0 0;margin:0 0 4px}
+.lt-eqv-head .lt-inv-close{right:-6px}
+.lt-eqv-tabs{display:flex;gap:4px;margin-top:10px;border-bottom:1px solid rgba(248,250,252,.18)}
+.lt-eqv-tab{flex:1;background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;padding:7px 4px 8px;color:#94a3b8;font:700 12px system-ui,sans-serif;cursor:pointer;line-height:1.2;-webkit-tap-highlight-color:transparent}
+.lt-eqv-tab small{display:block;font-weight:500;font-size:10px;color:#64748b;margin-top:2px}
+.lt-eqv-tab.on{color:#fbbf24;border-bottom-color:#fbbf24}
+.lt-eqv-tab.on small{color:#cbd5e1}
+@media (hover:hover){.lt-eqv-tab:not(.on):hover{color:#e2e8f0}}
 .lotnik-card .lt-side{flex:0 1 auto;min-height:0;overflow:auto;scrollbar-gutter:stable both-edges;scrollbar-width:thin}
 @media (orientation:landscape) and (max-height:520px){
 .lotnik-card{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:16px;align-content:start;width:min(760px,calc(100vw - 24px));top:50%;max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px);padding:12px 14px}
@@ -103,7 +113,7 @@ let layer = null, tip = null, dim = null, stage = null, canvas = null;
 let card = null, cardHero = null, cardWho = null, cardWin = null, cardMeta = null, cardMf = null;
 let curItem = null;
 let cardDrop = null, cardInv = null, konto = null, ranking = null, cardStatus = null;
-let pageRank = null, eqView = null, eqTitle = null, eqBody = null, eqNote = null, eqDoc = null, eqUi = null, eqSeq = 0;   // karta rankingu na stronie, podgląd ekwipunku
+let pageRank = null, eqView = null, eqTitle = null, eqBody = null, eqNote = null, eqTabs = null, eqDoc = null, eqUi = null, eqSeq = 0;   // karta rankingu na stronie, podgląd ekwipunku
 let invPanel = null, invBody = null;
 let inventory = null, ekw = null;            // inventory.js (serwer) i panel ekwipunek.js
 let pendingDrop = null, dropState = null;    // drop z /end i jego stan na karcie
@@ -391,9 +401,12 @@ function build() {
   const eqClose = el('button', 'lotnik-btn lotnik-x lt-inv-close', '✕');
   eqClose.type = 'button';
   eqClose.setAttribute('aria-label', 'Zamknij podgląd ekwipunku');
+  eqTabs = el('div', 'lt-eqv-tabs');
+  const eqHead = el('div', 'lt-eqv-head');
+  eqHead.append(eqTitle, eqClose, eqTabs);   // przypięte przy przewijaniu: nick, ✕ i zakładki
   eqBody = el('div');
   eqNote = el('div', 'lt-eqv-note');
-  eqPanel.append(eqTitle, eqClose, eqBody, eqNote);
+  eqPanel.append(eqHead, eqBody, eqNote);
   eqView.appendChild(eqPanel);
   eqClose.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); eqView.hidden = true; });
   eqView.addEventListener('click', function (e) { if (e.target === eqView) eqView.hidden = true; });
@@ -692,6 +705,10 @@ function showResult(result) {
         pendingDrop = p.drop;
         dropState = { equipped: !!p.equipped, old: null, msg: p.lost ? 'Poprzedni nierozstrzygnięty przedmiot przepadł (pełna skrzynia).' : '' };
         showDrop(pendingDrop);
+      } else if (p && p.limit) {   // straż: dzienny limit przedmiotów (serwer), sama partia się liczy
+        cardDrop.textContent = '';
+        cardDrop.appendChild(el('div', 'lt-drop-msg', 'Dzienny limit przedmiotów, wróć jutro. Wynik się liczy.'));
+        cardDrop.hidden = false;
       }
       if (res.would && !hero.acc) { hero.would = res.would; renderHero(cardHero, hero, cardWho); }
     } else {
@@ -804,7 +821,22 @@ function closeGame() {
 }
 
 // --- podgląd ekwipunku z rankingu ----------------------------------------------
-// e = wiersz rankingu { nick, verified, uid, gid, dev, meters }; przedmioty z rekordowego lotu (POST /ekw).
+// e = wiersz rankingu { nick, verified, uid, gid, dev, meters }. POST /ekw: `now` = założone teraz na koncie,
+// `slots` = z rekordowego lotu. Zakładki „Teraz” (domyślna) i „Z rekordu”.
+function eqTabsShow(tabs, cur) {
+  eqTabs.replaceChildren();
+  tabs.forEach(function (t) {
+    const b = el('button', 'lt-eqv-tab' + (t === cur ? ' on' : ''), t.name);
+    b.type = 'button';
+    b.appendChild(el('small', null, t.sub));
+    b.addEventListener('click', function (ev) { ev.preventDefault(); eqTabsShow(tabs, t); });
+    eqTabs.appendChild(b);
+  });
+  eqDoc = { slots: cur.slots || {}, chest: [] };
+  eqUi.open();
+  eqNote.textContent = cur.note;
+}
+
 function showRecordEq(e) {
   const my = ++eqSeq;
   eqTitle.replaceChildren();
@@ -818,6 +850,7 @@ function showRecordEq(e) {
   } else {
     eqTitle.textContent = e.nick;
   }
+  eqTabs.replaceChildren();
   eqDoc = { slots: {}, chest: [] };
   eqUi.open();
   eqNote.textContent = 'Ładowanie…';
@@ -826,11 +859,14 @@ function showRecordEq(e) {
     if (my !== eqSeq) return;
     if (!r.ok) { eqNote.textContent = r.j.error || 'Brak połączenia'; return; }
     const dev = r.j.dev === 'm' ? ' (📱 telefon)' : r.j.dev === 'd' ? ' (🖥️ komputer)' : '';
-    eqDoc = { slots: r.j.slots || {}, chest: [] };
-    eqUi.open();
-    eqNote.textContent = r.j.slots
-      ? 'Ekwipunek z rekordowego lotu: ' + r.j.meters + ' m' + dev + '.'
-      : 'Brak zapisu ekwipunku dla tego lotu' + dev + '.';
+    const d = r.j.ts ? new Date(r.j.ts * 1000) : null;   // serwer: sekundy
+    const day = d ? ' · ' + String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') : '';
+    const tabs = [
+      { name: 'Teraz', sub: 'założone obecnie', slots: r.j.now, note: 'Przedmioty założone teraz.' },
+      { name: 'Z rekordu', sub: r.j.meters + ' m' + day, slots: r.j.slots,
+        note: r.j.slots ? 'Ekwipunek z rekordowego lotu: ' + r.j.meters + ' m' + dev + '.' : 'Brak zapisu ekwipunku dla tego lotu' + dev + '.' }
+    ];
+    eqTabsShow(tabs, r.j.now ? tabs[0] : tabs[1]);   // stary serwer bez `now`: od razu rekord
   });
 }
 

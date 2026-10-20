@@ -270,7 +270,15 @@ function fill(text, v) {
   return text.replace('{v}', String(v));
 }
 
-// Sumy skuteczne na karcie postaci: [{ mod, text }], tylko niezerowe, w kolejności MODS.
+// Grupa moda na karcie: 'prefix' | 'suffix' wg pierwszego zwykłego afiksu z tym modem, inaczej 'unique'.
+const MOD_KIND = {};
+for (const id in AFFIXES) {
+  const def = AFFIXES[id];
+  if (def.legacy || def.kind === 'unique') continue;
+  for (const f of def.fx) if (!MOD_KIND[f.mod]) MOD_KIND[f.mod] = def.kind;
+}
+
+// Sumy skuteczne na karcie postaci: [{ mod, text, kind }], tylko niezerowe, w kolejności MODS.
 export function statSummary(items) {
   const sums = sumStats(items);
   const lines = [];
@@ -278,7 +286,7 @@ export function statSummary(items) {
     if (!sums[mod]) continue;
     const e = effective(mod, sums[mod]);
     if (!e) continue;
-    lines.push({ mod: mod, text: fill(MODS[mod].text, e) });
+    lines.push({ mod: mod, text: fill(MODS[mod].text, e), kind: MOD_KIND[mod] || 'unique', v: Math.abs(e) });
   }
   return lines;
 }

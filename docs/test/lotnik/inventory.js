@@ -1,7 +1,7 @@
 // inventory.js — ekwipunek z serwera (E5): /inv, /act; przedmioty żyją tylko na serwerze.
 // W localStorage jest wyłącznie losowy klucz gościa (jak eqKey w Piłeczce); zalogowany gra tokenem konta,
 // a /inv z tokenem i kluczem scala przedmioty gościa z kontem (raz na klucz). Logika akcji: skrzynia.js.
-import { normalize, activeItems, freeCells, countItems } from './skrzynia.js?v=55';
+import { normalize, activeItems, freeCells, countItems } from './skrzynia.js?v=57';
 
 const KEY_STORE = 'lotnik.eqkey.v1';
 const OLD_STORE = 'lotnik.inventory.v1';     // lokalny ekwipunek sprzed E5 (do podrobienia) — znika
@@ -39,10 +39,11 @@ export function createInventory(apiPost, token, lsPrefix) {
     key = newKey();
     storeSet(KS, key);
   }
-  // Tożsamość do /start, /end, /act: token konta, inaczej klucz gościa.
+  // Tożsamość do /start, /end, /act: token konta ma pierwszeństwo; klucz gościa zawsze obok, bo /end przy wylogowanej
+  // sesji daje drop na klucz (po ponownym zalogowaniu /inv go scali), zamiast go zgubić.
   function ident() {
     const t = token();
-    return t ? { token: t } : { key: key };
+    return t ? { token: t, key: key } : { key: key };
   }
   function set(raw) {
     const before = JSON.stringify(activeItems(doc).map(function (x) { return x.id; }));

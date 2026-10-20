@@ -10,7 +10,8 @@ export const DT = 1 / 120;
 // v4: strefy MF wyżej (kosmos od 3000, czerwień od 5400).
 // v5: kuleczki łuków 4/3/2 MF (1.–3. miejsce) i 1 MF (zwykły) zamiast 8/6/4/2; pełny łuk ×5/×4/×3/×2 zamiast ×10.
 // v6: dynamit wyrzuca też mocno w prawo; bomba z boku i trampolina dają minimalny pęd do przodu; ptaki i balony MF.
-export const SIM_VER = 6;
+// v7: ptaki wyżej (125–250 m) i większe, dają MF wg miejsca awatara; balony MF większe, w poziomej girlandzie.
+export const SIM_VER = 7;
 
 const GRAVITY = 1500;
 const AIR_DRAG = 0.22;          // opór powietrza (1/s)
@@ -116,17 +117,22 @@ const DYN_GAP_LO = 24000, DYN_GAP_HI = 48000;        // bazowo ~1 na 3 km
 const DYN_AIR_LO = 150, DYN_AIR_HI = 600;
 // Łańcuch (chainBlast): trafiona bomba odpala bomby w promieniu CHAIN_R (przechodnio).
 const CHAIN_R = 80;
-// Ptaki (60–250 m, pojedynczo albo para/trójka): trafienie = +1 podrzut, lekko w górę i pęd w prawo
+// Ptaki (125–250 m, pojedynczo albo para/trójka): trafienie = +1 podrzut, lekko w górę i pęd w prawo
 // malejący do zera przy BIRD_FWD_REF (ptaki nie rozpędzają w nieskończoność).
-const BIRD_R = 20;
-const BIRD_LO = 720, BIRD_HI = 3000;
+// Od v7 ptak to awatar: 1./2./3. miejsce (BIRD_PLACE_P każde, gdy jest w s.owners) daje BIRD_MF, reszta BIRD_MF_BASE.
+const BIRD_R = 30;
+const BIRD_LO = 1500, BIRD_HI = 3000;
+const BIRD_DX = 100, BIRD_DY = 60;   // klucz: każdy następny dalej i niżej
+const BIRD_PLACE_P = 0.1;
+const BIRD_MF = [100, 70, 50], BIRD_MF_BASE = 30;
 const BIRD_GAP_LO = 1000, BIRD_GAP_HI = 2500;
 const BIRD_UP = 700, BIRD_FWD = 400, BIRD_FWD_REF = 1500;
-// Balony MF (kosmos i czerwień): pionowe sznury, każdy balon wart MFBAL_SPACE albo MFBAL_HELL wg wysokości.
+// Balony MF (kosmos i czerwień): girlanda prawie poziomo, lekko w dół w prawo (od v7; v6 pionowy sznur),
+// każdy balon wart MFBAL_SPACE albo MFBAL_HELL wg wysokości.
 // Górna granica pod szczytem dynamitu (~6240), żeby nie było martwych balonów.
-const MFBAL_R = 26;
+const MFBAL_R = 40;
 const MFBAL_LO = 3000, MFBAL_HI = 6000;
-const MFBAL_STEP = 90;
+const MFBAL_DX = 110, MFBAL_DY_LO = -45, MFBAL_DY_HI = 10;   // krok girlandy (y losowy na każdy balon)
 const MFBAL_GAP_LO = 1200, MFBAL_GAP_HI = 3000;
 const MFBAL_SPACE = 30, MFBAL_HELL = 50;
 // Tylko do testów lokalnych (opts.dense, strona ?test=1): trampoliny i dynamit TEST_DENSE razy gęściej.
@@ -363,20 +369,29 @@ function spawnDyn(s, x) {
 
 // Ptak: pojedynczo, ~30% para, ~15% trójka (luźny klucz w dół i w tył od pierwszego).
 function spawnBird(s, x) {
-  const y = BIRD_LO + rand(s, 'bird') * (BIRD_HI - BIRD_LO);
+  const y = BIRD_LO + 2 * BIRD_DY + rand(s, 'bird') * (BIRD_HI - BIRD_LO - 2 * BIRD_DY);   // trójka nie schodzi pod BIRD_LO
   const roll = rand(s, 'bird');
   const n = roll < 0.15 ? 3 : (roll < 0.45 ? 2 : 1);
-  for (let i = 0; i < n; i++) s.birds.push({ x: x + i * 70, y: y - i * 45, r: BIRD_R, alive: true });
+  for (let i = 0; i < n; i++) {
+    const roll2 = rand(s, 'bird');   // losowane zawsze, więc mapa nie zależy od listy właścicieli
+    let place = roll2 < BIRD_PLACE_P ? 0 : (roll2 < 2 * BIRD_PLACE_P ? 1 : (roll2 < 3 * BIRD_PLACE_P ? 2 : -1));
+    const ow = place >= 0 ? s.owners[place] : null;
+    if (!ow || ow.uid === undefined || ow.uid === null || ow.uid === '') place = -1;
+    s.birds.push({ x: x + i * BIRD_DX, y: y - i * BIRD_DY, r: BIRD_R, place: place,
+      value: place >= 0 ? BIRD_MF[place] : BIRD_MF_BASE, alive: true });
+  }
   return (BIRD_GAP_LO + rand(s, 'bird') * (BIRD_GAP_HI - BIRD_GAP_LO)) / MAP_DENSITY;
 }
 
-// Sznur balonów MF: 5–6 balonów jeden nad drugim, wartość każdego z jego wysokości.
+// Girlanda balonów MF: 5–6 balonów na jednej linie, krok x stały, y losowy (prawie poziomo, częściej w dół).
+// Zakres y0 z najgorszego przypadku, więc cała girlanda mieści się w MFBAL_LO–MFBAL_HI.
 function spawnMfBal(s, x) {
   const n = rand(s, 'mfbal') < 0.5 ? 5 : 6;
-  const y0 = MFBAL_LO + rand(s, 'mfbal') * (MFBAL_HI - MFBAL_LO - MFBAL_STEP * (n - 1));
+  const lo = MFBAL_LO - MFBAL_DY_LO * (n - 1), hi = MFBAL_HI - MFBAL_DY_HI * (n - 1);
+  let y = lo + rand(s, 'mfbal') * (hi - lo);
   for (let i = 0; i < n; i++) {
-    const y = y0 + i * MFBAL_STEP;
-    s.mfbals.push({ x: x, y: y, r: MFBAL_R, value: y >= ZONE_HELL_Y ? MFBAL_HELL : MFBAL_SPACE, alive: true });
+    if (i > 0) y += MFBAL_DY_LO + rand(s, 'mfbal') * (MFBAL_DY_HI - MFBAL_DY_LO);
+    s.mfbals.push({ x: x + i * MFBAL_DX, y: y, r: MFBAL_R, value: y >= ZONE_HELL_Y ? MFBAL_HELL : MFBAL_SPACE, alive: true });
   }
   return MFBAL_GAP_LO + rand(s, 'mfbal') * (MFBAL_GAP_HI - MFBAL_GAP_LO);
 }
@@ -697,7 +712,9 @@ function hitBirds(s) {
     s.vy = Math.min(upCap(s), Math.max(s.vy, BIRD_UP));
     s.vx = Math.min(s.maxV, s.vx + BIRD_FWD * Math.max(0, 1 - s.vx / BIRD_FWD_REF));
     s.grounded = false;
-    s.fx.push({ k: 'bird', x: b.x, y: b.y, v: Math.sqrt(s.vx * s.vx + s.vy * s.vy) });
+    s.mf += b.value;
+    s.fx.push({ k: 'bird', x: b.x, y: b.y, v: Math.sqrt(s.vx * s.vx + s.vy * s.vy), place: b.place });
+    s.fx.push({ k: 'mf', x: b.x, y: b.y, v: b.value, bird: true });
   }
 }
 

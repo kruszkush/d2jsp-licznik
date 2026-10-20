@@ -1,10 +1,10 @@
 // game.js — gra-nakładka: pętla, wejście, kamera. Fizyka w sim.js, rysowanie w draw.js.
 // Canvas jest przezroczysty (clearRect) — przyciemniona strona licznika przebija spod spodu.
-import { create, step, DT, GEOM, START_TICKS_BACK, TICK, SPEED, SIM_VER, MAX_FLY_STEPS } from './sim.js?v=55';
-import { AIM_MAX_STEPS, STEPS_PER_SEC } from './replay.js?v=55';
-import { drawScene, COLORS, zoneLevels } from './draw.js?v=55';
-import { createEfekty } from './efekty.js?v=55';
-import { modsFor } from './items.js?v=55';
+import { create, step, DT, GEOM, START_TICKS_BACK, TICK, SPEED, SIM_VER, MAX_FLY_STEPS } from './sim.js?v=57';
+import { AIM_MAX_STEPS, STEPS_PER_SEC } from './replay.js?v=57';
+import { drawScene, COLORS, zoneLevels } from './draw.js?v=57';
+import { createEfekty } from './efekty.js?v=57';
+import { modsFor } from './items.js?v=57';
 
 const GROUND_MARGIN = 56;        // ile px zostawiamy pod linią ziemi
 const BEST_KEY = 'lotnik.best';
@@ -21,6 +21,10 @@ const ZONES_ON = PARAMS.get('strefy') !== '0';
 // pod spodem. Próba na rwanie kolorów na telefonie (strona i tak ukryta).
 const OPAQUE = PARAMS.get('tlo') === '1';
 const TOUCH = typeof matchMedia === 'function' && matchMedia('(pointer:coarse)').matches;
+// Tempo lotu: dotyk 0,8 (wybór użytkownika po próbie A/B 20.10; mały ekran, palec zasłania, wolniejszy dotyk),
+// mysz 1; ?tempo=0.5–1 nadpisuje. Mnoży tylko czas rzeczywisty, kroki fizyki stałe DT, więc wynik, MF
+// i powtórka bez zmian; serwer sprawdza tylko grę za szybką.
+const TEMPO = Math.min(1, Math.max(0.5, Number(PARAMS.get('tempo')) || (TOUCH ? 0.8 : 1)));
 
 function newSeed() {
   return Math.floor(Math.random() * 4294967296);
@@ -73,7 +77,19 @@ export function createGame(opts) {
   let runMods = mods;
   let runOwners = owners;
   let ownerImgs = [];
+  // Odtwarzacz (out/odtworz.html): o.watch = { seed, mods, owners, inputs } z /partia. Wejścia z listy, klik i klawisze nic
+  // nie robią; bez biletu, bez restartu po 2 min celowania i bez zapisu rekordu w localStorage.
+  const watch = o.watch || null;
+  let speed = 1;
   function takeTicket() {
+    if (watch) {
+      ticket = null;
+      seed = watch.seed;
+      runMods = watch.mods || {};
+      runOwners = Array.isArray(watch.owners) ? watch.owners : [];
+      ownerImgs = runOwners.map(function (ow) { return ownerImg(ow && ow.url); });
+      return;
+    }
     let t = firstTicket;
     firstTicket = null;
     if (!t && nextTicket) t = nextTicket();
@@ -154,7 +170,7 @@ export function createGame(opts) {
   // --- sterowanie ------------------------------------------------------------
 
   function pushAction(action) {
-    if (sim.phase === 'over') return;
+    if (sim.phase === 'over' || watch) return;
     pending.push([sim.step, action]);
     log.push([sim.step, action]);
   }
@@ -178,11 +194,11 @@ export function createGame(opts) {
   // lokalnie (bilet serwera jest jednorazowy).
   function restart(freshSeed) {
     runLoadout = loadout.slice();
-    if (freshSeed) takeTicket();
+    if (freshSeed || watch) takeTicket();
     else { ticket = null; runMods = testMods(mods); }
     lateAt = freshSeed && !ticket && nextTicket && !TEST ? 0 : -1;
     sim = create(seed, runMods, { owners: runOwners, dense: TEST });
-    pending = [];
+    pending = watch ? watch.inputs.slice() : [];
     log = [];
     finished = false;
     drag = null;
@@ -232,7 +248,7 @@ export function createGame(opts) {
 
     if (lateAt >= 0) lateTicket();
     if (sim.phase !== 'over') {
-      acc += dt * ts;
+      acc += dt * ts * speed * (sim.phase === 'fly' && !watch ? TEMPO : 1);
       let guard = 0;
       while (acc >= DT && guard < 40) {
         const acts = takeActions(sim.step);
@@ -243,7 +259,7 @@ export function createGame(opts) {
       }
       if (guard >= 40) acc = 0;
       // 2 min celowania bez strzału: serwer takiej partii nie przyjmie → nowy bilet.
-      if (sim.phase === 'aim' && sim.step >= AIM_MAX_STEPS) {
+      if (sim.phase === 'aim' && sim.step >= AIM_MAX_STEPS && !watch) {
         restart(true);
         notice = { text: 'Minęły 2 minuty bez strzału — nowa partia', t: 3 };
       }
@@ -261,6 +277,7 @@ export function createGame(opts) {
 
   function finishRun() {
     finished = true;
+    if (watch) { onEnd({ meters: sim.meters, steps: sim.step, watch: true }); return; }
     const prevBest = best;   // rekord sprzed partii (0 = pierwszy lot na tym urządzeniu), karta pokazuje różnicę
     const isRecord = !TEST && sim.meters > best;
     if (isRecord) {
@@ -412,6 +429,7 @@ export function createGame(opts) {
       drag: drag,
       particles: fx.particles,
       labels: fx.labels,
+      falls: fx.falls,
       ownerImgs: ownerImgs,
       birdImgs: birdImgs,
       best: best,
@@ -486,6 +504,7 @@ export function createGame(opts) {
 
   function onPointerDown(e) {
     e.preventDefault();
+    if (watch) return;
     if (sim.phase === 'aim') {
       if (drag || waitingTicket()) return;
       const p = canvasPoint(e);
@@ -522,7 +541,7 @@ export function createGame(opts) {
       if (!e.repeat) puff();
     } else if (e.code === 'KeyR') {
       e.preventDefault();
-      if (sim.phase !== 'over') restart(true);   // po końcu restart tylko z karty („Zagraj jeszcze raz”)
+      if (sim.phase !== 'over' && !watch) restart(true);   // po końcu restart tylko z karty („Zagraj jeszcze raz”)
     } else if (e.code === 'Escape') {
       e.preventDefault();
       onClose();
@@ -569,6 +588,7 @@ export function createGame(opts) {
 
   return {
     restart: restart,
+    setSpeed: function (k) { speed = k > 0 ? k : 1; },   // odtwarzacz: 1× / 4×
     setLoadout: setLoadout,
     getLoadout: function () { return loadout.slice(); },
     // Podgląd stanu do testów w konsoli (nie wpływa na symulację).
@@ -606,6 +626,9 @@ export function createGame(opts) {
         sling: { x: Math.round(sx(GEOM.slingX)), y: Math.round(sy(GEOM.slingY)) },
         scale: scale,
         zoom: Math.round(zoom * 1000) / 1000,
+        viewW: Math.round(view.w),
+        ahead: Math.round(cam.x + view.w - sim.x),   // jednostki świata widoczne przed piłeczką
+        tempo: TEMPO,
         tickPx: TICK * scale,
         startTicksBack: START_TICKS_BACK
       };
