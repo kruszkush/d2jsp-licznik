@@ -1,8 +1,8 @@
 // draw.js — całe rysowanie nakładki. Tylko canvas 2D, bez fizyki.
 // Canvas jest przezroczysty: rysujemy postać, procę, bomby, platformy i HUD,
 // a przyciemniona strona licznika przebija z pod spodu (jeden div w nakladka.js).
-import { GEOM, TICK, PICKUP_BASE, arcMult, previewShot } from './sim.js?v=57';
-import { mfFromMeters } from './items.js?v=57';
+import { GEOM, TICK, PICKUP_BASE, arcMult, previewShot } from './sim.js?v=58';
+import { mfFromMeters } from './items.js?v=58';
 
 const TAU = Math.PI * 2;
 // Jeden pasek na środku u góry: dystans, MF za dystans, rekord, podrzuty. MF na żywo: równanie po lewej (drawMfLine).
@@ -754,6 +754,8 @@ function drawBirds(r) {
     ctx.lineWidth = 1;
     ctx.strokeStyle = '#78350f';
     ctx.stroke();
+    // ile daje ptak (y bez machania, napis nie skacze); #1–#3 złoty jak „% MF” przy kulkach
+    outlined(ctx, b.value + ' MF', x, sy(b.y) + rad + 13, 11, 800, 'center', b.place >= 0 ? COLORS.accent : '#f8fafc');
   }
 }
 

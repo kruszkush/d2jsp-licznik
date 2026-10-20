@@ -117,15 +117,15 @@ const DYN_GAP_LO = 24000, DYN_GAP_HI = 48000;        // bazowo ~1 na 3 km
 const DYN_AIR_LO = 150, DYN_AIR_HI = 600;
 // Łańcuch (chainBlast): trafiona bomba odpala bomby w promieniu CHAIN_R (przechodnio).
 const CHAIN_R = 80;
-// Ptaki (125–250 m, pojedynczo albo para/trójka): trafienie = +1 podrzut, lekko w górę i pęd w prawo
+// Ptaki (100–250 m, stada 3–5 w kluczu V co ~60 m): trafienie = +1 podrzut, lekko w górę i pęd w prawo
 // malejący do zera przy BIRD_FWD_REF (ptaki nie rozpędzają w nieskończoność).
 // Od v7 ptak to awatar: 1./2./3. miejsce (BIRD_PLACE_P każde, gdy jest w s.owners) daje BIRD_MF, reszta BIRD_MF_BASE.
 const BIRD_R = 30;
-const BIRD_LO = 1500, BIRD_HI = 3000;
-const BIRD_DX = 100, BIRD_DY = 60;   // klucz: każdy następny dalej i niżej
+const BIRD_LO = 1200, BIRD_HI = 3000;
+const BIRD_DX = 150, BIRD_DY = 85;   // klucz V: rząd k = k·DX za prowadzącym, na przemian ±k·DY
 const BIRD_PLACE_P = 0.1;
-const BIRD_MF = [100, 70, 50], BIRD_MF_BASE = 30;
-const BIRD_GAP_LO = 1000, BIRD_GAP_HI = 2500;
+const BIRD_MF = [40, 25, 15], BIRD_MF_BASE = 10;
+const BIRD_GAP_LO = 600, BIRD_GAP_HI = 840;   // odstęp stad wprost (bez MAP_DENSITY)
 const BIRD_UP = 700, BIRD_FWD = 400, BIRD_FWD_REF = 1500;
 // Balony MF (kosmos i czerwień): girlanda prawie poziomo, lekko w dół w prawo (od v7; v6 pionowy sznur),
 // każdy balon wart MFBAL_SPACE albo MFBAL_HELL wg wysokości.
@@ -133,7 +133,7 @@ const BIRD_UP = 700, BIRD_FWD = 400, BIRD_FWD_REF = 1500;
 const MFBAL_R = 40;
 const MFBAL_LO = 3000, MFBAL_HI = 6000;
 const MFBAL_DX = 110, MFBAL_DY_LO = -45, MFBAL_DY_HI = 10;   // krok girlandy (y losowy na każdy balon)
-const MFBAL_GAP_LO = 1200, MFBAL_GAP_HI = 3000;
+const MFBAL_GAP_LO = 600, MFBAL_GAP_HI = 1500;
 const MFBAL_SPACE = 30, MFBAL_HELL = 50;
 // Tylko do testów lokalnych (opts.dense, strona ?test=1): trampoliny i dynamit TEST_DENSE razy gęściej.
 // Serwer nigdy nie przekazuje dense, więc taka partia nie przejdzie powtórki.
@@ -367,20 +367,21 @@ function spawnDyn(s, x) {
   return (DYN_GAP_LO + rand(s, 'dyn') * (DYN_GAP_HI - DYN_GAP_LO)) / (s.mods.dynamiteFreq * s.dense);
 }
 
-// Ptak: pojedynczo, ~30% para, ~15% trójka (luźny klucz w dół i w tył od pierwszego).
+// Stado: 3–5 ptaków w luźnym kluczu V; prowadzący w x, rząd k o k·DX w tył, na przemian wyżej/niżej o k·DY.
+// y prowadzącego w [LO + 2·DY, HI − 2·DY], więc całe stado mieści się w BIRD_LO–BIRD_HI.
 function spawnBird(s, x) {
-  const y = BIRD_LO + 2 * BIRD_DY + rand(s, 'bird') * (BIRD_HI - BIRD_LO - 2 * BIRD_DY);   // trójka nie schodzi pod BIRD_LO
-  const roll = rand(s, 'bird');
-  const n = roll < 0.15 ? 3 : (roll < 0.45 ? 2 : 1);
+  const y = BIRD_LO + 2 * BIRD_DY + rand(s, 'bird') * (BIRD_HI - BIRD_LO - 4 * BIRD_DY);
+  const n = 3 + Math.floor(rand(s, 'bird') * 3);
   for (let i = 0; i < n; i++) {
+    const k = Math.floor((i + 1) / 2), side = i % 2 ? 1 : -1;
     const roll2 = rand(s, 'bird');   // losowane zawsze, więc mapa nie zależy od listy właścicieli
     let place = roll2 < BIRD_PLACE_P ? 0 : (roll2 < 2 * BIRD_PLACE_P ? 1 : (roll2 < 3 * BIRD_PLACE_P ? 2 : -1));
     const ow = place >= 0 ? s.owners[place] : null;
     if (!ow || ow.uid === undefined || ow.uid === null || ow.uid === '') place = -1;
-    s.birds.push({ x: x + i * BIRD_DX, y: y - i * BIRD_DY, r: BIRD_R, place: place,
+    s.birds.push({ x: x - k * BIRD_DX, y: y + side * k * BIRD_DY, r: BIRD_R, place: place,
       value: place >= 0 ? BIRD_MF[place] : BIRD_MF_BASE, alive: true });
   }
-  return (BIRD_GAP_LO + rand(s, 'bird') * (BIRD_GAP_HI - BIRD_GAP_LO)) / MAP_DENSITY;
+  return BIRD_GAP_LO + rand(s, 'bird') * (BIRD_GAP_HI - BIRD_GAP_LO);
 }
 
 // Girlanda balonów MF: 5–6 balonów na jednej linie, krok x stały, y losowy (prawie poziomo, częściej w dół).

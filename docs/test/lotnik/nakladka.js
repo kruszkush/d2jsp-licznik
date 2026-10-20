@@ -4,13 +4,13 @@
 // Importy UI z ?v= (ta sama wartość wszędzie, podbijana razem z ?v= w strona/index.html), żeby
 // przeglądarka nie mieszała nowych i starych modułów. Moduły UI importują też sim.js i replay.js z ?v=;
 // tylko replay.js importuje './sim.js' bez ?v= (deploy.sh podmienia ten import na serwerze).
-import { createGame } from './game.js?v=57';
-import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=57';
-import { createInventory } from './inventory.js?v=57';
-import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=57';
-import { createKonto, KONTO_CSS } from './konto.js?v=57';
-import { createRanking, mountPageRanking, RANKING_CSS } from './ranking.js?v=57';
-import { KARTA_CSS, renderHero, renderMf, renderDrop, itemBox } from './karta.js?v=57';
+import { createGame } from './game.js?v=58';
+import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=58';
+import { createInventory } from './inventory.js?v=58';
+import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=58';
+import { createKonto, KONTO_CSS } from './konto.js?v=58';
+import { createRanking, mountPageRanking, RANKING_CSS } from './ranking.js?v=58';
+import { KARTA_CSS, renderHero, renderMf, renderDrop, itemBox } from './karta.js?v=58';
 
 export const CSS = `;   // eksport tylko dla out/karta-stany.html (zrzuty stanów karty)
 .lotnik-fall{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:80}
