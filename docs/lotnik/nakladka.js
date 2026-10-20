@@ -4,13 +4,13 @@
 // Importy UI z ?v= (ta sama wartość wszędzie, podbijana razem z ?v= w strona/index.html), żeby
 // przeglądarka nie mieszała nowych i starych modułów. Moduły UI importują też sim.js i replay.js z ?v=;
 // tylko replay.js importuje './sim.js' bez ?v= (deploy.sh podmienia ten import na serwerze).
-import { createGame } from './game.js?v=53';
-import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=53';
-import { createInventory } from './inventory.js?v=53';
-import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=53';
-import { createKonto, KONTO_CSS } from './konto.js?v=53';
-import { createRanking, mountPageRanking, RANKING_CSS } from './ranking.js?v=53';
-import { KARTA_CSS, renderHero, renderMf, renderDrop, itemBox } from './karta.js?v=53';
+import { createGame } from './game.js?v=54';
+import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=54';
+import { createInventory } from './inventory.js?v=54';
+import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=54';
+import { createKonto, KONTO_CSS } from './konto.js?v=54';
+import { createRanking, mountPageRanking, RANKING_CSS } from './ranking.js?v=54';
+import { KARTA_CSS, renderHero, renderMf, renderDrop, itemBox } from './karta.js?v=54';
 
 export const CSS = `;   // eksport tylko dla out/karta-stany.html (zrzuty stanów karty)
 .lotnik-fall{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:80}
@@ -67,15 +67,17 @@ export const CSS = `;   // eksport tylko dla out/karta-stany.html (zrzuty stanó
 .lotnik-stage .lotnik-card .lt-sep{margin-top:10px}
 .lotnik-stage .lotnik-inv,.lotnik-stage .lotnik-rank{top:8px;max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px)}
 }
-/* Komputer (wariant A z out/makieta-uklad.html, 20.10): szersza kolumna, środek bez własnego przewijania
-   (przy braku miejsca przewija się cała karta), MF w jednym rzędzie. */
+/* Komputer (wariant A z out/makieta-uklad.html, 20.10; zwężony do 380 px, piramida 1 z out/makieta-mf.html):
+   środek bez własnego przewijania (przy braku miejsca przewija się cała karta), MF jako piramida:
+   „Magic Find 210”, pod nim „zebrane + za dystans”, pod spodem kolumny Magiczny / Rzadki / Unikat. */
 @media (min-width:600px) and (min-height:521px){
-.lotnik-stage .lotnik-card{width:min(460px,calc(100vw - 32px))}
+.lotnik-stage .lotnik-card{width:min(380px,calc(100vw - 32px))}
 .lotnik-stage .lotnik-card .lt-side{flex:none;overflow:visible;scrollbar-gutter:auto}
-.lotnik-stage .lotnik-card .lt-mf{display:grid;grid-template-columns:auto;grid-auto-columns:1fr;grid-auto-flow:column;align-items:center;column-gap:4px;padding:8px 12px}
-.lotnik-stage .lotnik-card .lt-mf-head{grid-row:1;grid-column:1;padding:0;gap:10px;justify-content:flex-start}
-.lotnik-stage .lotnik-card .lt-mf-low{grid-row:2;grid-column:1;border:0;padding:0;font-size:11px}
-.lotnik-stage .lotnik-card .lt-mfr{grid-row:1/span 2;flex-direction:column;align-items:center;gap:1px;border:0;border-left:1px solid rgba(248,250,252,.09);padding:0 0 0 6px;font-size:12px}
+.lotnik-stage .lotnik-card .lt-mf{display:flex;flex-wrap:wrap;padding:8px 10px 6px;text-align:center}
+.lotnik-stage .lotnik-card .lt-mf-head{flex:1 0 100%;justify-content:center;gap:8px;padding:0}
+.lotnik-stage .lotnik-card .lt-mf-low{flex:1 0 100%;border:0;padding:1px 0 7px;font-size:11px;text-align:center}
+.lotnik-stage .lotnik-card .lt-mfr{flex:1 1 0;flex-direction:column;align-items:center;gap:1px;padding:6px 0 0;border-top:1px solid rgba(248,250,252,.09);font-size:12px}
+.lotnik-stage .lotnik-card .lt-mfr+.lt-mfr{border-left:1px solid rgba(248,250,252,.09)}
 }
 body.playing>:not(.lotnik-stage),body.playing>:not(.lotnik-stage) *,body.playing>:not(.lotnik-stage) ::before,body.playing>:not(.lotnik-stage) ::after{animation-play-state:paused!important}
 body.playing .lavadrop{display:none!important}

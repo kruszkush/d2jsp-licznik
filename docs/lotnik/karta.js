@@ -1,7 +1,7 @@
 // karta.js — zawartość karty końca gry: wynik z nickiem, tabelka Magic Find, przedmiot w stylu Diablo 2.
 // nakladka.js składa kartę i podpina zdarzenia; tu tylko rysowanie (DOM) z danych. Ramka przedmiotu
 // (`itemBox`) jest wspólna dla dropu i panelu Ekwipunek.
-import { RARITY, TYPES, TIERS, AFFIXES, AFFIX_CHAIN, LEGACY_TYPE, affixLine, affixRange, tierRange, itemName, rarityChances, mfFromMeters } from './items.js?v=53';
+import { RARITY, TYPES, TIERS, AFFIXES, AFFIX_CHAIN, LEGACY_TYPE, affixLine, affixRange, tierRange, itemName, rarityChances, mfFromMeters } from './items.js?v=54';
 
 export const KARTA_CSS = `
 .lotnik-card .lt-hero{flex:none;position:relative;margin:-18px -16px 0;padding:14px 16px 14px;isolation:isolate;overflow:hidden}
@@ -77,7 +77,12 @@ export const KARTA_CSS = `
 @keyframes lt-stamp{from{transform:scale(1.8);opacity:0}}
 .lotnik-card .lt-eqwrap .lt-item{border-color:#4ade80;box-shadow:0 0 0 1px rgba(74,222,128,.25),0 0 26px rgba(74,222,128,.18)}
 .lotnik-card .lt-eqnote{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:#94a3b8}
-.lotnik-card .lt-eqnote .lt-old{color:#cbd5e1;font-weight:700;text-decoration:line-through;text-decoration-color:rgba(148,163,184,.6)}
+.lotnik-card .lt-eqnote{position:relative}
+.lotnik-card .lt-eqnote .lt-old{background:none;border:0;padding:2px 2px;cursor:pointer;font:700 12px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#cbd5e1;text-decoration:underline dotted;text-decoration-color:rgba(148,163,184,.7);text-underline-offset:3px}
+.lotnik-card .lt-eqnote .lt-old i{font-style:normal;margin-left:4px;display:inline-block;transition:transform .15s}
+.lotnik-card .lt-eqnote.open .lt-old i{transform:rotate(180deg)}
+.lotnik-card .lt-eqnote>.lt-cur-open{flex:1 0 100%;margin-top:4px}
+.lotnik-card .lt-old-tip{left:0;right:0}
 .lotnik-card .lt-eqnote .lt-arrow{color:#64748b}
 .lotnik-card .lt-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;background:rgba(59,130,246,.15);border:1px solid rgba(96,165,250,.4);color:#bfdbfe;font-weight:700;font-size:11px}
 .lotnik-card .lt-oldx{min-width:24px;height:24px;box-sizing:border-box;border-radius:12px;border:2px solid #f87171;background:#7f1d1d;color:#fef2f2;padding:0 6px;font:900 12px/1 system-ui,sans-serif;cursor:pointer;white-space:nowrap}
@@ -137,6 +142,8 @@ export const KARTA_CSS = `
 @media (hover:hover){
 .lotnik-card .lt-cur:not(.open):hover .lt-cur-tip{display:block;animation:lt-tip-in .18s ease-out both}
 .lotnik-card .lt-drop:has(.lt-cur:not(.open):hover)>.lt-item{opacity:.25;filter:blur(1.5px)}
+.lotnik-card .lt-eqnote:not(.open):has(.lt-old:hover) .lt-old-tip{display:block;animation:lt-tip-in .18s ease-out both}
+.lotnik-card .lt-drop:has(.lt-eqnote:not(.open) .lt-old:hover) .lt-eqwrap>.lt-item{opacity:.25;filter:blur(1.5px)}
 }
 .lotnik-card .lt-cur-open{margin-top:2px}
 .lotnik-card .lt-cur-open[hidden]{display:none}
@@ -687,8 +694,24 @@ function equippedNote(drop, s, on) {
     n.textContent = slot ? 'Miejsce na ' + slot + ' było puste, więc masz go już na sobie.' : 'Masz go już na sobie.';
     return n;
   }
-  const old = el('span', 'lt-old', itemName(s.old));
-  n.append(old, el('span', 'lt-arrow', '→'), el('span', 'lt-chip', '📦 w skrzyni'));
+  // Nazwa starego jak „Masz: X”: najechanie = podgląd nad linią (na nowym przedmiocie), klik/tap = rozwinięcie pod spodem.
+  const old = el('button', 'lt-old', itemName(s.old));
+  old.type = 'button';
+  old.appendChild(el('i', null, '▾'));
+  const tip = el('div', 'lt-cur-tip lt-old-tip');
+  tip.appendChild(el('div', 'lt-drop-kick', 'ZDJĘTY, W SKRZYNI'));
+  tip.appendChild(itemBox(s.old));
+  const box = itemBox(s.old);
+  box.classList.add('lt-cur-open');
+  const show = function (v) {
+    box.hidden = !v;
+    n.classList.toggle('open', v);
+    old.setAttribute('aria-expanded', String(v));
+    oldOpen = v ? s.old.id : null;
+  };
+  show(oldOpen === s.old.id);   // rysowanie od nowa (✗ → Na pewno?) nie zwija podglądu
+  old.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); show(box.hidden); });
+  n.append(tip, old, el('span', 'lt-arrow', '→'), el('span', 'lt-chip', '📦 w skrzyni'));
   if (on.oldX) {
     const x = button(s.oldAsk ? 'Na pewno?' : '✗', 'lt-oldx' + (s.oldAsk ? ' ask' : ''), on.oldX, s.oldBusy);
     x.className = 'lt-oldx' + (s.oldAsk ? ' ask' : '');   // bez wyglądu .lotnik-btn
@@ -696,8 +719,10 @@ function equippedNote(drop, s, on) {
     x.setAttribute('aria-label', x.title);
     n.appendChild(x);
   }
+  n.appendChild(box);
   return n;
 }
+let oldOpen = null;   // id starego przedmiotu z rozwiniętym podglądem
 
 // Drop po locie (z serwera): ramka przedmiotu, „Masz: …”, Ekwipunek, na końcu Załóż / Do skrzyni / Odrzuć.
 // st = { equipped (założony: od serwera albo po „Załóż”), old (zdjęty do skrzyni), oldAsk/oldBusy/oldMsg (✗ przy starym),
