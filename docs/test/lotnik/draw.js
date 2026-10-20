@@ -1,8 +1,8 @@
 // draw.js — całe rysowanie nakładki. Tylko canvas 2D, bez fizyki.
 // Canvas jest przezroczysty: rysujemy postać, procę, bomby, platformy i HUD,
 // a przyciemniona strona licznika przebija z pod spodu (jeden div w nakladka.js).
-import { GEOM, TICK, PICKUP_BASE, arcMult, previewShot } from './sim.js?v=61';
-import { mfFromMeters } from './items.js?v=61';
+import { GEOM, TICK, PICKUP_BASE, arcMult, previewShot } from './sim.js?v=62';
+import { mfFromMeters } from './items.js?v=62';
 
 const TAU = Math.PI * 2;
 // Jeden pasek na środku u góry: dystans, MF za dystans, rekord, podrzuty. MF na żywo: równanie po lewej (drawMfLine).
@@ -112,6 +112,7 @@ export function drawScene(r) {
   drawParticles(r);
   drawPlayer(r);
   drawZoneLabels(r);
+  drawHitLabels(r);
   drawPouchFront(r);
   ctx.restore();
 
@@ -1188,6 +1189,37 @@ function drawZoneLabels(r) {
     ctx.strokeText(txt, x, y);
     ctx.fillStyle = COLORS.accent;
     ctx.fillText(txt, x, y);
+  }
+  ctx.restore();
+}
+
+// „+N MF” za ptaka/balon MF (efekty.js `hits`, makieta out/makieta-mf-trafienie.html wariant B): nad piłeczką, w górę
+// ~70 px, gaśnie w 0,8 s od ostatniego doliczenia. Zwykły ptak biały 22 px, balon złoty 26, ptak #1–#3 złoty 30 (× uiK).
+function drawHitLabels(r) {
+  const { ctx, sx, sy, p, hits, W, H } = r;
+  if (!hits || !hits.length) return;
+  const k = uiK(W, H), bx = sx(p.x) + 30 * k, by = sy(p.y);
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round';
+  for (let i = 0; i < hits.length; i++) {
+    const h = hits[i];
+    const pop = h.bump < 0.12 ? 1 + 0.45 * (1 - h.bump / 0.12) : 1;
+    ctx.globalAlpha = h.idle > 0.5 ? Math.max(0, 1 - (h.idle - 0.5) / 0.3) : 1;
+    // Stały rozmiar czcionki, podskok przez scale (inny rozmiar co klatkę = nowe glify, skoki czasu klatki).
+    ctx.font = '900 ' + Math.round((h.big ? 30 : h.gold ? 26 : 22) * k) + 'px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+    ctx.lineWidth = h.gold ? 5 : 4;
+    ctx.strokeStyle = h.gold ? '#1f1300' : 'rgba(15,23,42,0.9)';
+    ctx.fillStyle = h.gold ? COLORS.accent : '#f8fafc';
+    const txt = '+' + h.v + ' MF', y = by - (34 + 70 * Math.min(1, h.age / 0.8)) * k;
+    if (pop === 1) { ctx.strokeText(txt, bx, y); ctx.fillText(txt, bx, y); continue; }
+    ctx.save();
+    ctx.translate(bx, y);
+    ctx.scale(pop, pop);
+    ctx.strokeText(txt, 0, 0);
+    ctx.fillText(txt, 0, 0);
+    ctx.restore();
   }
   ctx.restore();
 }

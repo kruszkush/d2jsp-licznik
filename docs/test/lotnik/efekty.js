@@ -1,13 +1,14 @@
 // efekty.js — efekty gry bez wpływu na fizykę: cząstki, wstrząs, błysk i zwolnienie po łuku, duży zysk „+N”,
 // równanie MF na żywo. game.js woła on(f) dla każdego sim.fx, tick(dt), flight(sim, dt) i update(dt) co klatkę; draw.js czyta pola.
 // Jak dodać efekt: nowa gałąź `f.k` w on() (sim.js wypluwa zdarzenie w s.fx), pola rysuje draw.js.
-import { mfFromMeters, MF_PER_KM } from './items.js?v=61';
-import { COLORS } from './draw.js?v=61';
+import { mfFromMeters, MF_PER_KM } from './items.js?v=62';
+import { COLORS } from './draw.js?v=62';
 
 export function createEfekty() {
   const fx = {
     particles: [],
     labels: [],       // „+1”/„+2” za strefy MF, lecą z piłeczki: { v, age } (draw.js rysuje względem piłeczki)
+    hits: [],         // „+N MF” za ptaka/balon MF, lecą nad piłeczką (max 4): { v, gold, big, bal, age, idle, bump }; girlanda sumuje się w jednym
     falls: [],        // spadające awatary zestrzelonych ptaków (max 4): { x, y, vx, vy, rot, vr, age, b: {x, y, place} }
     // Równanie MF na żywo (lewa krawędź, jedna linia): znaki { ch, c } (c: '' | 'sum' | 'mf' | 'x' | 'd' | 'dm' | 'z1' | 'z2'),
     // `shown` = ile już „napisane”, `ver` rośnie przy każdej zmianie widoku (draw.js trzyma podręczny obraz).
@@ -67,6 +68,7 @@ export function createEfekty() {
   fx.reset = function () {
     fx.particles.length = 0;
     fx.labels.length = 0;
+    fx.hits.length = 0;
     fx.falls.length = 0;
     fx.eq ={ list: [], shown: 0, ver: 0, on: false };
     eqTotal = 0; openArc = null; distDone = 0; distT = 0; eqPen = 0; ended = false; parenN = 0; arcIdle = 0;
@@ -304,6 +306,16 @@ export function createEfekty() {
       eqTotal += f.v;
       put(num(f.v));
       addGain(f.v);
+      if (f.bird || f.bal) {
+        // Napis „+N MF” nad piłeczką; kolejny balon girlandy (≤ 0,3 s) dolicza się do poprzedniego z podskokiem.
+        const last = fx.hits[fx.hits.length - 1];
+        if (f.bal && last && last.bal && last.idle < 0.3) { last.v += f.v; last.idle = 0; last.bump = 0; }
+        else {
+          if (fx.hits.length >= 4) fx.hits.shift();
+          const top = !!f.bird && f.v > 10;   // ptak #1–#3 (zwykły 10 MF)
+          fx.hits.push({ v: f.v, gold: top || !!f.bal, big: top, bal: !!f.bal, age: 0, idle: 0, bump: 0 });
+        }
+      }
       const col = f.v >= 20 ? COLORS.mf20 : (f.v >= 15 ? COLORS.mf15 : COLORS.mf10);
       for (let i = 0; i < 5; i++) {
         if (fx.particles.length > 120) break;
@@ -324,6 +336,11 @@ export function createEfekty() {
     for (let i = fx.labels.length - 1; i >= 0; i--) {
       fx.labels[i].age += dt;
       if (fx.labels[i].age > 0.9) fx.labels.splice(i, 1);
+    }
+    for (let i = fx.hits.length - 1; i >= 0; i--) {
+      const h = fx.hits[i];
+      h.age += dt; h.idle += dt; h.bump += dt;
+      if (h.idle > 0.8) fx.hits.splice(i, 1);
     }
     for (let i = fx.particles.length - 1; i >= 0; i--) {
       const p = fx.particles[i];
