@@ -1,8 +1,8 @@
 // draw.js — całe rysowanie nakładki. Tylko canvas 2D, bez fizyki.
 // Canvas jest przezroczysty: rysujemy postać, procę, bomby, platformy i HUD,
 // a przyciemniona strona licznika przebija z pod spodu (jeden div w nakladka.js).
-import { GEOM, TICK, PICKUP_BASE, arcMult, previewShot } from './sim.js?v=62';
-import { mfFromMeters } from './items.js?v=62';
+import { GEOM, TICK, PICKUP_BASE, arcMult, previewShot } from './sim.js?v=63';
+import { mfFromMeters } from './items.js?v=63';
 
 const TAU = Math.PI * 2;
 // Jeden pasek na środku u góry: dystans, MF za dystans, rekord, podrzuty. MF na żywo: równanie po lewej (drawMfLine).
@@ -1488,6 +1488,7 @@ function drawPuffHint(r) {
 
 function drawHint(r) {
   const { ctx, W, H, sim } = r;
+  if (r.watch) return;   // odtwarzacz: bez podpowiedzi i bez zapisu „umie” widza
   if (sim.phase === 'fly') learn('strzal');
   if (sim.phase === 'fly' && sim.puffsUsed > 0) learn('podrzut');
   if (sim.phase === 'aim' && !r.drag && !learned('strzal')) drawShotHint(r);
