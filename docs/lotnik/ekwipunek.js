@@ -2,9 +2,9 @@
 // pas) i skrzynia 4×4. Klik w przedmiot = statystyki pod jego rzędem (itemBox z karta.js) + dymki przy rogach: ✓ Załóż albo ↓ Zdejmij, ✗ Zniszcz.
 // Wygląd przedmiotu z Piłeczki (d2jsp-licznik/docs/gra.js, itemEl): awatar użytej piłeczki + ikona typu w kolorze rzadkości.
 // Stan i akcje: inventory.js (serwer). Tu tylko DOM.
-import { RARITY, TYPES, SLOT_ORDER, slotType, itemName, statSummary } from './items.js?v=54';
-import { activeItems, freeCells } from './skrzynia.js?v=54';
-import { itemBox } from './karta.js?v=54';
+import { RARITY, TYPES, SLOT_ORDER, slotType, itemName, statSummary } from './items.js?v=55';
+import { activeItems, freeCells } from './skrzynia.js?v=55';
+import { itemBox } from './karta.js?v=55';
 
 export const EKW_CSS = `
 .lt-doll{position:relative;width:300px;height:258px;margin:22px auto 0}
@@ -40,6 +40,19 @@ export const EKW_CSS = `
 .lt-eqb.del{right:-22px;background:#7f1d1d;border-color:#f87171;color:#fef2f2}
 .lt-eqb.del.ask{background:#dc2626;font-size:11px}
 .lt-eqb:disabled{opacity:.4;cursor:default}
+.lt-mods-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.lt-mods-col{min-width:0}
+.lt-mods-unique{margin-top:10px}
+.lt-mods-h{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding-bottom:4px;margin-bottom:4px;border-bottom:1px solid rgba(248,250,252,.12)}
+.lt-mods-prefix .lt-mods-h{color:#7dd3fc}
+.lt-mods-suffix .lt-mods-h{color:#86efac}
+.lt-mods-unique .lt-mods-h{color:#d9a066}
+.lt-mods-row{font-size:11px;line-height:1.35;color:#e2e8f0;padding:2px 0 2px 8px;border-left:2px solid rgba(248,250,252,.14)}
+.lt-mods-row+.lt-mods-row{margin-top:3px}
+.lt-mods-prefix .lt-mods-row{border-left-color:rgba(125,211,252,.45)}
+.lt-mods-suffix .lt-mods-row{border-left-color:rgba(134,239,172,.45)}
+.lt-mods-unique .lt-mods-row{border-left-color:rgba(217,160,102,.6)}
+.lt-mods-none,.lt-mods-empty{font-size:11px;color:#64748b}
 .lt-eqmsg{font-size:11px;color:#fca5a5;text-align:center;margin-top:6px}
 .lt-eqmsg.ok{color:#86efac}
 .lt-eqmsg:empty{display:none}
@@ -190,8 +203,7 @@ export function createEkwipunek(opts) {
     body.appendChild(doll);
     if (!sel || sel.at === 'slot') body.appendChild(details(doc));
     if (opts.readOnly) {
-      const sums = statSummary(activeItems(doc));
-      body.appendChild(el('div', 'lt-inv-mods', sums.length ? sums.map(function (l) { return l.text; }).join(' · ') : 'Bez przedmiotów.'));
+      body.appendChild(modsBox(doc, 'Bez przedmiotów.'));
       return;
     }
     const free = freeCells(doc), size = doc.chest.length;
@@ -208,10 +220,27 @@ export function createEkwipunek(opts) {
     body.appendChild(grid);
     const m = el('div', 'lt-eqmsg' + (msgOk ? ' ok' : ''), msg || inv.note());
     body.appendChild(m);
+    body.appendChild(modsBox(doc, 'Bez przedmiotów: zwykła piłeczka.'));
+  }
+
+  // Aktywne bonusy: prefiksy (świat) po lewej, sufiksy (piłeczka) po prawej, unikalne pod spodem.
+  function modsBox(doc, empty) {
     const sums = statSummary(activeItems(doc));
-    body.appendChild(el('div', 'lt-inv-mods', sums.length
-      ? sums.map(function (l) { return l.text; }).join(' · ')
-      : 'Bez przedmiotów: zwykła piłeczka.'));
+    const box = el('div', 'lt-inv-mods');
+    if (!sums.length) { box.appendChild(el('div', 'lt-mods-empty', empty)); return box; }
+    const col = function (kind, title) {
+      const c = el('div', 'lt-mods-col lt-mods-' + kind);
+      c.appendChild(el('div', 'lt-mods-h', title));
+      const rows = sums.filter(function (l) { return l.kind === kind; }).sort(function (a, b) { return b.v - a.v; });
+      if (!rows.length) c.appendChild(el('div', 'lt-mods-none', 'brak'));
+      for (const l of rows) c.appendChild(el('div', 'lt-mods-row', l.text));
+      return c;
+    };
+    const grid = el('div', 'lt-mods-grid');
+    grid.append(col('prefix', 'Prefiksy · świat'), col('suffix', 'Sufiksy · piłeczka'));
+    box.appendChild(grid);
+    if (sums.some(function (l) { return l.kind === 'unique'; })) box.appendChild(col('unique', 'Unikalne'));
+    return box;
   }
 
   return {
