@@ -1,6 +1,6 @@
 # d2jsp-licznik — kontekst dla Claude
 
-Licznik postów z forum d2jsp (sekcja Polska) + gra „Piłeczka”. Strona: https://kruszkush.github.io/d2jsp-licznik/ (GitHub Pages — repo MUSI zostać publiczne). Bieżący stan zawsze czytaj z repo; liczby poniżej to historia.
+Licznik postów z forum d2jsp (sekcja Polska) + gra „Lotnik” (kod i serwer w repo `lotnik`, publikacja `sh scripts/publikuj.sh test|podglad|prod` w tamtym repo; stan: `E:\Vibe coding\lotnik\STAN.md`). Strona: https://kruszkush.github.io/d2jsp-licznik/ (GitHub Pages — repo MUSI zostać publiczne). Bieżący stan zawsze czytaj z repo; liczby poniżej to historia.
 
 ## Dwa automaty, dwa foldery
 - `E:\Vibe coding\d2jsp-licznik` — kopia robocza (tu edytujemy, commit + push).
@@ -28,5 +28,5 @@ Licznik postów z forum d2jsp (sekcja Polska) + gra „Piłeczka”. Strona: htt
 - Przed zmianą wytykaj nielogiczne liczby/zasady w prośbie (np. „zestaw” z 1 sztuki). Pytanie „czemu?” = wyjaśnij, nie zmieniaj.
 
 ## Gra „Piłeczka” (wyłączona 14.10.2026)
-- Gra i ranking zablokowane (`WYLACZONA = True` w `gcp/pileczka/main.py`), dane w Firestore zostają. Pełny opis zasad, serwera, kont, ekwipunku i wdrożenia: `notatki/pileczka.md` (czytaj przed zmianą `gcp/pileczka` albo `docs/gra.js`).
+- Gra i ranking zablokowane (`WYLACZONA = True` w `gcp/pileczka/main.py`), dane w Firestore zostają. Pełny opis zasad, serwera, kont, ekwipunku i wdrożenia: `notatki/pileczka.md` (czytaj przed zmianą `gcp/pileczka`; `docs/gra.js` usunięty 20.10, na stronie gra Lotnik).
 - Następczyni: gra Lotnik (`E:\Vibe coding\lotnik`), własny serwer na tym samym projekcie GCP.
