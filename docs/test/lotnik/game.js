@@ -1,15 +1,26 @@
 // game.js — gra-nakładka: pętla, wejście, kamera. Fizyka w sim.js, rysowanie w draw.js.
 // Canvas jest przezroczysty (clearRect) — przyciemniona strona licznika przebija spod spodu.
-import { create, step, DT, GEOM, START_TICKS_BACK, TICK, SPEED, SIM_VER, MAX_FLY_STEPS } from './sim.js?v=35';
-import { AIM_MAX_STEPS } from './replay.js?v=35';
-import { drawScene, COLORS } from './draw.js?v=35';
-import { createEfekty } from './efekty.js?v=35';
-import { modsFor } from './items.js?v=35';
+import { create, step, DT, GEOM, START_TICKS_BACK, TICK, SPEED, SIM_VER, MAX_FLY_STEPS } from './sim.js?v=55';
+import { AIM_MAX_STEPS, STEPS_PER_SEC } from './replay.js?v=55';
+import { drawScene, COLORS, zoneLevels } from './draw.js?v=55';
+import { createEfekty } from './efekty.js?v=55';
+import { modsFor } from './items.js?v=55';
 
 const GROUND_MARGIN = 56;        // ile px zostawiamy pod linią ziemi
-const bestKey = 'lotnik.best';
+const BEST_KEY = 'lotnik.best';
 // Strona z ?test=1: łańcuch bomb (trampoliny i dynamit w zwykłej gęstości, sim.js TEST_DENSE), gra tylko lokalnie (bez biletu i rekordu).
 const TEST = typeof location !== 'undefined' && new URLSearchParams(location.search).get('test') === '1';
+// ?fps=1: licznik klatek po lewej (z 2 s: mediana klatki, najgorsza, czas JS, zacięcia), do pomiaru
+// na telefonie. Porównania A/B na telefonie: ?dpr=1 / ?dpr=1.5 (gęstość pikseli canvasa, domyślnie 2),
+// ?strefy=0 (przyciemnienie bez koloru stref, czyli bez zmian tła).
+const PARAMS = typeof location !== 'undefined' ? new URLSearchParams(location.search) : new URLSearchParams('');
+const FPS = PARAMS.get('fps') === '1';
+const DPR_FORCE = Number(PARAMS.get('dpr')) || 0;
+const ZONES_ON = PARAMS.get('strefy') !== '0';
+// ?tlo=1: nieprzezroczysty canvas z kolorem przyciemnienia malowanym co klatkę (o.bg), bez mieszania z warstwami
+// pod spodem. Próba na rwanie kolorów na telefonie (strona i tak ukryta).
+const OPAQUE = PARAMS.get('tlo') === '1';
+const TOUCH = typeof matchMedia === 'function' && matchMedia('(pointer:coarse)').matches;
 
 function newSeed() {
   return Math.floor(Math.random() * 4294967296);
@@ -18,11 +29,14 @@ function newSeed() {
 export function createGame(opts) {
   const o = opts || {};
   const canvas = o.canvas;
-  const ctx = canvas.getContext('2d', { alpha: true });
+  const ctx = canvas.getContext('2d', { alpha: !OPAQUE });
+  const bg = OPAQUE && o.bg ? o.bg : null;   // () => kolor tła (nieprzezroczysty)
   const nick = String(o.nick || '');
   const onEnd = o.onEnd || function () {};
   const onClose = o.onClose || function () {};
+  const onZone = o.onZone || function () {};   // poziomy stref (kosmos, czerwień) 0–1 co 1/20 → tło przyciemnienia
 
+  const bestKey = (o.lsPrefix || '') + BEST_KEY;   // prod „p.”: osobny rekord niż na /test/
   let best = 0;
   try { best = Number(localStorage.getItem(bestKey)) || 0; } catch (e) { best = 0; }
 
@@ -52,7 +66,7 @@ export function createGame(opts) {
   }
 
   // Bilet partii {seed, mods, owners, simVer}: z serwera (o.ticket, potem o.nextTicket()).
-  // Bez biletu: ziarno lokalne, wynik „niezapisany”.
+  // Bez biletu: plansza lokalna, proca czeka na bilet (lateTicket); tylko tryb testowy gra bez biletu.
   let firstTicket = o.ticket || null;
   const nextTicket = typeof o.nextTicket === 'function' ? o.nextTicket : null;
   let ticket = null;
@@ -63,6 +77,9 @@ export function createGame(opts) {
     let t = firstTicket;
     firstTicket = null;
     if (!t && nextTicket) t = nextTicket();
+    useTicket(t);
+  }
+  function useTicket(t) {
     if (t && t.simVer !== SIM_VER) t = null;   // stara karta / inna fizyka: gramy lokalnie
     if (TEST) t = null;
     ticket = t || null;
@@ -88,6 +105,11 @@ export function createGame(opts) {
   let drag = null;      // trwające naciąganie procy: { id, x0, y0, x, y } w px ekranu
   let cursor = '';
 
+  // Ptaki = awatary losowych graczy ze skrzydłami (najwyżej 24, ładowane raz; tylko wygląd, fizyka bez zmian).
+  const birdUrls = (o.birdUrls || []).filter(Boolean);
+  for (let i = birdUrls.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = birdUrls[i]; birdUrls[i] = birdUrls[j]; birdUrls[j] = t; }
+  const birdImgs = birdUrls.slice(0, 24).map(ownerImg);
+
   // Awatar gracza (okrągła postać). Bez crossOrigin — tylko rysujemy, nie czytamy pikseli.
   const img = new Image();
   let imgOk = false;
@@ -100,14 +122,21 @@ export function createGame(opts) {
   // --- rozmiar i współrzędne -------------------------------------------------
 
   function resize() {
-    dpr = Math.min(2, window.devicePixelRatio || 1);
-    W = Math.max(1, window.innerWidth);
-    H = Math.max(1, window.innerHeight);
+    // Max 2 px na punkt, też na telefonie. Pomiar na Mi Note 10 (20.10, ślad GPU przez adb): niecałkowite 1,5
+    // dawało 3× więcej klatek GPU > 10 ms niż 2 albo 1 (koszt zależy od skalowania, nie od liczby pikseli).
+    dpr = DPR_FORCE ? Math.min(3, DPR_FORCE) : Math.min(2, window.devicePixelRatio || 1);
+    // Rozmiar z samego canvasa (CSS 100% sceny), nie z okna: na telefonie pasek adresu zmienia innerHeight
+    // inaczej niż warstwę fixed, a wtedy obraz się rozciągał albo dół wychodził pod pasek.
+    W = Math.max(1, canvas.clientWidth || window.innerWidth);
+    H = Math.max(1, canvas.clientHeight || window.innerHeight);
     canvas.width = Math.round(W * dpr);
     canvas.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     // Mała skala = małe przeszkody i cienka ziemia (gra jest nakładką, nie pełnym światem).
-    scale = Math.max(0.45, Math.min(1.1, Math.min(W / 620, H / 760)));
+    // Pion (telefon): skala z szerokości tak, żeby widać było ~950 jednostek do przodu (było 620), piłeczka ~15 px.
+    scale = H > W
+      ? Math.max(0.4, Math.min(1.1, Math.min(W / 950, H / 760)))
+      : Math.max(0.45, Math.min(1.1, Math.min(W / 620, H / 760)));
     updateView();
   }
 
@@ -151,6 +180,7 @@ export function createGame(opts) {
     runLoadout = loadout.slice();
     if (freshSeed) takeTicket();
     else { ticket = null; runMods = testMods(mods); }
+    lateAt = freshSeed && !ticket && nextTicket && !TEST ? 0 : -1;
     sim = create(seed, runMods, { owners: runOwners, dense: TEST });
     pending = [];
     log = [];
@@ -164,6 +194,23 @@ export function createGame(opts) {
     cam.y = 0;
   }
 
+  // Partia bez biletu (zapas przeterminowany w tle, zmiana ekwipunku, brak sieci): proca zablokowana (waitingTicket),
+  // co 1/4 s pytamy o bilet i po jego przyjściu zaczynamy tę partię od nowa z ziarnem serwera. Bez biletu nie ma
+  // strzału, więc każdy rozegrany wynik ma bilet i idzie do serwera.
+  let lateAt = -1;
+  function waitingTicket() { return lateAt >= 0; }
+  function lateTicket() {
+    if (sim.step < lateAt) return;
+    lateAt = sim.step + STEPS_PER_SEC / 4;
+    const t = nextTicket();
+    if (!t || t.simVer !== SIM_VER) return;
+    useTicket(t);
+    lateAt = -1;
+    sim = create(seed, runMods, { owners: runOwners, dense: TEST });
+    pending = [];
+    acc = 0;
+  }
+
   // Ekwipunek ustawiany z zewnątrz (przyszły panel przedmiotów). Wpływa na
   // następną partię; nie przerywa trwającego lotu.
   function setLoadout(ids) {
@@ -175,6 +222,7 @@ export function createGame(opts) {
 
   function frame(now) {
     if (dead) return;
+    const t0 = FPS ? performance.now() : 0;
     if (!last) last = now;
     let dt = (now - last) / 1000;
     last = now;
@@ -182,6 +230,7 @@ export function createGame(opts) {
     // zwolnienie po łuku: wolniej tyka symulacja (kroki stałe DT, więc tor lotu się nie zmienia)
     const ts = fx.tick(dt);
 
+    if (lateAt >= 0) lateTicket();
     if (sim.phase !== 'over') {
       acc += dt * ts;
       let guard = 0;
@@ -206,11 +255,13 @@ export function createGame(opts) {
     fx.flight(sim, dt);
     fx.update(dt);
     render(acc / DT, dt, now);
+    if (FPS) workMs = performance.now() - t0;
     raf = requestAnimationFrame(frame);
   }
 
   function finishRun() {
     finished = true;
+    const prevBest = best;   // rekord sprzed partii (0 = pierwszy lot na tym urządzeniu), karta pokazuje różnicę
     const isRecord = !TEST && sim.meters > best;
     if (isRecord) {
       best = Math.floor(sim.meters);
@@ -234,7 +285,9 @@ export function createGame(opts) {
     onEnd({
       meters: sim.meters,
       best: best,
+      prevBest: prevBest,
       newRecord: isRecord,
+      test: TEST,
       beaten: sim.flySteps > MAX_FLY_STEPS,   // lot do bezpiecznika 10 min = koniec gry
       nick: nick,
       seed: sim.seed,
@@ -261,7 +314,8 @@ export function createGame(opts) {
   function updateCamera(dt, p) {
     // Start: proca na 3. kresce (dwie kratki zapasu). Potem kamera prowadzi
     // postać, ale nigdy nie cofa się przed start — brak skoku na początku lotu.
-    const lead = Math.max(view.w * 0.32, -startCamX());
+    // W pionie piłeczka bliżej lewej krawędzi: więcej widać przed nią.
+    const lead = Math.max(view.w * (H > W ? 0.22 : 0.32), -startCamX());
     const tx = sim.phase === 'aim'
       ? startCamX()
       : Math.max(startCamX(), p.x - lead);
@@ -295,6 +349,41 @@ export function createGame(opts) {
 
   // --- rysowanie -------------------------------------------------------------
 
+  let zoneKey = '';
+  // JS = symulacja + rysowanie jednej klatki (poprzedniej). Długa klatka przy krótkim JS = koszt po stronie
+  // przeglądarki (kompozycja warstw, wielkość canvasa), nie kodu gry. Zacięcia = klatki > 1,5 × mediana.
+  const fpsBuf = [];
+  const workBuf = [];
+  let workMs = 0;
+  let fpsText = '';
+  let fpsT = 0;
+  function drawFps(dt) {
+    fpsBuf.push(dt * 1000);
+    workBuf.push(workMs);
+    fpsT += dt;
+    if (fpsT >= 2) {
+      const s = fpsBuf.slice().sort(function (a, b) { return a - b; });
+      const w = workBuf.slice().sort(function (a, b) { return a - b; });
+      const med = s[Math.floor(s.length / 2)];
+      let jank = 0;
+      for (let i = 0; i < s.length; i++) if (s[i] > med * 1.5) jank++;
+      fpsText = Math.round(1000 / med) + ' kl./s · klatka ' + med.toFixed(1) + ' ms, najgorsza ' + s[s.length - 1].toFixed(0) +
+        ' · JS ' + w[Math.floor(w.length / 2)].toFixed(1) + ' ms, max ' + w[w.length - 1].toFixed(0) +
+        ' · zacięcia ' + jank + ' · dpr ' + dpr + (ZONES_ON ? '' : ' · strefy 0');
+      fpsBuf.length = 0;
+      workBuf.length = 0;
+      fpsT = 0;
+    }
+    if (!fpsText) return;
+    ctx.font = '600 11px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(15,23,42,0.85)';
+    const fy = Math.round(H / 2 - 56);   // po lewej nad równaniem MF: poza HUD-em i poza kciukami
+    ctx.fillRect(6, fy, ctx.measureText(fpsText).width + 12, 18);
+    ctx.fillStyle = '#86efac';
+    ctx.fillText(fpsText, 12, fy + 13);
+  }
+
   function setCursor(c) {
     if (c !== cursor) {
       cursor = c;
@@ -324,6 +413,7 @@ export function createGame(opts) {
       particles: fx.particles,
       labels: fx.labels,
       ownerImgs: ownerImgs,
+      birdImgs: birdImgs,
       best: best,
       nick: nick,
       img: img,
@@ -332,8 +422,20 @@ export function createGame(opts) {
       flash: fx.flash,
       eq: fx.eq,
       gain: fx.gain,
-      now: now
+      now: now,
+      dpr: dpr,
+      lite: TOUCH,   // telefon: tańsze efekty (draw.js drawMfLine) i podpowiedź tylko na początku lotu
+      portrait: TOUCH && H > W,
+      bg: bg ? bg() : ''
     });
+    const z = zoneLevels(p.y);
+    const zk = z.space + ',' + z.hell;
+    if (zk !== zoneKey && ZONES_ON) {
+      zoneKey = zk;
+      onZone(z.space, z.hell);
+    }
+    if (FPS) drawFps(dt);
+    if (waitingTicket()) notice = { text: 'Łączenie z serwerem…', t: 0.3 };
     if (notice) {
       notice.t -= dt;
       if (notice.t <= 0) notice = null;
@@ -344,7 +446,7 @@ export function createGame(opts) {
         ctx.fillText(notice.text, W / 2, H * 0.42);
       }
     }
-    setCursor(drag ? 'grabbing' : (sim.phase === 'aim' ? 'grab' : 'pointer'));
+    setCursor(drag ? 'grabbing' : (sim.phase === 'aim' ? (waitingTicket() ? 'wait' : 'grab') : 'pointer'));
   }
 
   // --- wejście ---------------------------------------------------------------
@@ -376,7 +478,7 @@ export function createGame(opts) {
     if (!d) return;
     const pull = pullFromDrag(d);
     const len = Math.sqrt(pull.x * pull.x + pull.y * pull.y);
-    if (len / GEOM.maxPull < 0.08) return;   // za krótkie pociągnięcie = kulka wraca
+    if (len / GEOM.maxPull < 0.08 || waitingTicket()) return;   // za krótkie pociągnięcie = kulka wraca
     const qx = Math.round((pull.x / GEOM.maxPull) * 100);
     const qy = Math.round((pull.y / GEOM.maxPull) * 100);
     pushAction(['shot', qx, qy]);
@@ -385,7 +487,7 @@ export function createGame(opts) {
   function onPointerDown(e) {
     e.preventDefault();
     if (sim.phase === 'aim') {
-      if (drag) return;
+      if (drag || waitingTicket()) return;
       const p = canvasPoint(e);
       drag = { id: e.pointerId, x0: p.x, y0: p.y, x: p.x, y: p.y };
       try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* ignoruj */ }
@@ -439,6 +541,8 @@ export function createGame(opts) {
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('resize', onResize);
   window.addEventListener('orientationchange', onOrientation);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', onResize);
+  document.addEventListener('fullscreenchange', onOrientation);
 
   function destroy() {
     dead = true;
@@ -453,6 +557,8 @@ export function createGame(opts) {
     window.removeEventListener('keydown', onKeyDown);
     window.removeEventListener('resize', onResize);
     window.removeEventListener('orientationchange', onOrientation);
+    if (window.visualViewport) window.visualViewport.removeEventListener('resize', onResize);
+    document.removeEventListener('fullscreenchange', onOrientation);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   }
@@ -476,6 +582,7 @@ export function createGame(opts) {
         meters: sim.meters,
         seed: sim.seed,
         saved: !!ticket,
+        waiting: waitingTicket(),
         simVer: SIM_VER,
         shotSpeedMax: SPEED,
         loadout: loadout.slice(),

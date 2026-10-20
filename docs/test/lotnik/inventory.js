@@ -1,7 +1,7 @@
 // inventory.js — ekwipunek z serwera (E5): /inv, /act; przedmioty żyją tylko na serwerze.
 // W localStorage jest wyłącznie losowy klucz gościa (jak eqKey w Piłeczce); zalogowany gra tokenem konta,
 // a /inv z tokenem i kluczem scala przedmioty gościa z kontem (raz na klucz). Logika akcji: skrzynia.js.
-import { normalize, activeItems, freeCells, countItems } from './skrzynia.js?v=35';
+import { normalize, activeItems, freeCells, countItems } from './skrzynia.js?v=55';
 
 const KEY_STORE = 'lotnik.eqkey.v1';
 const OLD_STORE = 'lotnik.inventory.v1';     // lokalny ekwipunek sprzed E5 (do podrobienia) — znika
@@ -23,10 +23,12 @@ function storeSet(k, v) {
 }
 
 // apiPost(path, body, ms) → Promise<{ ok, j }>; token() → token konta albo null.
-export function createInventory(apiPost, token) {
+// lsPrefix: przedrostek klucza w localStorage (prod „p.”, osobny gość niż na /test/).
+export function createInventory(apiPost, token, lsPrefix) {
+  const KS = (lsPrefix || '') + KEY_STORE;
   storeSet(OLD_STORE, null);
-  let key = storeGet(KEY_STORE);
-  if (!key || !/^[A-Za-z0-9_-]{32}$/.test(key)) { key = newKey(); storeSet(KEY_STORE, key); }
+  let key = storeGet(KS);
+  if (!key || !/^[A-Za-z0-9_-]{32}$/.test(key)) { key = newKey(); storeSet(KS, key); }
   let doc = normalize(null);
   let loaded = false;
   let note = '';                               // komunikat po scaleniu (resztki gościa)
@@ -35,7 +37,7 @@ export function createInventory(apiPost, token) {
 
   function rotateKey() {
     key = newKey();
-    storeSet(KEY_STORE, key);
+    storeSet(KS, key);
   }
   // Tożsamość do /start, /end, /act: token konta, inaczej klucz gościa.
   function ident() {

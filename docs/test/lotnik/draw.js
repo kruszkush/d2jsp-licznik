@@ -1,8 +1,8 @@
 // draw.js — całe rysowanie nakładki. Tylko canvas 2D, bez fizyki.
 // Canvas jest przezroczysty: rysujemy postać, procę, bomby, platformy i HUD,
 // a przyciemniona strona licznika przebija z pod spodu (jeden div w nakladka.js).
-import { GEOM, TICK, PICKUP_BASE, arcMult, previewShot } from './sim.js?v=35';
-import { mfFromMeters } from './items.js?v=35';
+import { GEOM, TICK, PICKUP_BASE, arcMult, previewShot } from './sim.js?v=55';
+import { mfFromMeters } from './items.js?v=55';
 
 const TAU = Math.PI * 2;
 // Jeden pasek na środku u góry: dystans, MF za dystans, rekord, podrzuty. MF na żywo: równanie po lewej (drawMfLine).
@@ -86,7 +86,10 @@ function panel(ctx, x, y, w, h, r, fill) {
 //       particles, best, nick, img, imgOk, shake, now }
 export function drawScene(r) {
   const { ctx, W, H, sim, shake, sx, sy, groundY, cam, view, scale, p } = r;
-  ctx.clearRect(0, 0, W, H);
+  if (r.bg) {   // ?tlo=1: nieprzezroczysty canvas (game.js OPAQUE)
+    ctx.fillStyle = r.bg;
+    ctx.fillRect(0, 0, W, H);
+  } else ctx.clearRect(0, 0, W, H);
 
   const ox = shake > 0 ? (Math.random() - 0.5) * shake * 0.4 : 0;
   const oy = shake > 0 ? (Math.random() - 0.5) * shake * 0.7 : 0;
@@ -102,6 +105,8 @@ export function drawScene(r) {
   drawBoosts(r);
   drawBombs(r);
   drawDyns(r);
+  drawBirds(r);
+  drawMfBalloons(r);
   drawSling(r);
   drawAimGuide(r);
   drawParticles(r);
@@ -121,53 +126,59 @@ export function drawScene(r) {
   }
 }
 
-// Tło paralaksy: gwiazdy i chmury w dwóch warstwach o różnym tempie przesuwu.
-// Każda warstwa to powtarzalny kafel (szerokość P px), więc przewijanie jest bez końca.
-function drawParallax(r) {
-  const { ctx, W, H, scale, cam, groundY, p } = r;
-  const gy = groundY;
+// Kolor stref (kosmos, czerwień) nie jest rysowany na canvasie: pełnoekranowa półprzezroczysta warstwa co klatkę
+// zacinała telefony. game.js przekazuje poziomy do nakladka.js, która zmienia tło przyciemnienia (tylko przy zmianie kroku).
+// Wysokość piłki: 0–2400 = niebo z chmurami, 2400–3600 = przejście, wyżej = kosmos (strefy MF w sim.js `ZONE_*`);
+// 4800–6000 niebo czerwieje do pełnej czerwieni. Kroki co 1/20, żeby tło zmieniało się rzadko.
+export function zoneLevels(py) {
+  const q = (v) => Math.round(Math.min(1, Math.max(0, v)) * 20) / 20;
+  return { space: q((py - 2400) / 1200), hell: q((py - 4800) / 1200) };
+}
+
+// Gwiazdy: pozycje w kaflu liczone raz (ułamki 0–1), rysowane jedną ścieżką.
+const STARS = [];
+for (let j = 0; j < 60; j++) {
   const frac = (v) => v - Math.floor(v);
+  STARS.push([frac(Math.sin(j * 12.9898) * 43758.5453), frac(Math.sin(j * 78.233) * 43758.5453)]);
+}
+const CLOUDS = [[120, 70, 90], [430, 110, 70], [700, 60, 110]];
+
+// Tło paralaksy: gwiazdy i chmury w dwóch warstwach o różnym tempie przesuwu.
+// Każda warstwa to powtarzalny kafel (szerokość P px), więc przewijanie jest bez końca. Jeden `fill` na warstwę.
+function drawParallax(r) {
+  const { ctx, W, scale, cam, groundY, p } = r;
+  const gy = groundY;
   const layer = (f, P, fn) => {
     const off = ((-cam.x * scale * f) % P + P) % P;
     for (let x0 = off - P; x0 < W + P; x0 += P) fn(x0, P);
   };
-
-  // Wysokość piłki: 0–2400 = niebo z chmurami, 2400–3600 = przejście, wyżej = kosmos (strefy MF w sim.js `ZONE_*`).
-  const space = Math.min(1, Math.max(0, (p.y - 2400) / 1200));
-  if (space > 0) {
-    ctx.fillStyle = 'rgba(2,3,14,' + (space * 0.85).toFixed(3) + ')';
-    ctx.fillRect(0, 0, W, H);
-  }
-  // Powyżej kosmosu niebo czerwieje (jakby to było piekło): 4800–6000 narasta do pełnej czerwieni.
-  const hell = Math.min(1, Math.max(0, (p.y - 4800) / 1200));
-  if (hell > 0) {
-    ctx.fillStyle = 'rgba(140,12,12,' + (hell * 0.6).toFixed(3) + ')';
-    ctx.fillRect(0, 0, W, H);
-  }
+  const space = zoneLevels(p.y).space;
 
   // gwiazdy (najdalej, prawie stoją); w kosmosie wyraźniejsze
   ctx.fillStyle = 'rgba(248,250,252,' + (0.25 + 0.5 * space).toFixed(3) + ')';
+  ctx.beginPath();
   layer(0.02, 1200, (x0, P) => {
-    for (let j = 0; j < 60; j++) {
-      const px = frac(Math.sin(j * 12.9898) * 43758.5453) * P;
-      const py = frac(Math.sin(j * 78.233) * 43758.5453) * gy * 0.75;
-      ctx.beginPath();
-      ctx.arc(x0 + px, py, 1.1, 0, TAU);
-      ctx.fill();
+    for (let j = 0; j < STARS.length; j++) {
+      const x = x0 + STARS[j][0] * P;
+      const y = STARS[j][1] * gy * 0.75;
+      ctx.moveTo(x + 1.1, y);
+      ctx.arc(x, y, 1.1, 0, TAU);
     }
   });
+  ctx.fill();
 
   // chmury (zanikają w kosmosie)
-  ctx.fillStyle = 'rgba(226,232,240,' + (0.07 * (1 - space)).toFixed(3) + ')';
-  const clouds = [[120, 70, 90], [430, 110, 70], [700, 60, 110]];
-  layer(0.12, 900, (x0) => {
-    for (const c of clouds) {
-      ctx.beginPath();
-      ctx.ellipse(x0 + c[0], c[1], c[2], c[2] * 0.3, 0, 0, TAU);
-      ctx.fill();
-    }
-  });
-
+  if (space < 1) {
+    ctx.fillStyle = 'rgba(226,232,240,' + (0.07 * (1 - space)).toFixed(3) + ')';
+    ctx.beginPath();
+    layer(0.12, 900, (x0) => {
+      for (const c of CLOUDS) {
+        ctx.moveTo(x0 + c[0] + c[2], c[1]);
+        ctx.ellipse(x0 + c[0], c[1], c[2], c[2] * 0.3, 0, 0, TAU);
+      }
+    });
+    ctx.fill();
+  }
 }
 
 function drawGround(r) {
@@ -378,6 +389,26 @@ function drawDyns(r) {
 // kuleczce właściciela czerwona naklejka x mnożnik.
 const OWNER_FALLBACK = ['#fbbf24', '#cbd5e1', '#d97706'];
 
+// Awatar przycięty do koła, gotowy obrazek na rozmiar (w px urządzenia, co 16): w klatce jeden drawImage bez clip().
+// Animowany GIF staje na pierwszej klatce (inaczej przeglądarka dekoduje i przerysowuje go co klatkę).
+const circCache = new WeakMap();
+function circleImg(img, d) {
+  const s = Math.max(16, Math.ceil(d / 16) * 16);
+  let e = circCache.get(img);
+  if (!e) { e = {}; circCache.set(img, e); }
+  if (!e[s]) {
+    const c = document.createElement('canvas');
+    c.width = c.height = s;
+    const g = c.getContext('2d');
+    g.beginPath();
+    g.arc(s / 2, s / 2, s / 2, 0, TAU);
+    g.clip();
+    g.drawImage(img, 0, 0, s, s);
+    e[s] = c;
+  }
+  return e[s];
+}
+
 function drawPickups(r) {
   const { ctx, sx, sy, scale, cam, view, sim, now, ownerImgs } = r;
   for (let i = 0; i < sim.pickups.length; i++) {
@@ -396,28 +427,30 @@ function drawPickups(r) {
     ctx.fillStyle = 'rgba(15,23,42,0.85)';
     ctx.fill();
 
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(x, y, R, 0, TAU);
-    ctx.clip();
     const oi = p.owner >= 0 && ownerImgs ? ownerImgs[p.owner] : null;
     if (oi && oi.ok) {
-      ctx.drawImage(oi.img, x - R, y - R, R * 2, R * 2);
-    } else if (p.owner >= 0) {
-      ctx.fillStyle = OWNER_FALLBACK[p.owner];
-      ctx.fillRect(x - R, y - R, R * 2, R * 2);
+      ctx.drawImage(circleImg(oi.img, R * 2 * (r.dpr || 1)), x - R, y - R, R * 2, R * 2);
     } else {
-      ctx.fillStyle = '#64748b';
-      ctx.fillRect(x - R, y - R, R * 2, R * 2);
-      ctx.fillStyle = 'rgba(241,245,249,0.85)';
+      ctx.save();
       ctx.beginPath();
-      ctx.arc(x, y - R * 0.2, R * 0.36, 0, TAU);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(x, y + R * 0.95, R * 0.6, 0, TAU);
-      ctx.fill();
+      ctx.arc(x, y, R, 0, TAU);
+      ctx.clip();
+      if (p.owner >= 0) {
+        ctx.fillStyle = OWNER_FALLBACK[p.owner];
+        ctx.fillRect(x - R, y - R, R * 2, R * 2);
+      } else {
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(x - R, y - R, R * 2, R * 2);
+        ctx.fillStyle = 'rgba(241,245,249,0.85)';
+        ctx.beginPath();
+        ctx.arc(x, y - R * 0.2, R * 0.36, 0, TAU);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(x, y + R * 0.95, R * 0.6, 0, TAU);
+        ctx.fill();
+      }
+      ctx.restore();
     }
-    ctx.restore();
 
     ctx.beginPath();
     ctx.arc(x, y, R, 0, TAU);
@@ -636,6 +669,90 @@ function getBombSprite() {
 }
 
 // Balonik nad bombą w powietrzu (sznurek do szyjki, delikatne kołysanie).
+// Ptak (60–250 m): awatar losowego gracza (r.birdImgs, wybór stały dla ptaka) z dwoma machającymi
+// białymi skrzydłami po bokach; bez wczytanego awatara szara kulka.
+function drawWing(ctx, x, y, rad, side, flap) {
+  const root = x + side * rad * 0.8;
+  const tipX = x + side * rad * 2.3, tipY = y - rad * 1.2 * flap;
+  ctx.beginPath();
+  ctx.moveTo(root, y - rad * 0.35);
+  ctx.quadraticCurveTo(x + side * rad * 1.6, y - rad * (0.5 + 0.9 * flap), tipX, tipY);
+  // dolna krawędź w trzech „piórach”
+  for (let k = 1; k <= 3; k++) {
+    const t = k / 3;
+    const fx = tipX + (root - tipX) * t, fy = tipY + (y + rad * 0.35 - tipY) * t;
+    ctx.quadraticCurveTo(fx + side * rad * 0.05, fy + rad * 0.35, fx, fy);
+  }
+  ctx.closePath();
+  ctx.fillStyle = '#f8fafc';
+  ctx.fill();
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(100,116,139,0.8)';
+  ctx.stroke();
+}
+function drawBirds(r) {
+  const { ctx, sx, sy, scale, cam, view, sim, now } = r;
+  const imgs = r.birdImgs || [];
+  for (let i = 0; i < sim.birds.length; i++) {
+    const b = sim.birds[i];
+    if (!b.alive) continue;
+    if (b.x + b.r < cam.x - 80 || b.x - b.r > cam.x + view.w + 80) continue;
+    const rad = Math.max(10, b.r * scale);
+    const flap = Math.sin(now / 110 + b.x * 0.05);
+    const x = sx(b.x), y = sy(b.y) + flap * rad * 0.12;
+    drawWing(ctx, x, y, rad, -1, flap);
+    drawWing(ctx, x, y, rad, 1, flap);
+    const rec = imgs.length ? imgs[Math.floor(Math.abs(b.x * 0.37 + b.y)) % imgs.length] : null;
+    ctx.beginPath();
+    ctx.arc(x, y, rad + 2, 0, TAU);
+    ctx.fillStyle = '#f8fafc';
+    ctx.fill();
+    if (rec && rec.ok) {
+      ctx.drawImage(circleImg(rec.img, rad * 2 * (r.dpr || 1)), x - rad, y - rad, rad * 2, rad * 2);
+    } else {
+      ctx.beginPath();
+      ctx.arc(x, y, rad, 0, TAU);
+      ctx.fillStyle = '#94a3b8';
+      ctx.fill();
+    }
+  }
+}
+
+// Balon MF (kosmos/czerwień): złoty, bez bomby, z wartością na środku.
+function drawMfBalloons(r) {
+  const { ctx, sx, sy, scale, cam, view, sim, now } = r;
+  for (let i = 0; i < sim.mfbals.length; i++) {
+    const b = sim.mfbals[i];
+    if (!b.alive) continue;
+    if (b.x + b.r < cam.x - 80 || b.x - b.r > cam.x + view.w + 80) continue;
+    const rad = Math.max(9, b.r * scale);
+    const x = sx(b.x) + Math.sin(now / 600 + b.y * 0.01) * rad * 0.15, y = sy(b.y);
+    const hell = b.value >= 50;
+    ctx.beginPath();
+    ctx.moveTo(x, y + rad);
+    ctx.quadraticCurveTo(x + rad * 0.25, y + rad * 1.5, x, y + rad * 2);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(226,232,240,0.6)';
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(x, y, rad * 0.85, rad, 0, 0, TAU);
+    ctx.fillStyle = hell ? '#f97316' : '#facc15';
+    ctx.fill();
+    ctx.lineWidth = Math.max(1, 1.5 * scale);
+    ctx.strokeStyle = hell ? '#7c2d12' : '#713f12';
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(x - rad * 0.32, y - rad * 0.4, rad * 0.16, rad * 0.28, -0.5, 0, TAU);
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fill();
+    ctx.fillStyle = '#1c1917';
+    ctx.font = '800 ' + Math.round(rad * 0.75) + 'px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(b.value), x, y + rad * 0.05);
+  }
+}
+
 function drawBalloon(ctx, x, y, rad, now, seed) {
   const sway = Math.sin(now / 520 + seed) * rad * 0.25;
   const bx = x + sway;
@@ -900,14 +1017,14 @@ function drawPlayer(r) {
   ctx.fill();
 
   ctx.save();
-  ctx.beginPath();
-  ctx.arc(x, y, rad, 0, TAU);
-  ctx.clip();
   if (imgOk) {
     ctx.translate(x, y);
     ctx.rotate(spin);
-    ctx.drawImage(img, -rad, -rad, rad * 2, rad * 2);
+    ctx.drawImage(circleImg(img, rad * 2 * (r.dpr || 1)), -rad, -rad, rad * 2, rad * 2);
   } else {
+    ctx.beginPath();
+    ctx.arc(x, y, rad, 0, TAU);
+    ctx.clip();
     ctx.fillStyle = '#334155';
     ctx.fillRect(x - rad, y - rad, rad * 2, rad * 2);
     ctx.translate(x, y);
@@ -944,10 +1061,10 @@ function drawAimGuide(r) {
 // „+1 MF” (kosmos) / „+2 MF” (czerwień) z piłeczki (efekty.js `labels`), żółte jak MF w równaniu (prośba użytkownika 19.10).
 // Względem piłeczki na ekranie, bo w szybkim locie etykieta w świecie znika z widoku w ułamku sekundy.
 function drawZoneLabels(r) {
-  const { ctx, sx, sy, p, labels } = r;
+  const { ctx, sx, sy, p, labels, W, H } = r;
   if (!labels || !labels.length) return;
   ctx.save();
-  ctx.font = '900 22px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+  ctx.font = '900 ' + Math.round(22 * uiK(W, H)) + 'px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.lineJoin = 'round';
@@ -977,7 +1094,8 @@ function drawBigGain(r) {
   ctx.save();
   ctx.globalAlpha = fade;
   ctx.translate(W / 2, H * 0.38);
-  ctx.scale(pop, pop);
+  const k = uiK(W, H);   // mały ekran: mniejsza liczba
+  ctx.scale(pop * k, pop * k);
   ctx.font = '900 56px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -990,8 +1108,65 @@ function drawBigGain(r) {
   ctx.restore();
 }
 
+// Mały ekran (telefon w pionie albo w poziomie): HUD w jednym pasku u góry zamiast panelu 240×116.
+export const HUD_COMPACT = { y: 8, h: 30 };
+export function isCompact(W, H) { return W < 520 || H < 520; }
+// Skala napisów nakładki (równanie MF, duży „+N”, napisy stref) na małym ekranie.
+function uiK(W, H) { return Math.max(0.6, Math.min(1, W / 1000, H / 700)); }
+function hudBottom(W, H) { return isCompact(W, H) ? HUD_COMPACT.y + HUD_COMPACT.h : HUD.y + HUD.h; }
+
+// Kropki podrzutów; pierwsza pusta kropka napełnia się jak zegar do odnowienia.
+function puffDots(ctx, sim, cx, dy, gap, rad) {
+  const dots = sim.puffMax;
+  const regen = sim.regenPeriod > 0 ? sim.regen / sim.regenPeriod : 0;
+  for (let i = 0; i < dots; i++) {
+    const dx = cx - ((dots - 1) * gap) / 2 + i * gap;
+    ctx.beginPath();
+    ctx.arc(dx, dy, rad, 0, TAU);
+    ctx.fillStyle = i < sim.puffs ? COLORS.green : 'rgba(148,163,184,0.28)';
+    ctx.fill();
+    if (i === sim.puffs && regen > 0) {
+      ctx.beginPath();
+      ctx.moveTo(dx, dy);
+      ctx.arc(dx, dy, rad, -Math.PI / 2, -Math.PI / 2 + TAU * regen);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(74,222,128,0.55)';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(dx, dy, rad, 0, TAU);
+    }
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = i < sim.puffs ? 'rgba(187,247,208,0.7)' : 'rgba(148,163,184,0.35)';
+    ctx.stroke();
+  }
+}
+
+function drawHudCompact(r) {
+  const { ctx, W, sim } = r;
+  const dmf = mfFromMeters(sim.meters);
+  const dist = sim.meters + ' m';
+  const mf = dmf > 0 ? '+' + dmf + ' MF' : '';
+  ctx.font = '800 16px Consolas, "Cascadia Mono", "Courier New", monospace';
+  const wd = ctx.measureText(dist).width;
+  ctx.font = '800 11px Consolas, "Cascadia Mono", "Courier New", monospace';
+  const wm = mf ? ctx.measureText(mf).width + 10 : 0;
+  const gap = 11;
+  const wp = sim.puffMax * gap;
+  const pw = 14 + wd + wm + 12 + wp + 8;
+  // na środku, ale nie pod przyciskami ⛶ ✕ w prawym górnym rogu (nakladka.js .lotnik-top, ~90 px)
+  const px = Math.round(Math.max(8, Math.min((W - pw) / 2, W - 100 - pw)));
+  const y = HUD_COMPACT.y;
+  const mid = y + HUD_COMPACT.h / 2;
+  panel(ctx, px, y, pw, HUD_COMPACT.h, HUD_COMPACT.h / 2, COLORS.panel);
+  mono(ctx, dist, px + 14, mid + 6, 16, COLORS.text, 'left', 800);
+  if (mf) mono(ctx, mf, px + 14 + wd + 8, mid + 4, 11, COLORS.distMf, 'left', 800);
+  const dotsX = px + 14 + wd + wm + 12;
+  puffDots(ctx, sim, dotsX + wp / 2, mid, gap, 3.5);
+}
+
 function drawHud(r) {
-  const { ctx, W, sim, best } = r;
+  const { ctx, W, H, sim, best } = r;
+  if (isCompact(W, H)) { drawHudCompact(r); return; }
   const pw = HUD.w;
   const px = (W - pw) / 2;
   const py = HUD.y;
@@ -1009,30 +1184,7 @@ function drawHud(r) {
   // podrzuty: liczba i kropki; pierwsza pusta kropka napełnia się jak zegar do odnowienia
   label(ctx, 'PODRZUTY ' + sim.puffs + '/' + sim.puffMax, cx, py + 92, 8,
     sim.puffs > 0 ? COLORS.dim : COLORS.red, 'center', 700);
-  const dots = sim.puffMax;
-  const gap = Math.min(13, (pw - 40) / dots);
-  const regen = sim.regenPeriod > 0 ? sim.regen / sim.regenPeriod : 0;
-  for (let i = 0; i < dots; i++) {
-    const dx = cx - ((dots - 1) * gap) / 2 + i * gap;
-    const dy = py + 104;
-    ctx.beginPath();
-    ctx.arc(dx, dy, 4, 0, TAU);
-    ctx.fillStyle = i < sim.puffs ? COLORS.green : 'rgba(148,163,184,0.28)';
-    ctx.fill();
-    if (i === sim.puffs && regen > 0) {
-      ctx.beginPath();
-      ctx.moveTo(dx, dy);
-      ctx.arc(dx, dy, 4, -Math.PI / 2, -Math.PI / 2 + TAU * regen);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(74,222,128,0.55)';
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(dx, dy, 4, 0, TAU);
-    }
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = i < sim.puffs ? 'rgba(187,247,208,0.7)' : 'rgba(148,163,184,0.35)';
-    ctx.stroke();
-  }
+  puffDots(ctx, sim, cx, py + 104, Math.min(13, (pw - 40) / sim.puffMax), 4);
 }
 
 // Równanie MF na żywo (efekty.js `fx.eq`): jedna linia przy lewej krawędzi na środku wysokości, nowy znak zawsze
@@ -1048,59 +1200,174 @@ const mfl = { canvas: null, ver: -1, w: 0, h: 0, key: '' };
 function drawMfLine(r) {
   const { ctx, W, H, eq } = r;
   if (!eq || !eq.on || !eq.shown) return;
-  const bw = Math.round(Math.min(380, W * 0.45));
-  const bh = 56;
-  const dpr = Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1);
-  const key = bw + 'x' + dpr;
+  // Mały ekran: linia mniejsza (k), to samo miejsce co na komputerze.
+  const compact = isCompact(W, H);
+  const k = uiK(W, H);
+  const bw = Math.round(compact ? Math.min(380 * k, W * 0.6) : Math.min(380, W * 0.45));
+  const bh = Math.round(56 * k);
+  const lw = bw / k;   // szerokość w jednostkach rysunku (czcionki jak na komputerze, skala k w transformacji)
+  const LH = 56;
+  const dpr = r.dpr || 1;
+  const key = bw + 'x' + bh + 'x' + dpr + (r.lite ? 'l' : '');
   if (!mfl.canvas && typeof document !== 'undefined') mfl.canvas = document.createElement('canvas');
   if (!mfl.canvas) return;
   if (mfl.ver !== eq.ver || mfl.key !== key) {
     mfl.ver = eq.ver;
     mfl.key = key;
     const c = mfl.canvas;
-    c.width = bw * dpr;
-    c.height = bh * dpr;
+    c.width = Math.round(bw * dpr);
+    c.height = Math.round(bh * dpr);
     const g = c.getContext('2d');
-    g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    g.clearRect(0, 0, bw, bh);
+    g.setTransform(dpr * k, 0, 0, dpr * k, 0, 0);
+    g.clearRect(0, 0, lw, LH);
     g.textBaseline = 'middle';
+    g.lineJoin = 'round';
+    g.lineWidth = 3;
+    g.strokeStyle = 'rgba(0,0,0,0.8)';
     // od prawej: znaki od końca, aż wyjdą za lewą krawędź
-    let x = bw - 6;
+    let x = lw - 6;
     for (let i = eq.shown - 1; i >= 0 && x > -40; i--) {
       const e = eq.list[i];
       const size = e.c === 'mf' ? 27 : (e.c === 'dm' ? 13 : 19);
       g.font = (e.c === 'mf' || e.c === 'sum' ? '700 ' : '400 ') + size + 'px ' + MFL_FONT;
       const w = g.measureText(e.ch).width;
       x -= w;
+      g.fillStyle = MFL_COL[e.c] || MFL_COL[''];
+      if (r.lite) {
+        // telefon: obrys zamiast dwóch rozmyć (linia przerysowuje się przy każdym nowym znaku)
+        g.strokeText(e.ch, x, LH / 2 + 2);
+        g.fillText(e.ch, x, LH / 2 + 2);
+        continue;
+      }
       g.shadowColor = 'rgba(0,0,0,0.8)';
       g.shadowBlur = 4;
-      g.fillStyle = MFL_COL[e.c] || MFL_COL[''];
-      g.fillText(e.ch, x, bh / 2 + 2);
+      g.fillText(e.ch, x, LH / 2 + 2);
       g.shadowColor = MFL_GLOW[e.c] || MFL_GLOW[''];
       g.shadowBlur = 8;
-      g.fillText(e.ch, x, bh / 2 + 2);
+      g.fillText(e.ch, x, LH / 2 + 2);
     }
     // blaknięcie w lewo: maska tylko na obrazie linii (nie na ekranie)
     g.shadowBlur = 0;
     g.globalCompositeOperation = 'destination-in';
-    const grad = g.createLinearGradient(0, 0, bw, 0);
+    const grad = g.createLinearGradient(0, 0, lw, 0);
     grad.addColorStop(0, 'rgba(0,0,0,0)');
     grad.addColorStop(0.45, 'rgba(0,0,0,1)');
     g.fillStyle = grad;
-    g.fillRect(0, 0, bw, bh);
+    g.fillRect(0, 0, lw, LH);
     g.globalCompositeOperation = 'source-over';
   }
-  ctx.drawImage(mfl.canvas, Math.round(W * 0.025), Math.round(H / 2 - bh / 2), bw, bh);
+  const y = Math.round(H / 2 - bh / 2);   // po lewej, w połowie wysokości (telefon: dolne rogi zasłaniają kciuki)
+  ctx.drawImage(mfl.canvas, Math.round(W * 0.025), y, bw, bh);
+}
+
+// Podpowiedź dla nowego gracza (makieta out/makieta-podpowiedz.html, warianty B+C): przy procy dymek „Pociągnij i puść”
+// z ręką, dopóki gracz ani razu nie strzelił; w locie duży napis „Klikaj, żeby podrzucić!”, dopóki ani razu nie podrzucił.
+// Nauczone zapamiętuje localStorage, więc stały gracz tego już nie widzi.
+const UMIE_KEY = 'lotnik.umie';
+let umie = null;
+function learned(what) {
+  if (!umie) {
+    try { umie = JSON.parse(localStorage.getItem(UMIE_KEY)) || {}; } catch (e) { umie = {}; }
+  }
+  return !!umie[what];
+}
+function learn(what) {
+  if (learned(what)) return;
+  umie[what] = 1;
+  try { localStorage.setItem(UMIE_KEY, JSON.stringify(umie)); } catch (e) { /* ignoruj */ }
+}
+
+function plPuffs(n) {
+  const d = n % 10, dd = n % 100;
+  if (n === 1) return '1 podrzut';
+  return n + (d >= 2 && d <= 4 && (dd < 12 || dd > 14) ? ' podrzuty' : ' podrzutów');
+}
+
+// B: żółty dymek obok piłeczki w procy i ręka, która pokazuje ruch (pociągnij w tył i puść).
+function drawShotHint(r) {
+  const { ctx, W, sx, sy, p, scale, now } = r;
+  const rad = Math.max(11, GEOM.radius * scale);
+  const bx = sx(p.x), by = sy(p.y);
+  const t1 = 'Pociągnij i puść', t2 = 'W locie klikaj, żeby podrzucić';
+  ctx.font = '800 14px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+  const w1 = ctx.measureText(t1).width;
+  ctx.font = '600 11px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+  const bw = Math.max(w1, ctx.measureText(t2).width) + 24, bh = 44;
+  let x = bx + rad + 22;
+  if (x + bw > W - 8) x = Math.max(8, W - 8 - bw);
+  const y = by - rad - bh - 6;
+  panel(ctx, x + 2, y + 5, bw, bh, 12, 'rgba(0,0,0,0.3)');
+  panel(ctx, x, y, bw, bh, 12, '#fbbf24');
+  ctx.beginPath();   // ogonek w stronę piłeczki
+  ctx.moveTo(x + 14, y + bh - 1);
+  ctx.lineTo(x + 6, y + bh + 10);
+  ctx.lineTo(x + 28, y + bh - 1);
+  ctx.fill();
+  label(ctx, t1, x + 12, y + 20, 14, '#111827', 'left', 800);
+  label(ctx, t2, x + 12, y + 36, 11, '#422006', 'left', 600);
+  // Ręka: od piłeczki w tył i w dół (jak naciąganie), chwila, znika; pętla 1,6 s.
+  const k = Math.max(0.6, Math.min(1.2, scale * 1.4));
+  const t = (now / 1600) % 1;
+  const e = t < 0.15 ? 0 : t < 0.6 ? (t - 0.15) / 0.45 : 1;
+  const ease = e * e * (3 - 2 * e);
+  const a = t < 0.8 ? 1 : 1 - (t - 0.8) / 0.2;
+  ctx.save();
+  ctx.globalAlpha = a;
+  ctx.font = Math.round(30 * k) + 'px system-ui, "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('👆', bx - 56 * k * ease, by + rad + 16 * k + 34 * k * ease);
+  ctx.restore();
+}
+
+// C: duży napis w locie i pulsujące kółko wokół piłeczki.
+function drawPuffHint(r) {
+  const { ctx, W, H, sx, sy, p, scale, sim, now } = r;
+  const narrow = W < 640;
+  const rad = Math.max(11, GEOM.radius * scale);
+  const by = sy(p.y);
+  let top = Math.max(hudBottom(W, H) + (narrow ? 44 : 60), H * 0.26);
+  if (Math.abs(by - top) < rad + 50) top = by + rad + 60;   // piłeczka na wysokości napisu: napis pod nią
+  outlined(ctx, 'Klikaj, żeby podrzucić!', W / 2, top, narrow ? 22 : 30, 900, 'center', '#f8fafc');
+  const t = 'Masz ' + plPuffs(sim.puffs);
+  ctx.font = '600 12px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+  const w = ctx.measureText(t).width + 26;
+  panel(ctx, (W - w) / 2, top + 12, w, 26, 13, COLORS.panel);
+  label(ctx, t, W / 2, top + 30, 12, '#cbd5e1', 'center', 600);
+  const ph = (now / 1200) % 1;
+  ctx.save();
+  ctx.globalAlpha = 1 - ph;
+  ctx.strokeStyle = '#fbbf24';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.arc(sx(p.x), by, rad + 6 + ph * 34, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawHint(r) {
-  const { ctx, W, sim } = r;
+  const { ctx, W, H, sim } = r;
+  if (sim.phase === 'fly') learn('strzal');
+  if (sim.phase === 'fly' && sim.puffsUsed > 0) learn('podrzut');
+  if (sim.phase === 'aim' && !r.drag && !learned('strzal')) drawShotHint(r);
+  if (sim.phase === 'fly' && sim.puffs > 0 && !learned('podrzut')) { drawPuffHint(r); return; }
+  // Telefon w pionie na celowaniu: podpowiedź, że w poziomie widać dalej.
+  if (sim.phase === 'aim' && r.portrait) {
+    const t = 'Obróć telefon, zobaczysz dalej';
+    ctx.font = '600 12px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+    const w = ctx.measureText(t).width + 26;
+    const hy = hudBottom(W, H) + 8;
+    panel(ctx, (W - w) / 2, hy, w, 26, 13, COLORS.panel);
+    label(ctx, '⟳ ' + t, W / 2, hy + 18, 12, COLORS.accent, 'center', 600);
+    return;
+  }
   if (sim.phase !== 'fly') return;
+  if (r.lite && sim.puffsUsed >= 3) return;   // telefon: po 3 podrzutach podpowiedź już niepotrzebna, zasłania lot
   const narrow = W < 640;
   let text = sim.puffs > 0
     ? 'Klik / tap / spacja: podrzut w górę · trafiaj w bomby'
     : 'Brak podrzutów · leć do bomby';
-  if (W < 520 && sim.puffs > 0) text = 'Klik / tap: podrzut · trafiaj w bomby';
+  if ((W < 520 || r.lite) && sim.puffs > 0) text = r.lite ? 'Tap: podrzut · trafiaj w bomby' : 'Klik / tap: podrzut · trafiaj w bomby';
   let fs = narrow ? 11 : 12;
   const font = function (size) {
     return '600 ' + size + 'px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
@@ -1113,7 +1380,7 @@ function drawHint(r) {
     tw = ctx.measureText(text).width;
   }
   const w = Math.min(W - 20, tw + 26);
-  const hy = narrow ? HUD.y + HUD.h + 8 : 12;
+  const hy = narrow || isCompact(W, H) ? hudBottom(W, H) + 8 : 12;
   panel(ctx, (W - w) / 2, hy, w, 26, 13, COLORS.panel);
   label(ctx, text, W / 2, hy + 18, fs, COLORS.text, 'center', 600);
 }

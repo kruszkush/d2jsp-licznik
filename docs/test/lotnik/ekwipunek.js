@@ -1,10 +1,10 @@
 // ekwipunek.js — panel Ekwipunek: paper doll (jak w Piłeczce, układ D2: hełm, zbroja, broń, tarcza, rękawice, buty,
-// pas) i skrzynia 4×4. Klik w przedmiot = statystyki pod skrzynią (itemBox z karta.js) + dymki przy rogach: ✓ Załóż albo ↓ Zdejmij, ✗ Zniszcz.
+// pas) i skrzynia 4×4. Klik w przedmiot = statystyki pod jego rzędem (itemBox z karta.js) + dymki przy rogach: ✓ Załóż albo ↓ Zdejmij, ✗ Zniszcz.
 // Wygląd przedmiotu z Piłeczki (d2jsp-licznik/docs/gra.js, itemEl): awatar użytej piłeczki + ikona typu w kolorze rzadkości.
 // Stan i akcje: inventory.js (serwer). Tu tylko DOM.
-import { RARITY, TYPES, SLOT_ORDER, slotType, itemName, statSummary } from './items.js?v=35';
-import { activeItems, freeCells } from './skrzynia.js?v=35';
-import { itemBox } from './karta.js?v=35';
+import { RARITY, TYPES, SLOT_ORDER, slotType, itemName, statSummary } from './items.js?v=55';
+import { activeItems, freeCells } from './skrzynia.js?v=55';
+import { itemBox } from './karta.js?v=55';
 
 export const EKW_CSS = `
 .lt-doll{position:relative;width:300px;height:258px;margin:22px auto 0}
@@ -26,8 +26,12 @@ export const EKW_CSS = `
 .lt-chest{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;width:300px;margin:0 auto}
 .lt-chest .lt-eqs{position:relative;aspect-ratio:1}
 .lt-chest .lt-eqit{width:58px;height:58px}
-.lt-eqd{margin:10px auto 0;width:300px;max-width:100%}
+.lt-eqd{position:relative;margin:10px auto 0;width:300px;max-width:100%}
 .lt-eqd .lt-item{margin-top:0}
+.lt-chest .lt-eqd{grid-column:1/-1;width:auto;margin:4px 0 6px}
+.lt-eqd.lt-eqd-at{margin-top:12px}
+.lt-chest .lt-eqd.lt-eqd-at{margin-top:8px}
+.lt-eqd.lt-eqd-at::before{content:"";position:absolute;top:-8px;left:var(--ax,50%);margin-left:-8px;border:8px solid transparent;border-top:0;border-bottom-color:#fbbf24;z-index:1}
 .lt-eqd-empty{font-size:11px;color:#64748b;text-align:center;padding:6px 0}
 .lt-eqs.sel{z-index:3}
 .lt-eqb{position:absolute;top:-22px;min-width:30px;height:30px;box-sizing:border-box;border-radius:15px;border:2px solid;display:grid;place-items:center;padding:0 6px;font:900 15px/1 system-ui,sans-serif;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.7);-webkit-tap-highlight-color:transparent;white-space:nowrap}
@@ -98,6 +102,7 @@ export function createEkwipunek(opts) {
   // Dymki przy rogach zaznaczonego przedmiotu: lewy ✓ Załóż (ze skrzyni) albo ↓ Zdejmij (z postaci), prawy ✗ Zniszcz
   // (pierwsze dotknięcie pyta „Na pewno?”). Pierścień przy dwóch zajętych miejscach zastępuje 1. pierścień.
   function bubbles(box, it, at) {
+    if (opts.readOnly) return;                     // podgląd cudzego ekwipunku (ranking): bez akcji
     const sure = ask === it.id;                    // przy „Na pewno?” lewy dymek znika (szeroki dymek by na niego wjechał)
     if (!sure && at === 'chest') box.appendChild(btn('✓', 'lt-eqb on', 'Załóż', function () { run('equip', it); }));
     if (!sure && at === 'slot') box.appendChild(btn('↓', 'lt-eqb off', 'Zdejmij do skrzyni', function () { run('unequip', it); }, freeCells(inv.doc()) === 0));
@@ -113,6 +118,9 @@ export function createEkwipunek(opts) {
     ask = '';
     msg = '';
     render();
+    // Rozwinięte statystyki w kadrze panelu (telefon: dół skrzyni bywa poza ekranem).
+    const d = sel && body.querySelector('.lt-eqd-at');
+    if (d && d.scrollIntoView) d.scrollIntoView({ block: 'nearest' });
   }
 
   function selected(doc) {
@@ -144,12 +152,19 @@ export function createEkwipunek(opts) {
     return b;
   }
 
+  // Statystyki rozwijane zaraz pod rzędem klikniętego przedmiotu (skrzynia: wiersz siatki na całą szerokość,
+  // postać: pod postacią), strzałka nad ramką wskazuje kolumnę klikniętej kratki. Bez zaznaczenia: podpowiedź pod postacią.
   function details(doc) {
-    const box = el('div', 'lt-eqd');
+    const box = el('div', 'lt-eqd' + (sel ? ' lt-eqd-at' : ''));
+    if (sel) {
+      const p = POS[sel.key];
+      const ax = sel.at === 'slot' && p ? (p[0] + p[2] / 2) / 300 : ((sel.key % 4) + 0.5) / 4;
+      box.style.setProperty('--ax', (ax * 100).toFixed(1) + '%');
+    }
     const it = selected(doc);
     if (!it) {
       box.appendChild(el('div', 'lt-eqd-empty', sel && sel.at === 'slot'
-        ? 'Puste miejsce: ' + TYPES[slotType(sel.key)].label.toLowerCase() + '. Załóż coś ze skrzyni.'
+        ? 'Puste miejsce: ' + TYPES[slotType(sel.key)].label.toLowerCase() + (opts.readOnly ? '.' : '. Załóż coś ze skrzyni.')
         : 'Kliknij przedmiot, żeby zobaczyć statystyki.'));
       return box;
     }
@@ -173,17 +188,24 @@ export function createEkwipunek(opts) {
       doll.appendChild(c);
     }
     body.appendChild(doll);
+    if (!sel || sel.at === 'slot') body.appendChild(details(doc));
+    if (opts.readOnly) {
+      const sums = statSummary(activeItems(doc));
+      body.appendChild(el('div', 'lt-inv-mods', sums.length ? sums.map(function (l) { return l.text; }).join(' · ') : 'Bez przedmiotów.'));
+      return;
+    }
     const free = freeCells(doc), size = doc.chest.length;
     const head = el('div', 'lt-chest-head');
     head.appendChild(el('span', null, 'Skrzynia'));
     head.appendChild(el('b', free ? '' : 'full', (size - free) + '/' + size));
     body.appendChild(head);
     const grid = el('div', 'lt-chest');
+    const rowEnd = sel && sel.at === 'chest' ? Math.min(size - 1, sel.key - sel.key % 4 + 3) : -1;
     for (let i = 0; i < size; i++) {
       grid.appendChild(cell(doc.chest[i], '', '', (function (k) { return function () { pick('chest', k); }; })(i), sel && sel.at === 'chest' && sel.key === i, 'chest'));
+      if (i === rowEnd) grid.appendChild(details(doc));
     }
     body.appendChild(grid);
-    body.appendChild(details(doc));
     const m = el('div', 'lt-eqmsg' + (msgOk ? ' ok' : ''), msg || inv.note());
     body.appendChild(m);
     const sums = statSummary(activeItems(doc));

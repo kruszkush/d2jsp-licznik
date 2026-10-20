@@ -4,15 +4,15 @@
 // Importy UI z ?v= (ta sama wartość wszędzie, podbijana razem z ?v= w strona/index.html), żeby
 // przeglądarka nie mieszała nowych i starych modułów. Moduły UI importują też sim.js i replay.js z ?v=;
 // tylko replay.js importuje './sim.js' bez ?v= (deploy.sh podmienia ten import na serwerze).
-import { createGame } from './game.js?v=35';
-import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=35';
-import { createInventory } from './inventory.js?v=35';
-import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=35';
-import { createKonto, KONTO_CSS } from './konto.js?v=35';
-import { createRanking, RANKING_CSS } from './ranking.js?v=35';
-import { KARTA_CSS, renderBall, renderMf, renderDrop, itemBox } from './karta.js?v=35';
+import { createGame } from './game.js?v=55';
+import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=55';
+import { createInventory } from './inventory.js?v=55';
+import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=55';
+import { createKonto, KONTO_CSS } from './konto.js?v=55';
+import { createRanking, mountPageRanking, RANKING_CSS } from './ranking.js?v=55';
+import { KARTA_CSS, renderHero, renderMf, renderDrop, itemBox } from './karta.js?v=55';
 
-const CSS = `
+export const CSS = `;   // eksport tylko dla out/karta-stany.html (zrzuty stanów karty)
 .lotnik-fall{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:80}
 .lotnik-fall button{position:absolute;top:-80px;pointer-events:auto;touch-action:manipulation;width:var(--s,42px);height:var(--s,42px);padding:0;border:2px solid rgba(255,255,255,.45);border-radius:50%;background-color:#334155;background-position:center;background-size:cover;background-repeat:no-repeat;box-shadow:0 3px 10px rgba(0,0,0,.35);cursor:pointer;animation:lotnikFall var(--t,10s) linear forwards;will-change:transform;-webkit-tap-highlight-color:transparent;color:#fff;font:700 15px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 .lotnik-fall button:focus-visible{outline:3px solid #fbbf24;outline-offset:2px}
@@ -24,28 +24,22 @@ const CSS = `
 .lotnik-top{position:absolute;top:10px;right:10px;display:flex;gap:8px;align-items:flex-start;z-index:2}
 .lotnik-btn{font:600 12px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#f8fafc;background:rgba(15,23,42,.86);border:1px solid rgba(248,250,252,.25);border-radius:999px;padding:10px 14px;cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent}
 .lotnik-btn:hover{border-color:rgba(251,191,36,.85)}
-.lotnik-x{width:35px;height:35px;padding:0;font-size:15px;line-height:1}
-.lotnik-card{position:absolute;left:50%;top:calc(50% + 24px);transform:translate(-50%,-50%);width:min(340px,calc(100vw - 32px));max-height:calc(100vh - 72px);max-height:calc(100dvh - 72px);overflow:auto;box-sizing:border-box;background:rgba(15,23,42,.985);border:1px solid rgba(248,250,252,.22);border-radius:16px;padding:18px 16px 16px;text-align:center;color:#f8fafc;box-shadow:0 18px 50px rgba(0,0,0,.5);z-index:3;font:500 13px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-.lotnik-card .lt-top{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:2px}
-.lotnik-card .lt-top .lt-acc-nick{margin:0;min-width:0;font-size:17px}
-.lotnik-card .lt-top .lt-acc-nick>a,.lotnik-card .lt-top .lt-acc-nick>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.lotnik-card .lt-top .lt-av{width:34px;height:34px}
-.lotnik-card .lt-dot{color:#64748b;font-size:22px;font-weight:800}
-.lotnik-card .lt-top .lt-acc-nick[hidden]+.lt-dot{display:none}
-.lotnik-card .lt-score{flex:none;font-size:34px;font-weight:800;line-height:1.1;color:#fbbf24;white-space:nowrap}
-.lotnik-card .lt-note{font-size:12px;font-weight:600;color:#e2e8f0}
+.lotnik-x,.lotnik-fs{width:35px;height:35px;padding:0;font-size:15px;line-height:1}
+.lotnik-card{position:absolute;left:50%;top:calc(50% + 24px);transform:translate(-50%,-50%);width:min(340px,calc(100vw - 32px));max-height:calc(100vh - 72px);max-height:calc(100dvh - 72px);overflow:auto;display:flex;flex-direction:column;box-sizing:border-box;background:rgba(15,23,42,.985);border:1px solid rgba(248,250,252,.22);border-radius:16px;padding:18px 16px 16px;text-align:center;color:#f8fafc;box-shadow:0 18px 50px rgba(0,0,0,.5);z-index:3;font:500 13px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 .lotnik-card .lt-win{margin-top:6px;font-size:15px;font-weight:700;color:#facc15;line-height:1.35}
 .lotnik-card .lt-win small{display:block;font-size:12px;font-weight:600;color:#fde68a}
 .lotnik-card .lt-meta{font-size:11px;color:#94a3b8;margin-top:4px;white-space:pre-line}
 .lotnik-card .lt-meta:empty{display:none}
 .lotnik-card .lt-meta-err{color:#fca5a5}
+.lotnik-card .lt-new:not([hidden]){display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;font-size:12px;font-weight:700;color:#fbbf24}
+.lotnik-card .lt-new button{padding:5px 10px;font-size:12px}
 .lotnik-card .lt-row{display:flex;gap:8px;margin-top:14px}
 .lotnik-card .lt-btn{flex:1;padding:13px 8px;border-radius:10px;font-size:14px}
-.lotnik-card .lt-primary{background:#fbbf24;border-color:#fbbf24;color:#111827;font-weight:800}
-.lotnik-card .lt-primary:hover{background:#fcd34d}
+.lotnik-card .lt-primary{background:#22c55e;border-color:#22c55e;color:#052e16;font-weight:800}
+.lotnik-card .lt-primary:hover{background:#4ade80}
 .lotnik-card .lt-row2{display:flex;gap:8px;margin-top:8px}
 .lotnik-card .lt-row2 .lotnik-btn{flex:1;padding:9px 8px;font-size:11px}
-.lotnik-inv{position:absolute;left:50%;top:7%;transform:translateX(-50%);width:min(420px,calc(100vw - 24px));max-height:86vh;overflow:auto;background:rgba(15,23,42,.98);border:1px solid rgba(248,250,252,.22);border-radius:16px;padding:14px;color:#f8fafc;box-shadow:0 18px 50px rgba(0,0,0,.55);z-index:4;font:500 12px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.lotnik-inv{position:absolute;left:50%;top:7%;transform:translateX(-50%);box-sizing:border-box;width:min(420px,calc(100vw - 24px));max-height:86vh;overflow:auto;background:rgba(15,23,42,.98);border:1px solid rgba(248,250,252,.22);border-radius:16px;padding:14px;color:#f8fafc;box-shadow:0 18px 50px rgba(0,0,0,.55);z-index:4;font:500 12px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 .lotnik-inv h3{font-size:15px;margin:0 0 10px;padding-right:34px}
 .lotnik-inv .lt-slot{border-top:1px solid rgba(248,250,252,.12);padding:8px 0}
 .lotnik-inv .lt-slot:first-child{border-top:0;padding-top:0}
@@ -54,13 +48,43 @@ const CSS = `
 .lotnik-inv .lt-slot-empty{font-size:11px;color:#64748b;margin-top:2px}
 .lotnik-inv .lt-inv-mods{margin-top:10px;padding-top:8px;border-top:1px solid rgba(248,250,252,.12);font-size:10px;color:#94a3b8;line-height:1.5}
 .lotnik-inv .lt-inv-close{position:absolute;right:8px;top:8px;width:30px;height:30px;padding:0;font-size:13px;line-height:1}
-.lotnik-gate{position:fixed;right:12px;bottom:12px;z-index:81;display:flex;flex-wrap:wrap;gap:6px;align-items:center;max-width:calc(100vw - 24px);box-sizing:border-box;background:rgba(15,23,42,.92);border:1px solid rgba(248,250,252,.22);border-radius:12px;padding:8px 10px;color:#f8fafc;font:600 12px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-.lotnik-gate input{width:120px;font:500 14px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:8px 10px;border-radius:8px;border:1px solid rgba(248,250,252,.3);background:#0f172a;color:#f8fafc}
-.lotnik-gate-m{flex-basis:100%;color:#fca5a5;font-weight:500}
-.lotnik-gate-m:empty{display:none}
+.lotnik-ekwv{position:fixed;inset:0;z-index:95;background:rgba(0,0,0,.45)}
+.lotnik-ekwv[hidden]{display:none!important}
+.lotnik-ekwv h3 a{color:inherit}
+.lotnik-ekwv .lt-eqv-note{margin-top:8px;font-size:10px;color:#94a3b8;line-height:1.45}
+.lotnik-card .lt-side{flex:0 1 auto;min-height:0;overflow:auto;scrollbar-gutter:stable both-edges;scrollbar-width:thin}
+@media (orientation:landscape) and (max-height:520px){
+.lotnik-card{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:16px;align-content:start;width:min(760px,calc(100vw - 24px));top:50%;max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px);padding:12px 14px}
+.lotnik-card>*{grid-column:1}
+.lotnik-card .lt-side{display:block;grid-column:2;grid-row:1/span 14;overflow:auto;max-height:calc(100dvh - 42px);min-height:0}
+.lotnik-card .lt-side>.lt-mf{margin-top:0}
+.lotnik-card .lt-row{margin-top:10px}
+.lotnik-card .lt-btn{padding:10px 8px}
+.lotnik-stage .lotnik-card .lt-sep{margin-top:10px}
+.lotnik-stage .lotnik-inv,.lotnik-stage .lotnik-rank{top:8px;max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px)}
+}
+/* Komputer (wariant A z out/makieta-uklad.html, 20.10; zwężony do 380 px, piramida 1 z out/makieta-mf.html):
+   środek bez własnego przewijania (przy braku miejsca przewija się cała karta), MF jako piramida:
+   „Magic Find 210”, pod nim „zebrane + za dystans”, pod spodem kolumny Magiczny / Rzadki / Unikat. */
+@media (min-width:600px) and (min-height:521px){
+.lotnik-stage .lotnik-card{width:min(380px,calc(100vw - 32px))}
+.lotnik-stage .lotnik-card .lt-side{flex:none;overflow:visible;scrollbar-gutter:auto}
+.lotnik-stage .lotnik-card .lt-mf{display:flex;flex-wrap:wrap;padding:8px 10px 6px;text-align:center}
+.lotnik-stage .lotnik-card .lt-mf-head{flex:1 0 100%;justify-content:center;gap:8px;padding:0}
+.lotnik-stage .lotnik-card .lt-mf-low{flex:1 0 100%;border:0;padding:1px 0 7px;font-size:11px;text-align:center}
+.lotnik-stage .lotnik-card .lt-mfr{flex:1 1 0;flex-direction:column;align-items:center;gap:1px;padding:6px 0 0;border-top:1px solid rgba(248,250,252,.09);font-size:12px}
+.lotnik-stage .lotnik-card .lt-mfr+.lt-mfr{border-left:1px solid rgba(248,250,252,.09)}
+}
+body.playing>:not(.lotnik-stage),body.playing>:not(.lotnik-stage) *,body.playing>:not(.lotnik-stage) ::before,body.playing>:not(.lotnik-stage) ::after{animation-play-state:paused!important}
+body.playing .lavadrop{display:none!important}
+.lotnik-off{position:fixed;left:10px;bottom:10px;z-index:81;cursor:pointer;background:rgba(15,23,42,.78);color:#cbd5e1;font:600 11px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:7px 10px;border-radius:999px;border:1px solid rgba(248,250,252,.2)}
+.lotnik-off:hover{color:#f8fafc;border-color:rgba(248,250,252,.45)}
+body.playing .lotnik-off{display:none}
+body.lt-hide>:not(.lotnik-stage):not(.lotnik-dim){visibility:hidden!important}
 .lotnik-fall[hidden],.lotnik-tip[hidden],.lotnik-dim[hidden],.lotnik-stage[hidden],.lotnik-card[hidden],.lotnik-inv[hidden]{display:none!important}
 `;
 
+const TOUCH = typeof matchMedia === 'function' && matchMedia('(pointer:coarse)').matches;   // telefon / tablet
 const SPAWN_MS = 700;        // co ile pojawia się nowy awatar
 const MAX_FALLING = 10;      // ile awatarów naraz na ekranie
 const POOL_MAX = 32;
@@ -76,9 +100,10 @@ function topOwners(list) {
 }
 
 let layer = null, tip = null, dim = null, stage = null, canvas = null;
-let card = null, cardScore = null, cardWin = null, cardNote = null, cardMeta = null, cardBall = null, cardMf = null;
+let card = null, cardHero = null, cardWho = null, cardWin = null, cardMeta = null, cardMf = null;
 let curItem = null;
 let cardDrop = null, cardInv = null, konto = null, ranking = null, cardStatus = null;
+let pageRank = null, eqView = null, eqTitle = null, eqBody = null, eqNote = null, eqDoc = null, eqUi = null, eqSeq = 0;   // karta rankingu na stronie, podgląd ekwipunku
 let invPanel = null, invBody = null;
 let inventory = null, ekw = null;            // inventory.js (serwer) i panel ekwipunek.js
 let pendingDrop = null, dropState = null;    // drop z /end i jego stan na karcie
@@ -88,40 +113,37 @@ let game = null;
 let active = false;
 let opening = false;
 const TIP_TEXT = 'Kliknij spadający awatar, żeby zagrać';
+const OFF_KEY = 'lotnik.awatary.off';
+let avOff = false, offBtn = null;
+try { avOff = localStorage.getItem(OFF_KEY) === '1'; } catch (err) { /* domyślnie włączone */ }
 
 // --- serwer: bilet partii (/start) i zapis wyniku (/end) ----------------------
-// Bez sieci gra działa dalej, wynik jest „niezapisany” (game.js: bez biletu ziarno lokalne).
-const API = 'https://us-east1-rich-chimera-344319.cloudfunctions.net/lotnik-test';
+// Bez biletu gra pokazuje planszę, ale proca czeka na bilet (game.js lateTicket); wynik ponawiany (sendResult).
+// Serwer wg strony: strona główna licznika = prod `lotnik` (bez hasła); /test/ i localhost = `lotnik-test` (hasło testerów).
+const SERWER_TEST = !(location.hostname === 'kruszkush.github.io' && !/\/test\//.test(location.pathname));
+const API = 'https://us-east1-rich-chimera-344319.cloudfunctions.net/' + (SERWER_TEST ? 'lotnik-test' : 'lotnik');
+const LS_PREFIX = SERWER_TEST ? '' : 'p.';   // prod ma osobne konto/klucz gościa/rekord (ta sama domena co /test/)
 const TICKET_FRESH_MS = 90 * 1000;   // starszy bilet w zapasie pobieramy od nowa (serwer liczy czas od /start)
 let spare = null;                    // { t: bilet, at: ms } — zapas na „Zagraj jeszcze raz”
 let fetching = null;
 let spareTimer = 0;
 let endSeq = 0;
 
-// Hasło testerów (serwer testowy wymaga go w nagłówku). Odpowiedź z `haslo` = złe/zmienione: kasujemy zapis,
-// a po zamknięciu gry wraca panel hasła (gateIfLocked).
-const HASLO_KEY = 'lotnik.haslo';
-function haslo() {
-  try { return localStorage.getItem(HASLO_KEY) || ''; } catch (err) { return ''; }
-}
-
+// Serwer testowy od 20.10 bez hasła testerów (jak prod).
 function apiPost(path, body, ms) {
   const ctl = typeof AbortController === 'function' ? new AbortController() : null;
   const tm = ctl ? setTimeout(function () { ctl.abort(); }, ms) : 0;
-  const headers = { 'Content-Type': 'application/json' };
-  if (haslo()) headers['X-Lotnik-Haslo'] = haslo();
   return fetch(API + path, {
     method: 'POST',
-    headers: headers,
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body || {}),
     signal: ctl ? ctl.signal : undefined
   }).then(function (r) {
     return r.json().catch(function () { return {}; }).then(function (j) {
-      if (j && j.haslo) { try { localStorage.removeItem(HASLO_KEY); } catch (err) { /* bez zapisu */ } }
-      return { ok: r.ok, j: j || {} };
+      return { ok: r.ok, status: r.status, j: j || {} };
     });
   }).catch(function () {
-    return { ok: false, j: { error: 'brak połączenia' } };
+    return { ok: false, status: 0, j: { error: 'brak połączenia' } };
   }).finally(function () { clearTimeout(tm); });
 }
 
@@ -133,13 +155,22 @@ function withOwnerUrls(t) {
 }
 
 // Bilet niesie mody z założonych przedmiotów (serwer liczy je z ekwipunku token|key).
+// Po nieudanym pobraniu przerwa (2 s, limit serwera 10 s): czekająca proca pyta 4×/s i bez przerwy sama wpadała w limit.
+let fetchAfter = 0;
 function fetchTicket() {
   if (fetching) return fetching;
+  if (Date.now() < fetchAfter) return Promise.resolve(spare);
   const ver = eqVer;
   fetching = apiPost('/start', inventory ? inventory.ident() : {}, 4000).then(function (r) {
     fetching = null;
     if (ver !== eqVer) return fetchTicket();   // w międzyczasie zmiana ekwipunku: ten bilet ma stare mody
-    if (r.ok && typeof r.j.g === 'string' && Number.isInteger(r.j.seed)) spare = { t: withOwnerUrls(r.j), at: Date.now() };
+    if (r.ok && typeof r.j.g === 'string' && Number.isInteger(r.j.seed)) {
+      r.j.at = Date.now();   // od tej chwili liczymy ważność biletu przy ponawianiu zapisu (zegar przeglądarki, nie serwera)
+      spare = { t: withOwnerUrls(r.j), at: r.j.at };
+      fetchAfter = 0;
+    } else {
+      fetchAfter = Date.now() + (r.status === 429 ? 10000 : 2000);
+    }
     return spare;
   });
   return fetching;
@@ -187,14 +218,56 @@ function keepSpare() {
 }
 
 // Wynik partii z biletem idzie do serwera; serwer sam odtwarza lot i odsyła metry.
-function sendResult(onDone) {
+// Brak sieci / błąd serwera / limit = ponawiamy, póki bilet ważny. Wynik czeka w localStorage (po gid), więc
+// zamknięcie gry albo odświeżenie strony go nie gubi (resendPending przy starcie). Drugi /end tej samej partii
+// serwer odsyła jako zapisany (zgubiona odpowiedź), więc ponawianie jest bezpieczne.
+const PENDING_KEY = LS_PREFIX + 'lotnik.doWyslania';
+const TICKET_TTL_MS = 13 * 60 * 1000;    // serwer: 2 min celowania + 10 min lotu + 2 min zapasu (minuta luzu na zegary)
+const RETRY_S = [1, 2, 4, 8, 15, 30];    // dalej co 30 s
+function pendingAll() {
+  try { return JSON.parse(localStorage.getItem(PENDING_KEY) || '{}') || {}; } catch (err) { return {}; }
+}
+function pendingSet(gid, p) {
+  const all = pendingAll();
+  if (p) all[gid] = p; else delete all[gid];
+  try { localStorage.setItem(PENDING_KEY, JSON.stringify(all)); } catch (err) { /* bez zapisu: ponawiamy tylko do zamknięcia strony */ }
+}
+
+function sendResult(onDone, onRetry) {
   const run = window.lotnikLastRun;
-  if (!run || !run.saved || !run.ticket || !run.ticket.g) { onDone({ saved: false, why: 'gra bez połączenia' }); return; }
-  const body = Object.assign({ g: run.ticket.g, inputs: run.inputs, ball: curItem ? { uid: curItem.uid, nick: curItem.nick } : null },
+  if (!run || !run.saved || !run.ticket || !run.ticket.g) { onDone({ saved: false, why: 'partia testowa' }); return; }
+  const body = Object.assign({ g: run.ticket.g, inputs: run.inputs, ball: curItem ? { uid: curItem.uid, nick: curItem.nick } : null,
+    dev: TOUCH ? 'm' : 'd' },
     inventory ? inventory.ident() : {});
-  apiPost('/end', body, 15000).then(function (r) {
-    if (r.ok && typeof r.j.r === 'string') onDone({ saved: true, meters: r.j.meters, r: r.j.r, gid: r.j.gid, przedmiot: r.j.przedmiot || null });
-    else onDone({ saved: false, why: r.j.stale ? 'odśwież stronę' : (r.j.error || 'błąd serwera') });
+  const p = { body: body, until: (run.ticket.at || Date.now()) + TICKET_TTL_MS, meters: Math.floor(run.meters) };
+  pendingSet(run.ticket.gid, p);
+  postPending(run.ticket.gid, p, 0, onDone, onRetry);
+}
+
+function postPending(gid, p, n, onDone, onRetry) {
+  apiPost('/end', p.body, 15000).then(function (r) {
+    const again = !r.status || r.status >= 500 || r.status === 429;
+    const wait = RETRY_S[Math.min(n, RETRY_S.length - 1)] * 1000;
+    if (again && Date.now() + wait < p.until) {
+      if (onRetry) onRetry(n + 1);
+      setTimeout(function () { postPending(gid, p, n + 1, onDone, onRetry); }, wait);
+      return;
+    }
+    pendingSet(gid, null);
+    if (r.ok && typeof r.j.r === 'string') {
+      onDone({ saved: true, meters: r.j.meters, r: r.j.r, gid: r.j.gid, przedmiot: r.j.przedmiot || null, dup: !!r.j.dup });
+    } else if (r.status === 409) onDone({ saved: true, meters: p.meters, r: null, gid: gid, przedmiot: null, dup: true });   // stary serwer bez `dup`
+    else onDone({ saved: false, why: again ? 'brak połączenia z serwerem' : r.j.stale ? 'odśwież stronę' : (r.j.error || 'błąd serwera') });
+  });
+}
+
+// Wyniki niewysłane przed zamknięciem strony: wysyłamy po cichu (ekwipunek z dropem odświeży się przy otwarciu).
+function resendPending() {
+  const all = pendingAll();
+  Object.keys(all).forEach(function (gid) {
+    const p = all[gid];
+    if (!p || !p.body || !(p.until > Date.now())) { pendingSet(gid, null); return; }
+    postPending(gid, p, 0, function () { /* wynik już na serwerze albo odrzucony */ }, null);
   });
 }
 
@@ -227,19 +300,29 @@ function build() {
   const closeBtn = el('button', 'lotnik-btn lotnik-x', '✕');
   closeBtn.type = 'button';
   closeBtn.setAttribute('aria-label', 'Zamknij grę');
+  if (FS_OK) {
+    const fsBtn = el('button', 'lotnik-btn lotnik-fs', '⛶');
+    fsBtn.type = 'button';
+    fsBtn.setAttribute('aria-label', 'Pełny ekran');
+    fsBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (document.fullscreenElement) exitFullscreen();
+      else enterFullscreen();
+    });
+    top.appendChild(fsBtn);
+  }
   top.appendChild(closeBtn);
 
   card = el('div', 'lotnik-card');
   card.hidden = true;
-  cardScore = el('div', 'lt-score');
+  cardHero = el('div', 'lt-hcore');
   // Lot do bezpiecznika 10 min: koniec gry, dalej się nie da.
   cardWin = el('div', 'lt-win');
   cardWin.appendChild(document.createTextNode('Koniec gry! Pokonałeś grę, gratulacje!'));
   cardWin.appendChild(el('small', null, 'Doleciałeś do granicy 10 minut lotu, dalej się już nie da.'));
   cardWin.hidden = true;
-  cardNote = el('div', 'lt-note');
   cardMeta = el('div', 'lt-meta');
-  cardBall = el('div', 'lt-ball');
   cardMf = el('div', 'lt-mf');
   cardDrop = el('div', 'lt-drop');
   cardDrop.hidden = true;
@@ -254,22 +337,34 @@ function build() {
     // Logowanie/rejestracja: /inv z tokenem i kluczem scala przedmioty gościa; wylogowanie: nowy klucz gościa.
     if (!loggedIn) inventory.rotateKey();
     inventory.load();
-  });
-  inventory = createInventory(apiPost, konto.token);
+  }, LS_PREFIX);
+  inventory = createInventory(apiPost, konto.token, LS_PREFIX);
   inventory.onChange(onEquipChange);
-  // Góra karty: [awatar] nick · metry (nick tylko z kontem; bez konta same metry).
-  const cardTop = el('div', 'lt-top');
-  cardTop.appendChild(konto.player);
-  cardTop.appendChild(el('span', 'lt-dot', '·'));
-  cardTop.appendChild(cardScore);
-  card.appendChild(cardTop);
+  // Góra karty (makieta out/makieta-koniec.html): kto grał (nick z konta albo „Gość”: przełącza sam CSS, więc
+  // logowanie przy otwartej karcie też), wynik z rekordem albo paskiem do rekordu (karta.js renderHero; nick w jednej linii z wynikiem), status.
+  const hero = el('div', 'lt-hero');
+  const who = cardWho = el('div', 'lt-who');
+  const guest = el('div', 'lt-guest');
+  guest.append(el('span', 'lt-av', '?'), el('span', null, 'Gość'));
+  who.append(konto.player, guest);
+  hero.append(cardHero, cardMeta);
+  cardHero.appendChild(who);
+  card.appendChild(hero);
   card.appendChild(cardWin);
-  card.appendChild(cardNote);
-  card.appendChild(cardBall);
-  card.appendChild(cardMeta);
-  card.appendChild(cardMf);
-  card.appendChild(cardDrop);
-  card.appendChild(konto.node);
+  cardNew = el('div', 'lt-new', 'Jest nowa wersja gry.');
+  cardNew.hidden = true;
+  const reload = el('button', 'lotnik-btn', 'Odśwież');
+  reload.type = 'button';
+  reload.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); location.reload(); });
+  cardNew.appendChild(reload);
+  card.appendChild(cardNew);
+  // Magic Find + drop + konto w jednym bloku z własnym przewijaniem: w pionie środek karty, który kurczy się,
+  // gdy brakuje wysokości (telefon), w poziomie na telefonie prawa kolumna; wynik i przyciski zawsze widoczne.
+  const cardSide = el('div', 'lt-side');
+  cardSide.appendChild(cardMf);
+  cardSide.appendChild(cardDrop);
+  cardSide.appendChild(konto.node);
+  card.appendChild(cardSide);
   card.appendChild(el('div', 'lt-sep'));
   card.appendChild(row);
   const row2 = el('div', 'lt-row2');
@@ -284,7 +379,29 @@ function build() {
   row2.appendChild(quit);
   card.appendChild(row2);
   card.appendChild(konto.out);
-  ranking = createRanking(apiPost, el, konto.token, function () { const d = readData(); return d && d.avatars; });
+  const avatarsNow = function () { const d = readData(); return d && d.avatars; };
+  ranking = createRanking(apiPost, el, konto.token, avatarsNow, showRecordEq);
+  pageRank = mountPageRanking(apiPost, el, konto.token, avatarsNow, showRecordEq, function () { return false; });
+
+  // Podgląd ekwipunku z rekordowego lotu (klik w gracza w rankingu; jak w Piłeczce): okno nad stroną i nad grą.
+  eqView = el('div', 'lotnik-ekwv');
+  eqView.hidden = true;
+  const eqPanel = el('div', 'lotnik-inv');
+  eqTitle = el('h3');
+  const eqClose = el('button', 'lotnik-btn lotnik-x lt-inv-close', '✕');
+  eqClose.type = 'button';
+  eqClose.setAttribute('aria-label', 'Zamknij podgląd ekwipunku');
+  eqBody = el('div');
+  eqNote = el('div', 'lt-eqv-note');
+  eqPanel.append(eqTitle, eqClose, eqBody, eqNote);
+  eqView.appendChild(eqPanel);
+  eqClose.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); eqView.hidden = true; });
+  eqView.addEventListener('click', function (e) { if (e.target === eqView) eqView.hidden = true; });
+  eqPanel.addEventListener('click', function (e) { e.stopPropagation(); });
+  eqDoc = { slots: {}, chest: [] };
+  eqUi = createEkwipunek({ readOnly: true,
+    inv: { doc: function () { return eqDoc; }, note: function () { return ''; }, load: function () { return Promise.resolve(null); } },
+    el: el, body: eqBody, avatars: avatarsNow });
 
   invPanel = el('div', 'lotnik-inv');
   invPanel.hidden = true;
@@ -307,8 +424,28 @@ function build() {
 
   document.body.appendChild(layer);
   document.body.appendChild(tip);
+  // Wyłącznik spadających awatarów (jak „❄ wyłącz awatary” w Piłeczce), zapamiętany w przeglądarce.
+  offBtn = el('button', 'lotnik-off');
+  offBtn.type = 'button';
+  const setOff = function () { offBtn.textContent = avOff ? 'Włącz awatary' : 'Wyłącz awatary'; };
+  setOff();
+  offBtn.addEventListener('click', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    avOff = !avOff;
+    try { localStorage.setItem(OFF_KEY, avOff ? '1' : '0'); } catch (err) { /* tylko do zamknięcia strony */ }
+    setOff();
+    if (avOff) {
+      stopSpawning();
+      layer.replaceChildren();
+      layer.hidden = true;
+      tip.hidden = true;
+    } else startSpawning();
+  });
+  document.body.appendChild(offBtn);
   document.body.appendChild(dim);
   document.body.appendChild(stage);
+  document.body.appendChild(eqView);               // po scenie: pierwsze .lotnik-x / .lotnik-inv w DOM to dalej gra
 
   closeBtn.addEventListener('click', function (e) {
     e.preventDefault();
@@ -377,7 +514,7 @@ function spawnOne(delay) {
 }
 
 function startSpawning() {
-  if (spawnTimer || active || !layer || pool.length === 0) return;
+  if (avOff || spawnTimer || active || !layer || pool.length === 0) return;
   layer.hidden = false;
   tip.hidden = false;
   spawnOne(2.5);
@@ -395,8 +532,29 @@ function stopSpawning() {
 // --- start / koniec gry ------------------------------------------------------
 
 
+// Pełny ekran w poziomie na telefonie: znika pasek adresu i przyciski przeglądarki. Cała strona idzie na pełny
+// ekran, więc przyciemniona strona dalej prześwituje. Wymaga gestu (tap w awatar / ⛶). iPhone (Safari) nie ma
+// tego API dla stron: tam przycisk się nie pokazuje, a gra działa w zwykłym oknie.
+const FS_OK = TOUCH && typeof document !== 'undefined' && !!document.documentElement.requestFullscreen;
+function enterFullscreen() {
+  if (!FS_OK || document.fullscreenElement) return;
+  try {
+    document.documentElement.requestFullscreen({ navigationUI: 'hide' }).then(function () {
+      try {
+        const lock = screen.orientation && screen.orientation.lock ? screen.orientation.lock('landscape') : null;
+        if (lock && lock.catch) lock.catch(function () { /* bez blokady obrotu */ });
+      } catch (err) { /* bez blokady obrotu */ }
+    }).catch(function () { /* przeglądarka odmówiła: gra w zwykłym oknie */ });
+  } catch (err) { /* stara przeglądarka */ }
+}
+function exitFullscreen() {
+  try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (err) { /* nic */ }
+  if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function () { /* nic */ });
+}
+
 function openGame(item) {
   if (active || opening || !item) return;
+  enterFullscreen();   // tu, w geście tapu (startGame jest już po odpowiedzi serwera)
   opening = true;
   tip.textContent = 'Łączenie z serwerem…';
   firstTicket().then(function (ticket) {
@@ -425,32 +583,80 @@ function startGame(item, ticket) {
   pendingDrop = null;
   dropState = null;
   if (!inventory.loaded()) inventory.load();
+  setDimZone(0, 0);
   dim.hidden = false;
   stage.hidden = false;
-  // Strona pod spodem stoi (bez przewijania i animacji), ranking prześwituje.
+  // Strona pod spodem stoi (bez przewijania i animacji), ranking prześwituje. Telefon: strona całkiem ukryta
+  // (visibility, układ i przewinięcie zostają), bo na małym ekranie nicki rankingu myliły się z grą.
   document.body.classList.add('playing');
+  if (TOUCH) document.body.classList.add('lt-hide');
   document.documentElement.style.overflow = 'hidden';
 
   game = createGame({
     canvas: canvas,
     avatarUrl: item.url,
+    birdUrls: pool.map(function (p) { return p.url; }),
     owners: topOwners(pool),
     nick: item.nick,
     loadout: inventory.equipped(),
+    lsPrefix: LS_PREFIX,
     ticket: ticket,
     nextTicket: takeTicket,
     onEnd: showResult,
-    onClose: closeGame
+    onClose: closeGame,
+    onZone: setDimZone,
+    bg: function () { return dimOpaque; }
   });
   // Podgląd partii w konsoli (faza, dystans, ziarno) — do sprawdzania bez UI.
   window.lotnikInfo = function () { return game ? game.info() : null; };
 }
 
+// Tło przyciemnienia = czarna warstwa + kolor stref (kosmos, czerwień) złożone w jeden kolor. Zmieniane tylko
+// przy zmianie kroku stref (game.js onZone), więc canvas nie maluje pełnoekranowych warstw co klatkę.
+// Telefon: ciemniej (0,82), żeby prześwitujący ranking strony nie mylił się z grą.
+const DIM_BASE = TOUCH ? 0.82 : 0.6;
+function setDimZone(space, hell) {
+  let a = DIM_BASE, c = [0, 0, 0];
+  const over = function (col, a2) {
+    if (a2 <= 0) return;
+    const na = a2 + a * (1 - a2);
+    c = c.map(function (v, i) { return (col[i] * a2 + v * a * (1 - a2)) / na; });
+    a = na;
+  };
+  over([2, 3, 14], 0.85 * space);
+  over([140, 12, 12], 0.6 * hell);
+  dim.style.background = 'rgba(' + c.map(Math.round).join(',') + ',' + a.toFixed(3) + ')';
+  // Ten sam kolor złożony z tłem strony, bez przezroczystości (game.js ?tlo=1 maluje go na canvasie).
+  const pg = (getComputedStyle(document.body).backgroundColor.match(/\d+/g) || [0, 0, 0]).map(Number);
+  dimOpaque = 'rgb(' + c.map(function (v, i) { return Math.round(v * a + pg[i] * (1 - a)); }).join(',') + ')';
+}
+let dimOpaque = '#000';
+
+// Nowa wersja na stronie (publikacja w trakcie gry): po końcu partii, najwyżej raz na 5 min, czytamy HTML strony
+// i porównujemy ?v= nakladka.js z własnym. Trwająca partia gra dalej starym kodem (serwer trzyma stare fizyki).
+const MY_V = Number((import.meta.url.match(/[?&]v=(\d+)/) || [])[1]) || 0;
+let cardNew = null;
+let verAt = 0;
+let newVer = false;
+function checkVersion() {
+  if (!MY_V || newVer || Date.now() - verAt < 5 * 60 * 1000) return Promise.resolve(newVer);
+  verAt = Date.now();
+  return fetch(location.href.split('#')[0], { cache: 'no-store' }).then(function (r) { return r.text(); }).then(function (t) {
+    const m = t.match(/nakladka\.js\?v=(\d+)/);
+    newVer = !!m && Number(m[1]) > MY_V;
+    return newVer;
+  }).catch(function () { return false; });
+}
+
 function showResult(result) {
-  cardScore.textContent = result.meters + ' m';
+  const hero = { meters: result.meters, rec: result.newRecord, prevBest: result.prevBest, best: result.best, test: result.test };
+  // Zalogowany: rekord liczy konto (/claim), nie to urządzenie; do odpowiedzi rekord konta zapamiętany tutaj albo bez rekordu.
+  if (konto.token() && result.saved) {
+    const kb = konto.best();
+    if (kb == null) hero.wait = true; else hero.acc = { prev: kb };
+  }
+  renderHero(cardHero, hero, cardWho);
   cardWin.hidden = !result.beaten;
-  cardNote.textContent = result.newRecord ? 'Nowy rekord!' : 'Rekord: ' + result.best + ' m';
-  renderBall(cardBall, curItem);
   renderMf(cardMf, result.mf || 0, result.meters);
   pendingDrop = null;
   dropState = null;
@@ -465,25 +671,41 @@ function showResult(result) {
   };
   cardStatus = function (msg, err) { if (seq === endSeq) status(msg, err); };
   konto.hide();
-  status(result.saved ? 'Zapisywanie wyniku…' : 'Wynik niezapisany (gra bez połączenia)');
+  cardNew.hidden = !newVer;
+  checkVersion().then(function (v) { if (v && seq === endSeq) cardNew.hidden = false; });
+  status(result.saved ? 'Zapisywanie wyniku…' : 'Wynik niezapisany (partia testowa)');
   if (!result.saved) return;
+  const retry = function () { if (seq === endSeq && active) status('Zapisywanie wyniku… (brak połączenia, ponawiam)'); };
   sendResult(function (res) {
     if (seq !== endSeq || !active) return;   // w międzyczasie nowa partia albo zamknięta gra
     if (res.saved) {
-      cardScore.textContent = res.meters + ' m';
+      // Serwer odtworzył partię: inny wynik (w praktyce się nie zdarza) = delta i pasek z jego metrów.
+      if (Number.isFinite(res.meters) && Math.floor(res.meters) !== Math.floor(hero.meters)) {
+        hero.meters = res.meters;
+        renderHero(cardHero, hero, cardWho);
+      }
       status('Wynik zapisany na serwerze');
       const p = res.przedmiot;
+      if (res.dup) inventory.load();   // ponowiony zapis: drop (jeśli był) już w ekwipunku na serwerze
       if (p && p.inv) inventory.set(p.inv);
       if (p && p.drop) {
         pendingDrop = p.drop;
-        dropState = { equipped: !!p.equipped, msg: p.lost ? 'Poprzedni nierozstrzygnięty przedmiot przepadł (pełna skrzynia).' : '' };
+        dropState = { equipped: !!p.equipped, old: null, msg: p.lost ? 'Poprzedni nierozstrzygnięty przedmiot przepadł (pełna skrzynia).' : '' };
         showDrop(pendingDrop);
       }
+      if (res.would && !hero.acc) { hero.would = res.would; renderHero(cardHero, hero, cardWho); }
     } else {
       status('Wynik niezapisany (' + res.why + ')');
     }
-    konto.onResult(res);
-  });
+    konto.onResult(res, function (rank) {
+      if (seq !== endSeq) return;
+      const av = (readData() || {}).avatars || {};
+      const url = function (p) { return p ? { ...p, url: p.uid ? av[p.uid] || '' : '' } : null; };
+      hero.acc = { ...rank, over: url(rank.over), gap: url(rank.gap) };
+      hero.wait = false;
+      renderHero(cardHero, hero, cardWho);
+    });
+  }, retry);
 }
 
 // --- drop i ekwipunek --------------------------------------------------------
@@ -500,30 +722,54 @@ function currentFor(type) {
 }
 
 function showDrop(drop) {
-  const st = drop ? Object.assign({}, dropState, { full: !(dropState && dropState.equipped) && inventory.free() === 0 }) : null;
-  renderDrop(cardDrop, drop, drop && !(st && st.equipped) ? currentFor(drop.type) : null, {
-    equip: function () { dropAct('equip', 'Założono: '); },
-    keep: function () { dropAct('keep', 'Do skrzyni: '); },
-    toss: function () { dropAct('destroy', 'Odrzucono: '); },
-    inv: function () { ranking.hide(); openInventory(); }
+  const decided = !!(dropState && (dropState.equipped || dropState.done));
+  const st = drop ? Object.assign({}, dropState, { full: !decided && inventory.free() === 0 }) : null;
+  renderDrop(cardDrop, drop, drop && !decided ? currentFor(drop.type) : null, {
+    equip: function () { dropAct('equip'); },
+    keep: function () { dropAct('keep'); },
+    toss: function () { dropAct('destroy'); },
+    inv: function () { ranking.hide(); openInventory(); },
+    oldX: oldX
   }, st);
-  cardInv.hidden = !!drop && !(st && st.equipped);
+  cardInv.hidden = !!drop && !decided;
 }
 
-function dropAct(action, label) {
+// Decyzja o dropie: stan na karcie ustawiony PRZED inventory.act (onChange z nowym ekwipunkiem rysuje już ten stan,
+// bez chwilowego „Masz: ten sam przedmiot”), błąd serwera przywraca przyciski z komunikatem.
+// Załóż = ramka zostaje ze stemplem, stary przedmiot (jeśli był) w skrzyni z ✗; Do skrzyni / Odrzuć = krótka linijka.
+// Stempel nie śledzi późniejszych zmian w Ekwipunku: karta to podsumowanie partii.
+function dropAct(action) {
   const drop = pendingDrop;
-  if (!drop || (dropState && dropState.equipped)) return;
+  const before = dropState || {};
+  if (!drop || before.equipped || before.done) return;
+  dropState = action === 'equip'
+    ? { equipped: true, old: currentFor(drop.type), msg: before.msg }
+    : { done: (action === 'keep' ? 'Do skrzyni: ' : 'Odrzucono: ') + itemName(drop), msg: before.msg };
+  showDrop(drop);
   inventory.act(action, drop.id).then(function (r) {
+    if (pendingDrop !== drop || !r.error) return;
+    dropState = Object.assign({}, before, { msg: r.error });
+    showDrop(drop);
+  });
+}
+
+// ✗ przy starym przedmiocie (zdjętym do skrzyni po „Załóż”): pierwsze kliknięcie pyta „Na pewno?”, drugie niszczy.
+function oldX() {
+  const drop = pendingDrop, s = dropState;
+  if (!drop || !s || !s.old || s.oldBusy || s.oldMsg) return;
+  if (!s.oldAsk) {
+    dropState = Object.assign({}, s, { oldAsk: true });
+    showDrop(drop);
+    return;
+  }
+  const old = s.old;
+  dropState = Object.assign({}, s, { oldBusy: true });
+  showDrop(drop);
+  inventory.act('destroy', old.id).then(function (r) {
     if (pendingDrop !== drop) return;
-    if (r.error) {
-      dropState = Object.assign({}, dropState, { msg: r.error });
-      showDrop(drop);
-      return;
-    }
-    pendingDrop = null;
-    dropState = null;
-    showDrop(null);
-    cardNote.textContent = label + itemName(drop);
+    dropState = Object.assign({}, dropState, r.error ? { oldBusy: false, oldAsk: false, msg: r.error }
+      : { oldBusy: false, oldMsg: 'Zniszczono: ' + itemName(old) });
+    showDrop(drop);
   });
 }
 
@@ -550,56 +796,42 @@ function closeGame() {
   ranking.hide();
   stage.hidden = true;
   dim.hidden = true;
-  document.body.classList.remove('playing');
+  dim.style.background = '';
+  exitFullscreen();
+  document.body.classList.remove('playing', 'lt-hide');
   document.documentElement.style.overflow = '';
-  if (!gateIfLocked()) setTimeout(startSpawning, 400);
+  setTimeout(startSpawning, 400);
 }
 
-// --- panel hasła testerów ----------------------------------------------------
-// Bez zapisanego hasła zamiast awatarów jest mały panel w rogu; dobre hasło → zapis i awatary.
-let gate = null;
-function showGate() {
-  if (gate) return;
-  gate = el('form', 'lotnik-gate');
-  const input = el('input');
-  input.type = 'password';
-  input.placeholder = 'hasło';
-  input.autocomplete = 'current-password';
-  input.name = 'password';
-  const ok = el('button', 'lotnik-btn', 'Zaloguj');
-  ok.type = 'submit';
-  const msg = el('div', 'lotnik-gate-m');
-  gate.append(input, ok, msg);
-  gate.addEventListener('submit', function (e) {
-    e.preventDefault();
-    const val = input.value.trim();
-    if (!val) return;
-    ok.disabled = true;
-    msg.textContent = '';
-    try { localStorage.setItem(HASLO_KEY, val); } catch (err) { /* bez zapisu nie zadziała */ }
-    apiPost('/haslo', {}, 6000).then(function (r) {
-      ok.disabled = false;
-      if (r.ok && r.j.ok) {
-        gate.remove();
-        gate = null;
-        startSpawning();
-        return;
-      }
-      if (!r.j.haslo) { try { localStorage.removeItem(HASLO_KEY); } catch (err) { /* nic */ } }
-      msg.textContent = r.j.haslo ? 'Złe hasło' : (r.j.error || 'Brak połączenia');
-    });
+// --- podgląd ekwipunku z rankingu ----------------------------------------------
+// e = wiersz rankingu { nick, verified, uid, gid, dev, meters }; przedmioty z rekordowego lotu (POST /ekw).
+function showRecordEq(e) {
+  const my = ++eqSeq;
+  eqTitle.replaceChildren();
+  if (e.verified && /^\d{1,12}$/.test(String(e.uid || ''))) {
+    const a = el('a', null, e.nick);
+    a.href = 'https://forums.d2jsp.org/user.php?i=' + e.uid;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.title = 'Profil na d2jsp';
+    eqTitle.appendChild(a);
+  } else {
+    eqTitle.textContent = e.nick;
+  }
+  eqDoc = { slots: {}, chest: [] };
+  eqUi.open();
+  eqNote.textContent = 'Ładowanie…';
+  eqView.hidden = false;
+  apiPost('/ekw', { gid: e.gid }, 8000).then(function (r) {
+    if (my !== eqSeq) return;
+    if (!r.ok) { eqNote.textContent = r.j.error || 'Brak połączenia'; return; }
+    const dev = r.j.dev === 'm' ? ' (📱 telefon)' : r.j.dev === 'd' ? ' (🖥️ komputer)' : '';
+    eqDoc = { slots: r.j.slots || {}, chest: [] };
+    eqUi.open();
+    eqNote.textContent = r.j.slots
+      ? 'Ekwipunek z rekordowego lotu: ' + r.j.meters + ' m' + dev + '.'
+      : 'Brak zapisu ekwipunku dla tego lotu' + dev + '.';
   });
-  document.body.appendChild(gate);
-}
-
-// Brak hasła: chowa awatary i pokazuje panel. Zwraca true, gdy zablokowane.
-function gateIfLocked() {
-  if (haslo()) return false;
-  stopSpawning();
-  if (layer) layer.hidden = true;
-  if (tip) tip.hidden = true;
-  showGate();
-  return true;
 }
 
 // --- dane strony -------------------------------------------------------------
@@ -655,7 +887,10 @@ function init() {
     if (pool.length === 0) return;             // brak awatarów — nie ma czego uruchamiać
     injectCss();
     build();
-    if (!gateIfLocked()) startSpawning();
+    startSpawning();
+    resendPending();
+    // Powrót na kartę (np. z innego okna): przeglądarka spowalniała timer zapasu, więc od razu świeży bilet.
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) keepSpare(); });
   }, 100);
 }
 

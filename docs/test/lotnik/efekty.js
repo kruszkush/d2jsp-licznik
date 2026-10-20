@@ -1,8 +1,8 @@
 // efekty.js — efekty gry bez wpływu na fizykę: cząstki, wstrząs, błysk i zwolnienie po łuku, duży zysk „+N”,
 // równanie MF na żywo. game.js woła on(f) dla każdego sim.fx, tick(dt), flight(sim, dt) i update(dt) co klatkę; draw.js czyta pola.
 // Jak dodać efekt: nowa gałąź `f.k` w on() (sim.js wypluwa zdarzenie w s.fx), pola rysuje draw.js.
-import { mfFromMeters, MF_PER_KM } from './items.js?v=35';
-import { COLORS } from './draw.js?v=35';
+import { mfFromMeters, MF_PER_KM } from './items.js?v=55';
+import { COLORS } from './draw.js?v=55';
 
 export function createEfekty() {
   const fx = {
@@ -220,6 +220,21 @@ export function createEfekty() {
         });
       }
       fx.shake = 14;
+    } else if (f.k === 'bird') {
+      // Ptak: garść piór w górę i na boki.
+      for (let i = 0; i < 12; i++) {
+        if (fx.particles.length > 200) break;
+        fx.particles.push({
+          x: f.x,
+          y: f.y,
+          vx: (Math.random() - 0.5) * 300,
+          vy: 80 + Math.random() * 220,
+          life: 0.5 + Math.random() * 0.5,
+          size: 2 + Math.random() * 2,
+          col: i % 2 ? '#e2e8f0' : '#94a3b8'
+        });
+      }
+      fx.shake = Math.min(8, fx.shake + 2);
     } else if (f.k === 'arc') {
       // Fajerwerk: rozbłysk iskier + napis „łuk 30 × 5 = 150” (suma łuku × f.mult, sim.js arcMult).
       const cols = [COLORS.mf10, COLORS.mf15, COLORS.mf20, COLORS.boost, COLORS.text];
@@ -268,6 +283,7 @@ export function createEfekty() {
     } else if (f.k === 'mf') {
       // Równanie: kulka łuku otwiera nawias (inny łuk zamyka poprzedni bez × 10), kulka bez łuku to zwykłe „+ v”.
       const arc = f.arc === undefined ? null : f.arc;
+      if (f.bal) zoneFlush();   // balon MF w strefie: zaległe „+ 1/+ 2” stref przed „+ 30”
       if (arc !== openArc) {
         closeArc();   // suma przy „)” bez tej kulki, więc doliczamy ją dopiero niżej
         if (arc !== null) { put(fx.eq.list.length ? ' + (' : '('); openArc = arc; parenN = 0; }
