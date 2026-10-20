@@ -117,15 +117,14 @@ const DYN_GAP_LO = 24000, DYN_GAP_HI = 48000;        // bazowo ~1 na 3 km
 const DYN_AIR_LO = 150, DYN_AIR_HI = 600;
 // Łańcuch (chainBlast): trafiona bomba odpala bomby w promieniu CHAIN_R (przechodnio).
 const CHAIN_R = 80;
-// Ptaki (100–250 m, pojedynczo, każdy na losowej wysokości): trafienie = +1 podrzut, lekko w górę i pęd w prawo
-// malejący do zera przy BIRD_FWD_REF (ptaki nie rozpędzają w nieskończoność).
+// Ptaki (100–250 m, pojedynczo, każdy na losowej wysokości): przelot = tylko MF (bez podrzutu i pchnięcia;
+// z podrzutem gracz skakał z ptaka na ptaka).
 // Od v7 ptak to awatar: 1./2./3. miejsce (BIRD_PLACE_P każde, gdy jest w s.owners) daje BIRD_MF, reszta BIRD_MF_BASE.
 const BIRD_R = 30;
 const BIRD_LO = 1200, BIRD_HI = 3000;
 const BIRD_PLACE_P = 0.1;
 const BIRD_MF = [40, 25, 15], BIRD_MF_BASE = 10;
 const BIRD_GAP_LO = 300, BIRD_GAP_HI = 1100;   // odstęp ptaków wprost (bez MAP_DENSITY)
-const BIRD_UP = 700, BIRD_FWD = 400, BIRD_FWD_REF = 1500;
 // Balony MF (kosmos i czerwień): girlanda prawie poziomo, lekko w dół w prawo (od v7; v6 pionowy sznur),
 // każdy balon wart MFBAL_SPACE albo MFBAL_HELL wg wysokości.
 // Górna granica pod szczytem dynamitu (~6240), żeby nie było martwych balonów.
@@ -694,7 +693,7 @@ function hitDyns(s) {
   }
 }
 
-// Ptak: trafienie z dowolnej strony, ptak odlatuje. Tylko dodaje (vx nie maleje — pruneBehind).
+// Ptak: przelot przez ptaka (z dowolnej strony) daje tylko MF, bez wpływu na ruch i podrzuty (od 20.10).
 function hitBirds(s) {
   for (let i = 0; i < s.birds.length; i++) {
     const b = s.birds[i];
@@ -702,10 +701,6 @@ function hitBirds(s) {
     if (!segmentHit(s, b.x, b.y, PLAYER_R + b.r)) continue;
     b.alive = false;
     s.birdsHit++;
-    s.puffs = Math.min(s.puffMax, s.puffs + 1);
-    s.vy = Math.min(upCap(s), Math.max(s.vy, BIRD_UP));
-    s.vx = Math.min(s.maxV, s.vx + BIRD_FWD * Math.max(0, 1 - s.vx / BIRD_FWD_REF));
-    s.grounded = false;
     s.mf += b.value;
     s.fx.push({ k: 'bird', x: b.x, y: b.y, v: Math.sqrt(s.vx * s.vx + s.vy * s.vy), place: b.place });
     s.fx.push({ k: 'mf', x: b.x, y: b.y, v: b.value, bird: true });
