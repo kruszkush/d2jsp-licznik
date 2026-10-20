@@ -4,13 +4,13 @@
 // Importy UI z ?v= (ta sama wartość wszędzie, podbijana razem z ?v= w strona/index.html), żeby
 // przeglądarka nie mieszała nowych i starych modułów. Moduły UI importują też sim.js i replay.js z ?v=;
 // tylko replay.js importuje './sim.js' bez ?v= (deploy.sh podmienia ten import na serwerze).
-import { createGame } from './game.js?v=47';
-import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=47';
-import { createInventory } from './inventory.js?v=47';
-import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=47';
-import { createKonto, KONTO_CSS } from './konto.js?v=47';
-import { createRanking, mountPageRanking, RANKING_CSS } from './ranking.js?v=47';
-import { KARTA_CSS, renderBall, renderMf, renderDrop, itemBox } from './karta.js?v=47';
+import { createGame } from './game.js?v=49';
+import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=49';
+import { createInventory } from './inventory.js?v=49';
+import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=49';
+import { createKonto, KONTO_CSS } from './konto.js?v=49';
+import { createRanking, mountPageRanking, RANKING_CSS } from './ranking.js?v=49';
+import { KARTA_CSS, renderBall, renderMf, renderDrop, itemBox } from './karta.js?v=49';
 
 const CSS = `
 .lotnik-fall{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:80}
@@ -25,7 +25,7 @@ const CSS = `
 .lotnik-btn{font:600 12px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#f8fafc;background:rgba(15,23,42,.86);border:1px solid rgba(248,250,252,.25);border-radius:999px;padding:10px 14px;cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent}
 .lotnik-btn:hover{border-color:rgba(251,191,36,.85)}
 .lotnik-x,.lotnik-fs{width:35px;height:35px;padding:0;font-size:15px;line-height:1}
-.lotnik-card{position:absolute;left:50%;top:calc(50% + 24px);transform:translate(-50%,-50%);width:min(340px,calc(100vw - 32px));max-height:calc(100vh - 72px);max-height:calc(100dvh - 72px);overflow:auto;box-sizing:border-box;background:rgba(15,23,42,.985);border:1px solid rgba(248,250,252,.22);border-radius:16px;padding:18px 16px 16px;text-align:center;color:#f8fafc;box-shadow:0 18px 50px rgba(0,0,0,.5);z-index:3;font:500 13px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.lotnik-card{position:absolute;left:50%;top:calc(50% + 24px);transform:translate(-50%,-50%);width:min(340px,calc(100vw - 32px));max-height:calc(100vh - 72px);max-height:calc(100dvh - 72px);overflow:auto;display:flex;flex-direction:column;box-sizing:border-box;background:rgba(15,23,42,.985);border:1px solid rgba(248,250,252,.22);border-radius:16px;padding:18px 16px 16px;text-align:center;color:#f8fafc;box-shadow:0 18px 50px rgba(0,0,0,.5);z-index:3;font:500 13px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 .lotnik-card .lt-top{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:2px}
 .lotnik-card .lt-top .lt-acc-nick{margin:0;min-width:0;font-size:17px}
 .lotnik-card .lt-top .lt-acc-nick>a,.lotnik-card .lt-top .lt-acc-nick>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -64,7 +64,7 @@ const CSS = `
 .lotnik-gate input{width:120px;font:500 14px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:8px 10px;border-radius:8px;border:1px solid rgba(248,250,252,.3);background:#0f172a;color:#f8fafc}
 .lotnik-gate-m{flex-basis:100%;color:#fca5a5;font-weight:500}
 .lotnik-gate-m:empty{display:none}
-.lotnik-card .lt-side{display:contents}
+.lotnik-card .lt-side{flex:0 1 auto;min-height:0;overflow:auto;scrollbar-gutter:stable both-edges;scrollbar-width:thin}
 @media (orientation:landscape) and (max-height:520px){
 .lotnik-card{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:16px;align-content:start;width:min(760px,calc(100vw - 24px));top:50%;max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px);padding:12px 14px}
 .lotnik-card>*{grid-column:1}
@@ -113,7 +113,7 @@ let opening = false;
 const TIP_TEXT = 'Kliknij spadający awatar, żeby zagrać';
 
 // --- serwer: bilet partii (/start) i zapis wyniku (/end) ----------------------
-// Bez sieci gra działa dalej, wynik jest „niezapisany” (game.js: bez biletu ziarno lokalne).
+// Bez biletu gra pokazuje planszę, ale proca czeka na bilet (game.js lateTicket); wynik ponawiany (sendResult).
 // Serwer wg strony: strona główna licznika = prod `lotnik` (bez hasła); /test/ i localhost = `lotnik-test` (hasło testerów).
 const SERWER_TEST = !(location.hostname === 'kruszkush.github.io' && !/\/test\//.test(location.pathname));
 const API = 'https://us-east1-rich-chimera-344319.cloudfunctions.net/' + (SERWER_TEST ? 'lotnik-test' : 'lotnik');
@@ -144,10 +144,10 @@ function apiPost(path, body, ms) {
   }).then(function (r) {
     return r.json().catch(function () { return {}; }).then(function (j) {
       if (j && j.haslo) { try { localStorage.removeItem(HASLO_KEY); } catch (err) { /* bez zapisu */ } }
-      return { ok: r.ok, j: j || {} };
+      return { ok: r.ok, status: r.status, j: j || {} };
     });
   }).catch(function () {
-    return { ok: false, j: { error: 'brak połączenia' } };
+    return { ok: false, status: 0, j: { error: 'brak połączenia' } };
   }).finally(function () { clearTimeout(tm); });
 }
 
@@ -159,13 +159,22 @@ function withOwnerUrls(t) {
 }
 
 // Bilet niesie mody z założonych przedmiotów (serwer liczy je z ekwipunku token|key).
+// Po nieudanym pobraniu przerwa (2 s, limit serwera 10 s): czekająca proca pyta 4×/s i bez przerwy sama wpadała w limit.
+let fetchAfter = 0;
 function fetchTicket() {
   if (fetching) return fetching;
+  if (Date.now() < fetchAfter) return Promise.resolve(spare);
   const ver = eqVer;
   fetching = apiPost('/start', inventory ? inventory.ident() : {}, 4000).then(function (r) {
     fetching = null;
     if (ver !== eqVer) return fetchTicket();   // w międzyczasie zmiana ekwipunku: ten bilet ma stare mody
-    if (r.ok && typeof r.j.g === 'string' && Number.isInteger(r.j.seed)) spare = { t: withOwnerUrls(r.j), at: Date.now() };
+    if (r.ok && typeof r.j.g === 'string' && Number.isInteger(r.j.seed)) {
+      r.j.at = Date.now();   // od tej chwili liczymy ważność biletu przy ponawianiu zapisu (zegar przeglądarki, nie serwera)
+      spare = { t: withOwnerUrls(r.j), at: r.j.at };
+      fetchAfter = 0;
+    } else {
+      fetchAfter = Date.now() + (r.status === 429 ? 10000 : 2000);
+    }
     return spare;
   });
   return fetching;
@@ -213,15 +222,56 @@ function keepSpare() {
 }
 
 // Wynik partii z biletem idzie do serwera; serwer sam odtwarza lot i odsyła metry.
-function sendResult(onDone) {
+// Brak sieci / błąd serwera / limit = ponawiamy, póki bilet ważny. Wynik czeka w localStorage (po gid), więc
+// zamknięcie gry albo odświeżenie strony go nie gubi (resendPending przy starcie). Drugi /end tej samej partii
+// serwer odsyła jako zapisany (zgubiona odpowiedź), więc ponawianie jest bezpieczne.
+const PENDING_KEY = LS_PREFIX + 'lotnik.doWyslania';
+const TICKET_TTL_MS = 13 * 60 * 1000;    // serwer: 2 min celowania + 10 min lotu + 2 min zapasu (minuta luzu na zegary)
+const RETRY_S = [1, 2, 4, 8, 15, 30];    // dalej co 30 s
+function pendingAll() {
+  try { return JSON.parse(localStorage.getItem(PENDING_KEY) || '{}') || {}; } catch (err) { return {}; }
+}
+function pendingSet(gid, p) {
+  const all = pendingAll();
+  if (p) all[gid] = p; else delete all[gid];
+  try { localStorage.setItem(PENDING_KEY, JSON.stringify(all)); } catch (err) { /* bez zapisu: ponawiamy tylko do zamknięcia strony */ }
+}
+
+function sendResult(onDone, onRetry) {
   const run = window.lotnikLastRun;
-  if (!run || !run.saved || !run.ticket || !run.ticket.g) { onDone({ saved: false, why: 'gra bez połączenia' }); return; }
+  if (!run || !run.saved || !run.ticket || !run.ticket.g) { onDone({ saved: false, why: 'partia testowa' }); return; }
   const body = Object.assign({ g: run.ticket.g, inputs: run.inputs, ball: curItem ? { uid: curItem.uid, nick: curItem.nick } : null,
     dev: TOUCH ? 'm' : 'd' },
     inventory ? inventory.ident() : {});
-  apiPost('/end', body, 15000).then(function (r) {
-    if (r.ok && typeof r.j.r === 'string') onDone({ saved: true, meters: r.j.meters, r: r.j.r, gid: r.j.gid, przedmiot: r.j.przedmiot || null });
-    else onDone({ saved: false, why: r.j.stale ? 'odśwież stronę' : (r.j.error || 'błąd serwera') });
+  const p = { body: body, until: (run.ticket.at || Date.now()) + TICKET_TTL_MS, meters: Math.floor(run.meters) };
+  pendingSet(run.ticket.gid, p);
+  postPending(run.ticket.gid, p, 0, onDone, onRetry);
+}
+
+function postPending(gid, p, n, onDone, onRetry) {
+  apiPost('/end', p.body, 15000).then(function (r) {
+    const again = !r.status || r.status >= 500 || r.status === 429;
+    const wait = RETRY_S[Math.min(n, RETRY_S.length - 1)] * 1000;
+    if (again && Date.now() + wait < p.until) {
+      if (onRetry) onRetry(n + 1);
+      setTimeout(function () { postPending(gid, p, n + 1, onDone, onRetry); }, wait);
+      return;
+    }
+    pendingSet(gid, null);
+    if (r.ok && typeof r.j.r === 'string') {
+      onDone({ saved: true, meters: r.j.meters, r: r.j.r, gid: r.j.gid, przedmiot: r.j.przedmiot || null, dup: !!r.j.dup });
+    } else if (r.status === 409) onDone({ saved: true, meters: p.meters, r: null, gid: gid, przedmiot: null, dup: true });   // stary serwer bez `dup`
+    else onDone({ saved: false, why: again ? 'brak połączenia z serwerem' : r.j.stale ? 'odśwież stronę' : (r.j.error || 'błąd serwera') });
+  });
+}
+
+// Wyniki niewysłane przed zamknięciem strony: wysyłamy po cichu (ekwipunek z dropem odświeży się przy otwarciu).
+function resendPending() {
+  const all = pendingAll();
+  Object.keys(all).forEach(function (gid) {
+    const p = all[gid];
+    if (!p || !p.body || !(p.until > Date.now())) { pendingSet(gid, null); return; }
+    postPending(gid, p, 0, function () { /* wynik już na serwerze albo odrzucony */ }, null);
   });
 }
 
@@ -313,13 +363,13 @@ function build() {
   reload.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); location.reload(); });
   cardNew.appendChild(reload);
   card.appendChild(cardNew);
-  // Magic Find + drop w jednej kolumnie: w pionie zwykła kolejność (display:contents), w poziomie na telefonie
-  // prawa kolumna z własnym przewijaniem, a wynik i przyciski zostają widoczne po lewej.
+  // Magic Find + drop + konto w jednym bloku z własnym przewijaniem: w pionie środek karty, który kurczy się,
+  // gdy brakuje wysokości (telefon), w poziomie na telefonie prawa kolumna; wynik i przyciski zawsze widoczne.
   const cardSide = el('div', 'lt-side');
   cardSide.appendChild(cardMf);
   cardSide.appendChild(cardDrop);
+  cardSide.appendChild(konto.node);
   card.appendChild(cardSide);
-  card.appendChild(konto.node);
   card.appendChild(el('div', 'lt-sep'));
   card.appendChild(row);
   const row2 = el('div', 'lt-row2');
@@ -604,14 +654,16 @@ function showResult(result) {
   konto.hide();
   cardNew.hidden = !newVer;
   checkVersion().then(function (v) { if (v && seq === endSeq) cardNew.hidden = false; });
-  status(result.saved ? 'Zapisywanie wyniku…' : 'Wynik niezapisany (gra bez połączenia)');
+  status(result.saved ? 'Zapisywanie wyniku…' : 'Wynik niezapisany (partia testowa)');
   if (!result.saved) return;
+  const retry = function () { if (seq === endSeq && active) status('Zapisywanie wyniku… (brak połączenia, ponawiam)'); };
   sendResult(function (res) {
     if (seq !== endSeq || !active) return;   // w międzyczasie nowa partia albo zamknięta gra
     if (res.saved) {
       cardScore.textContent = res.meters + ' m';
       status('Wynik zapisany na serwerze');
       const p = res.przedmiot;
+      if (res.dup) inventory.load();   // ponowiony zapis: drop (jeśli był) już w ekwipunku na serwerze
       if (p && p.inv) inventory.set(p.inv);
       if (p && p.drop) {
         pendingDrop = p.drop;
@@ -622,7 +674,7 @@ function showResult(result) {
       status('Wynik niezapisany (' + res.why + ')');
     }
     konto.onResult(res);
-  });
+  }, retry);
 }
 
 // --- drop i ekwipunek --------------------------------------------------------
@@ -828,7 +880,9 @@ function init() {
     if (pool.length === 0) return;             // brak awatarów — nie ma czego uruchamiać
     injectCss();
     build();
-    if (!gateIfLocked()) startSpawning();
+    if (!gateIfLocked()) { startSpawning(); resendPending(); }
+    // Powrót na kartę (np. z innego okna): przeglądarka spowalniała timer zapasu, więc od razu świeży bilet.
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) keepSpare(); });
   }, 100);
 }
 

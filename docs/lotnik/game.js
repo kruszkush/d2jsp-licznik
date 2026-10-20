@@ -1,10 +1,10 @@
 // game.js — gra-nakładka: pętla, wejście, kamera. Fizyka w sim.js, rysowanie w draw.js.
 // Canvas jest przezroczysty (clearRect) — przyciemniona strona licznika przebija spod spodu.
-import { create, step, DT, GEOM, START_TICKS_BACK, TICK, SPEED, SIM_VER, MAX_FLY_STEPS } from './sim.js?v=47';
-import { AIM_MAX_STEPS, STEPS_PER_SEC } from './replay.js?v=47';
-import { drawScene, COLORS, zoneLevels } from './draw.js?v=47';
-import { createEfekty } from './efekty.js?v=47';
-import { modsFor } from './items.js?v=47';
+import { create, step, DT, GEOM, START_TICKS_BACK, TICK, SPEED, SIM_VER, MAX_FLY_STEPS } from './sim.js?v=49';
+import { AIM_MAX_STEPS, STEPS_PER_SEC } from './replay.js?v=49';
+import { drawScene, COLORS, zoneLevels } from './draw.js?v=49';
+import { createEfekty } from './efekty.js?v=49';
+import { modsFor } from './items.js?v=49';
 
 const GROUND_MARGIN = 56;        // ile px zostawiamy pod linią ziemi
 const BEST_KEY = 'lotnik.best';
@@ -66,7 +66,7 @@ export function createGame(opts) {
   }
 
   // Bilet partii {seed, mods, owners, simVer}: z serwera (o.ticket, potem o.nextTicket()).
-  // Bez biletu: ziarno lokalne, wynik „niezapisany”.
+  // Bez biletu: plansza lokalna, proca czeka na bilet (lateTicket); tylko tryb testowy gra bez biletu.
   let firstTicket = o.ticket || null;
   const nextTicket = typeof o.nextTicket === 'function' ? o.nextTicket : null;
   let ticket = null;
@@ -189,14 +189,14 @@ export function createGame(opts) {
     cam.y = 0;
   }
 
-  // Partia bez biletu (zapas unieważniony zmianą ekwipunku, wolny serwer): póki nic nie wystrzelone, raz na sekundę
-  // pytamy o bilet i po jego przyjściu zaczynamy tę partię od nowa z ziarnem serwera (inaczej wynik bez zapisu i dropu).
-  const LATE_STEPS = STEPS_PER_SEC * 10;   // po 10 s celowania już nie podmieniamy planszy
+  // Partia bez biletu (zapas przeterminowany w tle, zmiana ekwipunku, brak sieci): proca zablokowana (waitingTicket),
+  // co 1/4 s pytamy o bilet i po jego przyjściu zaczynamy tę partię od nowa z ziarnem serwera. Bez biletu nie ma
+  // strzału, więc każdy rozegrany wynik ma bilet i idzie do serwera.
   let lateAt = -1;
+  function waitingTicket() { return lateAt >= 0; }
   function lateTicket() {
-    if (sim.phase !== 'aim' || log.length || drag || sim.step >= LATE_STEPS) { lateAt = -1; return; }
     if (sim.step < lateAt) return;
-    lateAt = sim.step + STEPS_PER_SEC;
+    lateAt = sim.step + STEPS_PER_SEC / 4;
     const t = nextTicket();
     if (!t || t.simVer !== SIM_VER) return;
     useTicket(t);
@@ -426,6 +426,7 @@ export function createGame(opts) {
       onZone(z.space, z.hell);
     }
     if (FPS) drawFps(dt);
+    if (waitingTicket()) notice = { text: 'Łączenie z serwerem…', t: 0.3 };
     if (notice) {
       notice.t -= dt;
       if (notice.t <= 0) notice = null;
@@ -436,7 +437,7 @@ export function createGame(opts) {
         ctx.fillText(notice.text, W / 2, H * 0.42);
       }
     }
-    setCursor(drag ? 'grabbing' : (sim.phase === 'aim' ? 'grab' : 'pointer'));
+    setCursor(drag ? 'grabbing' : (sim.phase === 'aim' ? (waitingTicket() ? 'wait' : 'grab') : 'pointer'));
   }
 
   // --- wejście ---------------------------------------------------------------
@@ -468,7 +469,7 @@ export function createGame(opts) {
     if (!d) return;
     const pull = pullFromDrag(d);
     const len = Math.sqrt(pull.x * pull.x + pull.y * pull.y);
-    if (len / GEOM.maxPull < 0.08) return;   // za krótkie pociągnięcie = kulka wraca
+    if (len / GEOM.maxPull < 0.08 || waitingTicket()) return;   // za krótkie pociągnięcie = kulka wraca
     const qx = Math.round((pull.x / GEOM.maxPull) * 100);
     const qy = Math.round((pull.y / GEOM.maxPull) * 100);
     pushAction(['shot', qx, qy]);
@@ -477,7 +478,7 @@ export function createGame(opts) {
   function onPointerDown(e) {
     e.preventDefault();
     if (sim.phase === 'aim') {
-      if (drag) return;
+      if (drag || waitingTicket()) return;
       const p = canvasPoint(e);
       drag = { id: e.pointerId, x0: p.x, y0: p.y, x: p.x, y: p.y };
       try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* ignoruj */ }
@@ -572,6 +573,7 @@ export function createGame(opts) {
         meters: sim.meters,
         seed: sim.seed,
         saved: !!ticket,
+        waiting: waitingTicket(),
         simVer: SIM_VER,
         shotSpeedMax: SPEED,
         loadout: loadout.slice(),
