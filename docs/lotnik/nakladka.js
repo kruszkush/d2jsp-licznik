@@ -4,13 +4,13 @@
 // Importy UI z ?v= (ta sama wartość wszędzie, podbijana razem z ?v= w strona/index.html), żeby
 // przeglądarka nie mieszała nowych i starych modułów. Moduły UI importują też sim.js i replay.js z ?v=;
 // tylko replay.js importuje './sim.js' bez ?v= (deploy.sh podmienia ten import na serwerze).
-import { createGame } from './game.js?v=49';
-import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=49';
-import { createInventory } from './inventory.js?v=49';
-import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=49';
-import { createKonto, KONTO_CSS } from './konto.js?v=49';
-import { createRanking, mountPageRanking, RANKING_CSS } from './ranking.js?v=49';
-import { KARTA_CSS, renderBall, renderMf, renderDrop, itemBox } from './karta.js?v=49';
+import { createGame } from './game.js?v=51';
+import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=51';
+import { createInventory } from './inventory.js?v=51';
+import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=51';
+import { createKonto, KONTO_CSS } from './konto.js?v=51';
+import { createRanking, mountPageRanking, RANKING_CSS } from './ranking.js?v=51';
+import { KARTA_CSS, renderBall, renderMf, renderDrop, itemBox } from './karta.js?v=51';
 
 const CSS = `
 .lotnik-fall{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:80}

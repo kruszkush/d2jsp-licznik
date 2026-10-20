@@ -1,7 +1,7 @@
 // karta.js — zawartość karty końca gry: użyta piłeczka, tabelka Magic Find, przedmiot w stylu Diablo 2.
 // nakladka.js składa kartę i podpina zdarzenia; tu tylko rysowanie (DOM) z danych. Ramka przedmiotu
 // (`itemBox`) jest wspólna dla dropu i panelu Ekwipunek.
-import { RARITY, TYPES, TIERS, AFFIXES, AFFIX_CHAIN, LEGACY_TYPE, affixLine, affixRange, tierRange, itemName, rarityChances, mfFromMeters } from './items.js?v=49';
+import { RARITY, TYPES, TIERS, AFFIXES, AFFIX_CHAIN, LEGACY_TYPE, affixLine, affixRange, tierRange, itemName, rarityChances, mfFromMeters } from './items.js?v=51';
 
 export const KARTA_CSS = `
 .lotnik-card .lt-ball{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;font-size:15px;font-weight:600;color:#cbd5e1}
