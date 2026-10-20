@@ -117,15 +117,14 @@ const DYN_GAP_LO = 24000, DYN_GAP_HI = 48000;        // bazowo ~1 na 3 km
 const DYN_AIR_LO = 150, DYN_AIR_HI = 600;
 // Łańcuch (chainBlast): trafiona bomba odpala bomby w promieniu CHAIN_R (przechodnio).
 const CHAIN_R = 80;
-// Ptaki (100–250 m, stada 3–5 w kluczu V co ~60 m): trafienie = +1 podrzut, lekko w górę i pęd w prawo
+// Ptaki (100–250 m, pojedynczo, każdy na losowej wysokości): trafienie = +1 podrzut, lekko w górę i pęd w prawo
 // malejący do zera przy BIRD_FWD_REF (ptaki nie rozpędzają w nieskończoność).
 // Od v7 ptak to awatar: 1./2./3. miejsce (BIRD_PLACE_P każde, gdy jest w s.owners) daje BIRD_MF, reszta BIRD_MF_BASE.
 const BIRD_R = 30;
 const BIRD_LO = 1200, BIRD_HI = 3000;
-const BIRD_DX = 150, BIRD_DY = 85;   // klucz V: rząd k = k·DX za prowadzącym, na przemian ±k·DY
 const BIRD_PLACE_P = 0.1;
 const BIRD_MF = [40, 25, 15], BIRD_MF_BASE = 10;
-const BIRD_GAP_LO = 600, BIRD_GAP_HI = 840;   // odstęp stad wprost (bez MAP_DENSITY)
+const BIRD_GAP_LO = 300, BIRD_GAP_HI = 1100;   // odstęp ptaków wprost (bez MAP_DENSITY)
 const BIRD_UP = 700, BIRD_FWD = 400, BIRD_FWD_REF = 1500;
 // Balony MF (kosmos i czerwień): girlanda prawie poziomo, lekko w dół w prawo (od v7; v6 pionowy sznur),
 // każdy balon wart MFBAL_SPACE albo MFBAL_HELL wg wysokości.
@@ -367,20 +366,14 @@ function spawnDyn(s, x) {
   return (DYN_GAP_LO + rand(s, 'dyn') * (DYN_GAP_HI - DYN_GAP_LO)) / (s.mods.dynamiteFreq * s.dense);
 }
 
-// Stado: 3–5 ptaków w luźnym kluczu V; prowadzący w x, rząd k o k·DX w tył, na przemian wyżej/niżej o k·DY.
-// y prowadzącego w [LO + 2·DY, HI − 2·DY], więc całe stado mieści się w BIRD_LO–BIRD_HI.
+// Ptak: pojedynczo, każdy na własnej losowej wysokości w BIRD_LO–BIRD_HI (rozsypane po całym paśmie, bez szyku).
 function spawnBird(s, x) {
-  const y = BIRD_LO + 2 * BIRD_DY + rand(s, 'bird') * (BIRD_HI - BIRD_LO - 4 * BIRD_DY);
-  const n = 3 + Math.floor(rand(s, 'bird') * 3);
-  for (let i = 0; i < n; i++) {
-    const k = Math.floor((i + 1) / 2), side = i % 2 ? 1 : -1;
-    const roll2 = rand(s, 'bird');   // losowane zawsze, więc mapa nie zależy od listy właścicieli
-    let place = roll2 < BIRD_PLACE_P ? 0 : (roll2 < 2 * BIRD_PLACE_P ? 1 : (roll2 < 3 * BIRD_PLACE_P ? 2 : -1));
-    const ow = place >= 0 ? s.owners[place] : null;
-    if (!ow || ow.uid === undefined || ow.uid === null || ow.uid === '') place = -1;
-    s.birds.push({ x: x - k * BIRD_DX, y: y + side * k * BIRD_DY, r: BIRD_R, place: place,
-      value: place >= 0 ? BIRD_MF[place] : BIRD_MF_BASE, alive: true });
-  }
+  const y = BIRD_LO + rand(s, 'bird') * (BIRD_HI - BIRD_LO);
+  const roll2 = rand(s, 'bird');   // losowane zawsze, więc mapa nie zależy od listy właścicieli
+  let place = roll2 < BIRD_PLACE_P ? 0 : (roll2 < 2 * BIRD_PLACE_P ? 1 : (roll2 < 3 * BIRD_PLACE_P ? 2 : -1));
+  const ow = place >= 0 ? s.owners[place] : null;
+  if (!ow || ow.uid === undefined || ow.uid === null || ow.uid === '') place = -1;
+  s.birds.push({ x: x, y: y, r: BIRD_R, place: place, value: place >= 0 ? BIRD_MF[place] : BIRD_MF_BASE, alive: true });
   return BIRD_GAP_LO + rand(s, 'bird') * (BIRD_GAP_HI - BIRD_GAP_LO);
 }
 
