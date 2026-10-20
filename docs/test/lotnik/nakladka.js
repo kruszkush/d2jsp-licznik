@@ -4,13 +4,13 @@
 // Importy UI z ?v= (ta sama wartość wszędzie, podbijana razem z ?v= w strona/index.html), żeby
 // przeglądarka nie mieszała nowych i starych modułów. Moduły UI importują też sim.js i replay.js z ?v=;
 // tylko replay.js importuje './sim.js' bez ?v= (deploy.sh podmienia ten import na serwerze).
-import { createGame } from './game.js?v=60';
-import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=60';
-import { createInventory } from './inventory.js?v=60';
-import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=60';
-import { createKonto, KONTO_CSS } from './konto.js?v=60';
-import { createRanking, mountPageRanking, RANKING_CSS } from './ranking.js?v=60';
-import { KARTA_CSS, renderHero, renderMf, renderDrop, itemBox } from './karta.js?v=60';
+import { createGame } from './game.js?v=61';
+import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=61';
+import { createInventory } from './inventory.js?v=61';
+import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=61';
+import { createKonto, KONTO_CSS } from './konto.js?v=61';
+import { createRanking, mountPageRanking, RANKING_CSS } from './ranking.js?v=61';
+import { KARTA_CSS, renderHero, renderMf, renderDrop, itemBox } from './karta.js?v=61';
 
 export const CSS = `;   // eksport tylko dla out/karta-stany.html (zrzuty stanów karty)
 .lotnik-fall{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:80}
@@ -62,6 +62,10 @@ export const CSS = `;   // eksport tylko dla out/karta-stany.html (zrzuty stanó
 .lt-eqv-tab.on{color:#fbbf24;border-bottom-color:#fbbf24}
 .lt-eqv-tab.on small{color:#cbd5e1}
 @media (hover:hover){.lt-eqv-tab:not(.on):hover{color:#e2e8f0}}
+.lotnik-gate{position:fixed;right:12px;bottom:12px;z-index:81;display:flex;flex-wrap:wrap;gap:6px;align-items:center;max-width:calc(100vw - 24px);box-sizing:border-box;background:rgba(15,23,42,.92);border:1px solid rgba(248,250,252,.22);border-radius:12px;padding:8px 10px;color:#f8fafc;font:600 12px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.lotnik-gate input{width:120px;font:500 14px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:8px 10px;border-radius:8px;border:1px solid rgba(248,250,252,.3);background:#0f172a;color:#f8fafc}
+.lotnik-gate-m{flex-basis:100%;color:#fca5a5;font-weight:500}
+.lotnik-gate-m:empty{display:none}
 .lotnik-card .lt-side{flex:0 1 auto;min-height:0;overflow:auto;scrollbar-gutter:stable both-edges;scrollbar-width:thin}
 @media (orientation:landscape) and (max-height:520px){
 .lotnik-card{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:16px;align-content:start;width:min(760px,calc(100vw - 24px));top:50%;max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px);padding:12px 14px}
@@ -139,17 +143,26 @@ let fetching = null;
 let spareTimer = 0;
 let endSeq = 0;
 
-// Serwer testowy od 20.10 bez hasła testerów (jak prod).
+// Hasło testerów (serwer testowy wymaga go w nagłówku). Odpowiedź z `haslo` = złe/zmienione: kasujemy zapis,
+// a po zamknięciu gry wraca panel hasła (gateIfLocked).
+const HASLO_KEY = 'lotnik.haslo';
+function haslo() {
+  try { return localStorage.getItem(HASLO_KEY) || ''; } catch (err) { return ''; }
+}
+
 function apiPost(path, body, ms) {
   const ctl = typeof AbortController === 'function' ? new AbortController() : null;
   const tm = ctl ? setTimeout(function () { ctl.abort(); }, ms) : 0;
+  const headers = { 'Content-Type': 'application/json' };
+  if (SERWER_TEST && haslo()) headers['X-Lotnik-Haslo'] = haslo();
   return fetch(API + path, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: headers,
     body: JSON.stringify(body || {}),
     signal: ctl ? ctl.signal : undefined
   }).then(function (r) {
     return r.json().catch(function () { return {}; }).then(function (j) {
+      if (j && j.haslo) { try { localStorage.removeItem(HASLO_KEY); } catch (err) { /* bez zapisu */ } }
       return { ok: r.ok, status: r.status, j: j || {} };
     });
   }).catch(function () {
@@ -391,7 +404,7 @@ function build() {
   card.appendChild(konto.out);
   const avatarsNow = function () { const d = readData(); return d && d.avatars; };
   ranking = createRanking(apiPost, el, konto.token, avatarsNow, showRecordEq);
-  pageRank = mountPageRanking(apiPost, el, konto.token, avatarsNow, showRecordEq, function () { return false; });
+  pageRank = mountPageRanking(apiPost, el, konto.token, avatarsNow, showRecordEq, function () { return SERWER_TEST && !haslo(); });
 
   // Podgląd ekwipunku z rekordowego lotu (klik w gracza w rankingu; jak w Piłeczce): okno nad stroną i nad grą.
   eqView = el('div', 'lotnik-ekwv');
@@ -453,7 +466,7 @@ function build() {
       layer.replaceChildren();
       layer.hidden = true;
       tip.hidden = true;
-    } else startSpawning();
+    } else if (!gateIfLocked()) startSpawning();
   });
   document.body.appendChild(offBtn);
   document.body.appendChild(dim);
@@ -817,7 +830,7 @@ function closeGame() {
   exitFullscreen();
   document.body.classList.remove('playing', 'lt-hide');
   document.documentElement.style.overflow = '';
-  setTimeout(startSpawning, 400);
+  if (!gateIfLocked()) setTimeout(startSpawning, 400);
 }
 
 // --- podgląd ekwipunku z rankingu ----------------------------------------------
@@ -868,6 +881,61 @@ function showRecordEq(e) {
     ];
     eqTabsShow(tabs, r.j.now ? tabs[0] : tabs[1]);   // stary serwer bez `now`: od razu rekord
   });
+}
+
+// --- panel hasła testerów ----------------------------------------------------
+// Bez zapisanego hasła zamiast awatarów jest mały panel w rogu; dobre hasło → zapis i awatary.
+let gate = null;
+function showGate() {
+  if (gate) return;
+  gate = el('form', 'lotnik-gate');
+  const input = el('input');
+  input.type = 'password';
+  input.placeholder = 'hasło';
+  input.autocomplete = 'current-password';
+  input.name = 'password';
+  const ok = el('button', 'lotnik-btn', 'Zaloguj');
+  ok.type = 'submit';
+  const msg = el('div', 'lotnik-gate-m');
+  gate.append(input, ok, msg);
+  // Lokalnie (python -m http.server w katalogu gry) hasło z pliku haslo.local.txt obok gry (poza repo): bez wpisywania.
+  if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
+    fetch('/haslo.local.txt', { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : ''; }).then(function (t) {
+      t = String(t || '').trim();
+      if (t && gate) { input.value = t; gate.requestSubmit(); }
+    }).catch(function () { /* brak pliku: zwykły panel */ });
+  }
+  gate.addEventListener('submit', function (e) {
+    e.preventDefault();
+    const val = input.value.trim();
+    if (!val) return;
+    ok.disabled = true;
+    msg.textContent = '';
+    try { localStorage.setItem(HASLO_KEY, val); } catch (err) { /* bez zapisu nie zadziała */ }
+    apiPost('/haslo', {}, 6000).then(function (r) {
+      ok.disabled = false;
+      if (r.ok && r.j.ok) {
+        gate.remove();
+        gate = null;
+        startSpawning();
+        if (pageRank) pageRank.load();
+        return;
+      }
+      if (!r.j.haslo) { try { localStorage.removeItem(HASLO_KEY); } catch (err) { /* nic */ } }
+      msg.textContent = r.j.haslo ? 'Złe hasło' : (r.j.error || 'Brak połączenia');
+    });
+  });
+  document.body.appendChild(gate);
+}
+
+// Brak hasła: chowa awatary i pokazuje panel. Zwraca true, gdy zablokowane.
+function gateIfLocked() {
+  if (!SERWER_TEST || haslo()) return false;     // prod bez hasła
+  stopSpawning();
+  if (layer) layer.hidden = true;
+  if (tip) tip.hidden = true;
+  showGate();
+  return true;
 }
 
 // --- dane strony -------------------------------------------------------------
@@ -923,8 +991,7 @@ function init() {
     if (pool.length === 0) return;             // brak awatarów — nie ma czego uruchamiać
     injectCss();
     build();
-    startSpawning();
-    resendPending();
+    if (!gateIfLocked()) { startSpawning(); resendPending(); }
     // Powrót na kartę (np. z innego okna): przeglądarka spowalniała timer zapasu, więc od razu świeży bilet.
     document.addEventListener('visibilitychange', function () { if (!document.hidden) keepSpare(); });
   }, 100);
