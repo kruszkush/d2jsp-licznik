@@ -1,8 +1,8 @@
 // draw.js — całe rysowanie nakładki. Tylko canvas 2D, bez fizyki.
 // Canvas jest przezroczysty: rysujemy postać, procę, bomby, platformy i HUD,
 // a przyciemniona strona licznika przebija z pod spodu (jeden div w nakladka.js).
-import { GEOM, TICK, PICKUP_BASE, arcMult, previewShot } from './sim.js?v=55';
-import { mfFromMeters } from './items.js?v=55';
+import { GEOM, TICK, PICKUP_BASE, arcMult, previewShot } from './sim.js?v=62';
+import { mfFromMeters } from './items.js?v=62';
 
 const TAU = Math.PI * 2;
 // Jeden pasek na środku u góry: dystans, MF za dystans, rekord, podrzuty. MF na żywo: równanie po lewej (drawMfLine).
@@ -105,11 +105,14 @@ export function drawScene(r) {
   drawBoosts(r);
   drawBombs(r);
   drawDyns(r);
+  drawBirds(r);
+  drawMfBalloons(r);
   drawSling(r);
   drawAimGuide(r);
   drawParticles(r);
   drawPlayer(r);
   drawZoneLabels(r);
+  drawHitLabels(r);
   drawPouchFront(r);
   ctx.restore();
 
@@ -667,6 +670,184 @@ function getBombSprite() {
 }
 
 // Balonik nad bombą w powietrzu (sznurek do szyjki, delikatne kołysanie).
+// Ptak (125–250 m) = makieta-ptaki wariant 2: awatar w złotej obwódce, skrzydła 3,1× z błękitnymi końcówkami
+// (5 piór), dziób w prawo, ogon. Awatar: place 0–2 → r.ownerImgs[place] (#1–#3 z biletu), inaczej losowy gracz
+// z r.birdImgs (stały dla ptaka) bez twarzy #1–#3; bez wczytanego awatara szara kulka.
+const BIRD_SPAN = 3.1, BIRD_AMP = 1.3, BIRD_FEATHERS = 5, BIRD_LINE = '#1e293b';
+function birdImg(r, b) {
+  const own = r.ownerImgs || [];
+  if (b.place >= 0) return own[b.place] || null;
+  const imgs = r.birdImgs || [];
+  const k = Math.floor(Math.abs(b.x * 0.37 + b.y));
+  for (let n = 0; n < imgs.length; n++) {
+    const rec = imgs[(k + n) % imgs.length];
+    if (own.indexOf(rec) < 0) return rec;
+  }
+  return null;
+}
+function drawBirdAvatar(r, rec, x, y, rad) {
+  const ctx = r.ctx;
+  ctx.beginPath();
+  ctx.arc(x, y, rad + 2, 0, TAU);
+  ctx.fillStyle = '#fbbf24';
+  ctx.fill();
+  if (rec && rec.ok) {
+    ctx.drawImage(circleImg(rec.img, rad * 2 * (r.dpr || 1)), x - rad, y - rad, rad * 2, rad * 2);
+  } else {
+    ctx.beginPath();
+    ctx.arc(x, y, rad, 0, TAU);
+    ctx.fillStyle = '#94a3b8';
+    ctx.fill();
+  }
+}
+function drawWing(ctx, x, y, rad, side, flap) {
+  const root = x + side * rad * 0.8;
+  const tipX = x + side * rad * BIRD_SPAN, tipY = y - rad * 1.2 * flap * BIRD_AMP;
+  ctx.beginPath();
+  ctx.moveTo(root, y - rad * 0.35);
+  ctx.quadraticCurveTo(x + side * rad * BIRD_SPAN * 0.7, y - rad * (0.5 + 0.9 * flap * BIRD_AMP), tipX, tipY);
+  // dolna krawędź w „piórach”
+  for (let k = 1; k <= BIRD_FEATHERS; k++) {
+    const t = k / BIRD_FEATHERS;
+    const fx = tipX + (root - tipX) * t, fy = tipY + (y + rad * 0.35 - tipY) * t;
+    ctx.quadraticCurveTo(fx + side * rad * 0.05, fy + rad * 0.4, fx, fy);
+  }
+  ctx.closePath();
+  const g = ctx.createLinearGradient(root, 0, tipX, 0);
+  g.addColorStop(0, '#f8fafc');
+  g.addColorStop(1, '#7dd3fc');
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.stroke();
+}
+function drawBirds(r) {
+  const { ctx, sx, sy, scale, cam, view, sim, now } = r;
+  for (let i = 0; i < sim.birds.length; i++) {
+    const b = sim.birds[i];
+    if (!b.alive) continue;
+    if (b.x + b.r * BIRD_SPAN < cam.x - 80 || b.x - b.r * BIRD_SPAN > cam.x + view.w + 80) continue;
+    const rad = Math.max(10, b.r * scale);
+    const flap = Math.sin(now / 110 + b.x * 0.05);
+    const x = sx(b.x), y = sy(b.y) + flap * rad * 0.12;
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = BIRD_LINE;
+    // ogon z lewej (ptak patrzy w prawo, w stronę lotu)
+    ctx.beginPath();
+    ctx.moveTo(x - rad * 0.8, y + rad * 0.2);
+    ctx.lineTo(x - rad * 1.55, y - rad * 0.05);
+    ctx.lineTo(x - rad * 1.45, y + rad * 0.45);
+    ctx.lineTo(x - rad * 1.6, y + rad * 0.75);
+    ctx.closePath();
+    ctx.fillStyle = '#e2e8f0';
+    ctx.fill();
+    ctx.stroke();
+    ctx.lineWidth = 1.5;
+    drawWing(ctx, x, y, rad, -1, flap);
+    drawWing(ctx, x, y, rad, 1, flap);
+    drawBirdAvatar(r, birdImg(r, b), x, y, rad);
+    ctx.beginPath();
+    ctx.moveTo(x + rad * 0.95, y - rad * 0.18);
+    ctx.lineTo(x + rad * 1.4, y + rad * 0.02);
+    ctx.lineTo(x + rad * 0.95, y + rad * 0.22);
+    ctx.closePath();
+    ctx.fillStyle = '#f59e0b';
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#78350f';
+    ctx.stroke();
+    // ile daje ptak (y bez machania, napis nie skacze); #1–#3 złoty jak „% MF” przy kulkach
+    outlined(ctx, b.value + ' MF', x, sy(b.y) + rad + 13, 11, 800, 'center', b.place >= 0 ? COLORS.accent : '#f8fafc');
+  }
+}
+
+// Zestrzelony ptak: sam awatar spada z obrotem (efekty.js fx.falls, ~0,8 s), jeden drawImage na klatkę.
+function drawFalls(r) {
+  const { ctx, sx, sy, scale } = r;
+  const falls = r.falls || [];
+  for (let i = 0; i < falls.length; i++) {
+    const f = falls[i];
+    const rad = Math.max(10, GEOM.birdRadius * scale);
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, 1 - f.age / 0.8);
+    ctx.translate(sx(f.x), sy(f.y));
+    ctx.rotate(f.rot);
+    drawBirdAvatar(r, birdImg(r, f.b), 0, 0, rad);
+    ctx.restore();
+  }
+}
+
+// Balon MF (kosmos/czerwień) = balon na ogrzane powietrze (makieta-ptaki wariant C): czasza w pasy, koszyk,
+// wartość na czaszy (min. 13 px); 30 złoto-biały, 50 fiolet-złoty. Girlanda: lina łukiem między koszykami
+// sąsiednich balonów (sim.js spawnMfBal, krok x 110; kolejne girlandy dalej niż 1000).
+function mfBalPos(r, b) {
+  const rad = Math.max(16, b.r * r.scale);
+  return { x: r.sx(b.x) + Math.sin(r.now / 600 + b.y * 0.01) * rad * 0.1, y: r.sy(b.y), rad: rad };
+}
+function mfEnvelope(ctx, x, y, rad) {
+  const top = y - rad, bot = y + rad * 0.75;
+  ctx.beginPath();
+  ctx.moveTo(x - rad * 0.32, bot);
+  ctx.bezierCurveTo(x - rad * 1.15, y + rad * 0.1, x - rad * 0.95, top, x, top);
+  ctx.bezierCurveTo(x + rad * 0.95, top, x + rad * 1.15, y + rad * 0.1, x + rad * 0.32, bot);
+  ctx.closePath();
+}
+function drawMfBalloons(r) {
+  const { ctx, cam, view, sim, scale } = r;
+  const bals = sim.mfbals;
+  // liny girland pod balonami
+  ctx.beginPath();
+  for (let i = 0; i + 1 < bals.length; i++) {
+    const a = bals[i], b = bals[i + 1];
+    if (!a.alive || !b.alive || b.x - a.x > 200) continue;
+    if (b.x + b.r < cam.x - 80 || a.x - a.r > cam.x + view.w + 80) continue;
+    const pa = mfBalPos(r, a), pb = mfBalPos(r, b);
+    const ya = pa.y + pa.rad * 1.42, yb = pb.y + pb.rad * 1.42;
+    ctx.moveTo(pa.x, ya);
+    ctx.quadraticCurveTo((pa.x + pb.x) / 2, Math.max(ya, yb) + pa.rad * 0.6, pb.x, yb);
+  }
+  ctx.lineWidth = Math.max(1, 1.5 * scale);
+  ctx.strokeStyle = 'rgba(226,232,240,0.7)';
+  ctx.stroke();
+  for (let i = 0; i < bals.length; i++) {
+    const b = bals[i];
+    if (!b.alive) continue;
+    if (b.x + b.r < cam.x - 80 || b.x - b.r > cam.x + view.w + 80) continue;
+    const { x, y, rad } = mfBalPos(r, b);
+    const hell = b.value >= 50;
+    mfEnvelope(ctx, x, y, rad);
+    ctx.fillStyle = hell ? '#7e22ce' : '#f59e0b';
+    ctx.fill();
+    ctx.save();
+    ctx.clip();
+    ctx.fillStyle = hell ? '#facc15' : '#fef3c7';
+    ctx.beginPath();
+    for (let k = -1; k <= 1; k++) {
+      ctx.moveTo(x + k * 0.62 * rad + rad * 0.16, y);
+      ctx.ellipse(x + k * 0.62 * rad, y, rad * 0.16, rad * 1.2, 0, 0, TAU);
+    }
+    ctx.fill();
+    ctx.restore();
+    mfEnvelope(ctx, x, y, rad);
+    ctx.lineWidth = Math.max(1.5, 2 * scale);
+    ctx.strokeStyle = '#f8fafc';
+    ctx.stroke();
+    // liny i koszyk
+    const bot = y + rad * 0.75, kb = y + rad * 1.18, kw = rad * 0.34;
+    ctx.beginPath();
+    ctx.moveTo(x - rad * 0.3, bot);
+    ctx.lineTo(x - kw / 2, kb);
+    ctx.moveTo(x + rad * 0.3, bot);
+    ctx.lineTo(x + kw / 2, kb);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(226,232,240,0.8)';
+    ctx.stroke();
+    ctx.fillStyle = '#92400e';
+    ctx.fillRect(x - kw / 2, kb, kw, rad * 0.24);
+    const px = Math.max(13, Math.round(rad * 0.6));
+    outlined(ctx, String(b.value), x, y - rad * 0.12 + px * 0.36, px, 800, 'center', '#ffffff');
+  }
+}
+
 function drawBalloon(ctx, x, y, rad, now, seed) {
   const sway = Math.sin(now / 520 + seed) * rad * 0.25;
   const bx = x + sway;
@@ -898,10 +1079,25 @@ function drawParticles(r) {
   const { ctx, scale, sx, sy, particles } = r;
   for (let i = 0; i < particles.length; i++) {
     const p = particles[i];
-    const s = Math.max(1, p.size * scale);
-    ctx.fillStyle = p.col;
-    ctx.fillRect(sx(p.x) - s, sy(p.y) - s, s * 2, s * 2);
+    if (p.f) {   // pióro: elipsa z obrotem (efekty.js 'bird')
+      const s = Math.max(1.2, p.size * scale);
+      ctx.beginPath();
+      ctx.ellipse(sx(p.x), sy(p.y), s * 2.2, s * 0.8, p.rot, 0, TAU);
+      ctx.fillStyle = p.col;
+      ctx.fill();
+    } else if (p.ring) {   // rozbłysk: białe kółko rośnie i znika
+      const k = 1 - p.life / p.ring;
+      ctx.beginPath();
+      ctx.arc(sx(p.x), sy(p.y), Math.max(8, p.size * scale) * (0.6 + k), 0, TAU);
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.8 * (1 - k)).toFixed(3) + ')';
+      ctx.fill();
+    } else {
+      const s = Math.max(1, p.size * scale);
+      ctx.fillStyle = p.col;
+      ctx.fillRect(sx(p.x) - s, sy(p.y) - s, s * 2, s * 2);
+    }
   }
+  drawFalls(r);
 }
 
 function drawPlayer(r) {
@@ -993,6 +1189,37 @@ function drawZoneLabels(r) {
     ctx.strokeText(txt, x, y);
     ctx.fillStyle = COLORS.accent;
     ctx.fillText(txt, x, y);
+  }
+  ctx.restore();
+}
+
+// „+N MF” za ptaka/balon MF (efekty.js `hits`, makieta out/makieta-mf-trafienie.html wariant B): nad piłeczką, w górę
+// ~70 px, gaśnie w 0,8 s od ostatniego doliczenia. Zwykły ptak biały 22 px, balon złoty 26, ptak #1–#3 złoty 30 (× uiK).
+function drawHitLabels(r) {
+  const { ctx, sx, sy, p, hits, W, H } = r;
+  if (!hits || !hits.length) return;
+  const k = uiK(W, H), bx = sx(p.x) + 30 * k, by = sy(p.y);
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round';
+  for (let i = 0; i < hits.length; i++) {
+    const h = hits[i];
+    const pop = h.bump < 0.12 ? 1 + 0.45 * (1 - h.bump / 0.12) : 1;
+    ctx.globalAlpha = h.idle > 0.5 ? Math.max(0, 1 - (h.idle - 0.5) / 0.3) : 1;
+    // Stały rozmiar czcionki, podskok przez scale (inny rozmiar co klatkę = nowe glify, skoki czasu klatki).
+    ctx.font = '900 ' + Math.round((h.big ? 30 : h.gold ? 26 : 22) * k) + 'px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+    ctx.lineWidth = h.gold ? 5 : 4;
+    ctx.strokeStyle = h.gold ? '#1f1300' : 'rgba(15,23,42,0.9)';
+    ctx.fillStyle = h.gold ? COLORS.accent : '#f8fafc';
+    const txt = '+' + h.v + ' MF', y = by - (34 + 70 * Math.min(1, h.age / 0.8)) * k;
+    if (pop === 1) { ctx.strokeText(txt, bx, y); ctx.fillText(txt, bx, y); continue; }
+    ctx.save();
+    ctx.translate(bx, y);
+    ctx.scale(pop, pop);
+    ctx.strokeText(txt, 0, 0);
+    ctx.fillText(txt, 0, 0);
+    ctx.restore();
   }
   ctx.restore();
 }

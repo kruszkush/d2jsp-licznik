@@ -9,7 +9,9 @@ export const DT = 1 / 120;
 // na ziemi i w powietrzu, odnawianie podrzutów, wyższa proca.
 // v4: strefy MF wyżej (kosmos od 3000, czerwień od 5400).
 // v5: kuleczki łuków 4/3/2 MF (1.–3. miejsce) i 1 MF (zwykły) zamiast 8/6/4/2; pełny łuk ×5/×4/×3/×2 zamiast ×10.
-export const SIM_VER = 5;
+// v6: dynamit wyrzuca też mocno w prawo; bomba z boku i trampolina dają minimalny pęd do przodu; ptaki i balony MF.
+// v7: ptaki wyżej (125–250 m) i większe, dają MF wg miejsca awatara; balony MF większe, w poziomej girlandzie.
+export const SIM_VER = 7;
 
 const GRAVITY = 1500;
 const AIR_DRAG = 0.22;          // opór powietrza (1/s)
@@ -68,6 +70,8 @@ const BOMB_SIDE_STEEP = 0.5;    // wlot z góry: |vy| większe niż 0,5 × |vx| 
 // Uderzenie z boku: bez przyspieszenia (v1 mnożyło ×1,15 → z przedmiotami nieskończony łańcuch
 // przy ziemi), za to podrzut na ćwierć ekranu, żeby piłka wyszła z warstwy bomb.
 const BOMB_SIDE_UP = Math.sqrt(2 * GRAVITY * BOMB_HALF_SCREEN / 2);
+const BOMB_SIDE_FWD = 500;      // bomba z boku: dodatek poziomy, malejący do zera przy BOMB_ADD_REF (piłka bez pędu nie skacze
+                                // w miejscu); bez blastFwd i bez zysku powyżej BOMB_ADD_REF, więc łańcuch przy ziemi nie rozpędza
 // Bomby na ziemi i w powietrzu (na baloniku) to osobne strumienie. Średnio ta sama łączna gęstość
 // co v2 (odstęp ~816, z tego 35% w powietrzu): ziemia ~1256 (30% stos/para), powietrze ~2333.
 // MAP_DENSITY: bomby, paski i wyrzutnie rzadziej niż w v2 (decyzja użytkownika 19.10: bez przedmiotów było
@@ -102,19 +106,38 @@ const PLAT_LO = 150, PLAT_HI = 560, PLAT_GAP_LO = 1200, PLAT_GAP_HI = 3600;
 const TRAMP_W = 140, TRAMP_H = 18;
 const TRAMP_GAIN = 1.15, TRAMP_AGAIN = 0.8;
 const TRAMP_GAP_LO = 6000, TRAMP_GAP_HI = 14000;     // bazowo ~1 na 830 m
-// Dynamit (ziemia albo powietrze): wystrzał w górę na ~500 m, poziomo bez straty. Pionowy sufit
+const TRAMP_FWD = 500;          // poziomo co najmniej tyle po każdym odbiciu od trampoliny
+// Dynamit (ziemia albo powietrze): wystrzał w górę na ~500 m i jednocześnie pełną prędkością w prawo
+// (bez tego opór powietrza w długim locie zatrzymywał piłkę w miejscu). Pionowy sufit
 // podniesiony do DYN_UP (s.capUp), dopóki vy nie spadnie poniżej zwykłego sufitu.
 const DYN_R = 16;
 const DYN_UP = 5150;
+const DYN_FWD = MAX_SPEED;      // poziomo co najmniej tyle (przycięte do s.maxV)
 const DYN_GAP_LO = 24000, DYN_GAP_HI = 48000;        // bazowo ~1 na 3 km
 const DYN_AIR_LO = 150, DYN_AIR_HI = 600;
 // Łańcuch (chainBlast): trafiona bomba odpala bomby w promieniu CHAIN_R (przechodnio).
 const CHAIN_R = 80;
+// Ptaki (100–250 m, pojedynczo, każdy na losowej wysokości): przelot = tylko MF (bez podrzutu i pchnięcia;
+// z podrzutem gracz skakał z ptaka na ptaka).
+// Od v7 ptak to awatar: 1./2./3. miejsce (BIRD_PLACE_P każde, gdy jest w s.owners) daje BIRD_MF, reszta BIRD_MF_BASE.
+const BIRD_R = 30;
+const BIRD_LO = 1200, BIRD_HI = 3000;
+const BIRD_PLACE_P = 0.1;
+const BIRD_MF = [40, 25, 15], BIRD_MF_BASE = 10;
+const BIRD_GAP_LO = 300, BIRD_GAP_HI = 1100;   // odstęp ptaków wprost (bez MAP_DENSITY)
+// Balony MF (kosmos i czerwień): girlanda prawie poziomo, lekko w dół w prawo (od v7; v6 pionowy sznur),
+// każdy balon wart MFBAL_SPACE albo MFBAL_HELL wg wysokości.
+// Górna granica pod szczytem dynamitu (~6240), żeby nie było martwych balonów.
+const MFBAL_R = 40;
+const MFBAL_LO = 3000, MFBAL_HI = 6000;
+const MFBAL_DX = 110, MFBAL_DY_LO = -45, MFBAL_DY_HI = 10;   // krok girlandy (y losowy na każdy balon)
+const MFBAL_GAP_LO = 600, MFBAL_GAP_HI = 1500;
+const MFBAL_SPACE = 30, MFBAL_HELL = 50;
 // Tylko do testów lokalnych (opts.dense, strona ?test=1): trampoliny i dynamit TEST_DENSE razy gęściej.
 // Serwer nigdy nie przekazuje dense, więc taka partia nie przejdzie powtórki.
 const TEST_DENSE = 1;   // 19.10: ?test=1 w zwykłej gęstości; zostawione na przyszłe testy
 // Rozrzut pierwszego obiektu każdego strumienia za ARC_FROM (kolejność jak SPAWNERS).
-const SPAWN_FIRST = { bomb: 300, airbomb: 900, arc: 600, boost: 1200, plat: 800, tramp: 4000, dyn: 12000 };
+const SPAWN_FIRST = { bomb: 300, airbomb: 900, arc: 600, boost: 1200, plat: 800, tramp: 4000, dyn: 12000, bird: 2000, mfbal: 2000 };
 
 export const TICK = 120;             // 10 m między kreskami na ziemi
 export const START_TICKS_BACK = 2;   // dwie pełne kratki zapasu = start na 3. kresce
@@ -151,6 +174,8 @@ export const GEOM = {
   trampW: TRAMP_W,
   trampH: TRAMP_H,
   dynRadius: DYN_R,
+  birdRadius: BIRD_R,
+  mfBalRadius: MFBAL_R,
   puffStart: PUFF_START,
   puffMax: PUFF_MAX,
   puffRegen: PUFF_REGEN
@@ -340,6 +365,30 @@ function spawnDyn(s, x) {
   return (DYN_GAP_LO + rand(s, 'dyn') * (DYN_GAP_HI - DYN_GAP_LO)) / (s.mods.dynamiteFreq * s.dense);
 }
 
+// Ptak: pojedynczo, każdy na własnej losowej wysokości w BIRD_LO–BIRD_HI (rozsypane po całym paśmie, bez szyku).
+function spawnBird(s, x) {
+  const y = BIRD_LO + rand(s, 'bird') * (BIRD_HI - BIRD_LO);
+  const roll2 = rand(s, 'bird');   // losowane zawsze, więc mapa nie zależy od listy właścicieli
+  let place = roll2 < BIRD_PLACE_P ? 0 : (roll2 < 2 * BIRD_PLACE_P ? 1 : (roll2 < 3 * BIRD_PLACE_P ? 2 : -1));
+  const ow = place >= 0 ? s.owners[place] : null;
+  if (!ow || ow.uid === undefined || ow.uid === null || ow.uid === '') place = -1;
+  s.birds.push({ x: x, y: y, r: BIRD_R, place: place, value: place >= 0 ? BIRD_MF[place] : BIRD_MF_BASE, alive: true });
+  return BIRD_GAP_LO + rand(s, 'bird') * (BIRD_GAP_HI - BIRD_GAP_LO);
+}
+
+// Girlanda balonów MF: 5–6 balonów na jednej linie, krok x stały, y losowy (prawie poziomo, częściej w dół).
+// Zakres y0 z najgorszego przypadku, więc cała girlanda mieści się w MFBAL_LO–MFBAL_HI.
+function spawnMfBal(s, x) {
+  const n = rand(s, 'mfbal') < 0.5 ? 5 : 6;
+  const lo = MFBAL_LO - MFBAL_DY_LO * (n - 1), hi = MFBAL_HI - MFBAL_DY_HI * (n - 1);
+  let y = lo + rand(s, 'mfbal') * (hi - lo);
+  for (let i = 0; i < n; i++) {
+    if (i > 0) y += MFBAL_DY_LO + rand(s, 'mfbal') * (MFBAL_DY_HI - MFBAL_DY_LO);
+    s.mfbals.push({ x: x + i * MFBAL_DX, y: y, r: MFBAL_R, value: y >= ZONE_HELL_Y ? MFBAL_HELL : MFBAL_SPACE, alive: true });
+  }
+  return MFBAL_GAP_LO + rand(s, 'mfbal') * (MFBAL_GAP_HI - MFBAL_GAP_LO);
+}
+
 // Każdy typ ma własny strumień (odstęp, pasmo wysokości, generator), więc obiekty nie chodzą „paczką”.
 // Spawner zwraca odstęp do następnego obiektu (mod częstości go dzieli). Pierwsze obiekty za ARC_FROM.
 // Nowy obiekt = nowy strumień + wpis w SPAWN_FIRST + SIM_VER+1.
@@ -350,7 +399,10 @@ const SPAWNERS = [
   ['boost', (s, x) => { spawnBoost(s, x); return (BOOST_GAP_LO + rand(s, 'boost') * (BOOST_GAP_HI - BOOST_GAP_LO)) / (s.mods.boostFreq * MAP_DENSITY); }],
   ['plat', (s, x) => { spawnPlat(s, x); return (PLAT_GAP_LO + rand(s, 'plat') * (PLAT_GAP_HI - PLAT_GAP_LO)) / (s.mods.platFreq * MAP_DENSITY); }],
   ['tramp', spawnTramp],
-  ['dyn', spawnDyn]
+  ['dyn', spawnDyn],
+  // v6: dopisane do jeszcze niewdrożonej v6 (wyjątek od „nowy obiekt = SIM_VER+1”); na końcu, stare strumienie bez zmian.
+  ['bird', spawnBird],
+  ['mfbal', spawnMfBal]
 ];
 const STREAMS = SPAWNERS.map((sp) => sp[0]).concat(['play']);
 for (let k = 0; k < SPAWNERS.length; k++) {
@@ -412,9 +464,12 @@ export function create(seed, mods, opts) {
     arcs: [],
     tramps: [],
     dyns: [],
+    birds: [],
+    mfbals: [],
+    birdsHit: 0,
     owners: normalizeOwners(opts && opts.owners),
     arcBonuses: 0,
-    next: { bomb: 0, airbomb: 0, arc: 0, boost: 0, plat: 0, tramp: 0, dyn: 0 },   // x następnego obiektu każdego typu (0 = jeszcze nie zaczęty)
+    next: { bomb: 0, airbomb: 0, arc: 0, boost: 0, plat: 0, tramp: 0, dyn: 0, bird: 0, mfbal: 0 },   // x następnego obiektu każdego typu (0 = jeszcze nie zaczęty)
     fx: []
   };
   s.rngs = {};
@@ -444,6 +499,7 @@ function launch(s, aim) {
   s.regen = 0;
   s.capUp = 0;
   s.bombsHit = 0;
+  s.birdsHit = 0;
   s.boostsUsed = 0;
   s.mf = 0;
   s.restCount = 0;
@@ -544,12 +600,13 @@ function hitBomb(s, b) {
   b.alive = false;
   const k = 1 + (s.mods.chainBlast > 0 ? chainBombs(s, b) : 0);
 
-  // Bomba na ziemi, uderzenie z boku albo toczenie: podrzut na ćwierć ekranu, prędkość pozioma bez zmian.
+  // Bomba na ziemi, uderzenie z boku albo toczenie: podrzut na ćwierć ekranu i dodatek poziomy BOMB_SIDE_FWD (malejący z prędkością).
   // Mocny wyrzut daje dopiero spadek z góry (stromo w dół: |vy| > BOMB_SIDE_STEEP × |vx|).
   // Bomba w powietrzu zawsze wybucha „mocno” (trafić ją to już celowanie).
   // blastSide (siła przy toczeniu) mnoży ten podrzut.
   if (!b.air && -s.vy <= BOMB_SIDE_STEEP * Math.abs(s.vx)) {
     s.vy = Math.min(upCap(s), Math.max(s.vy, BOMB_SIDE_UP * s.mods.blastSide * k) * s.mods.blastUp);
+    s.vx = Math.min(s.maxV, s.vx + BOMB_SIDE_FWD * Math.max(0, 1 - s.vx / BOMB_ADD_REF));
     s.grounded = false;
     s.bombsHit += k;
     s.puffs = Math.min(s.puffMax, s.puffs + k);
@@ -620,7 +677,7 @@ function hitBoosts(s) {
   }
 }
 
-// Dynamit: trafienie z dowolnej strony wystrzeliwuje w górę na ~500 m, poziomo bez zmian.
+// Dynamit: trafienie z dowolnej strony wystrzeliwuje w górę na ~500 m i pełną prędkością w prawo.
 function hitDyns(s) {
   for (let i = 0; i < s.dyns.length; i++) {
     const d = s.dyns[i];
@@ -629,14 +686,41 @@ function hitDyns(s) {
     d.alive = false;
     s.capUp = DYN_UP;
     s.vy = Math.max(s.vy, DYN_UP);
+    s.vx = Math.min(s.maxV, Math.max(s.vx, DYN_FWD));
     s.grounded = false;
     s.puffs = Math.min(s.puffMax, s.puffs + 1);
     s.fx.push({ k: 'dynamite', x: d.x, y: d.y, v: Math.sqrt(s.vx * s.vx + s.vy * s.vy) });
   }
 }
 
+// Ptak: przelot przez ptaka (z dowolnej strony) daje tylko MF, bez wpływu na ruch i podrzuty (od 20.10).
+function hitBirds(s) {
+  for (let i = 0; i < s.birds.length; i++) {
+    const b = s.birds[i];
+    if (!b.alive || b.x + b.r < s.x - 400) continue;
+    if (!segmentHit(s, b.x, b.y, PLAYER_R + b.r)) continue;
+    b.alive = false;
+    s.birdsHit++;
+    s.mf += b.value;
+    s.fx.push({ k: 'bird', x: b.x, y: b.y, v: Math.sqrt(s.vx * s.vx + s.vy * s.vy), place: b.place });
+    s.fx.push({ k: 'mf', x: b.x, y: b.y, v: b.value, bird: true });
+  }
+}
+
+// Balon MF: zbierany jak kuleczka (pickupRange), bez wpływu na ruch.
+function collectMfBals(s) {
+  for (let i = 0; i < s.mfbals.length; i++) {
+    const b = s.mfbals[i];
+    if (!b.alive || b.x + b.r < s.x - 400) continue;
+    if (!segmentHit(s, b.x, b.y, b.r * s.mods.pickupRange + PLAYER_R)) continue;
+    b.alive = false;
+    s.mf += b.value;
+    s.fx.push({ k: 'mf', x: b.x, y: b.y, v: b.value, bal: true });
+  }
+}
+
 // Trampolina: od góry albo wtoczenie się na nią. Pierwsze odbicie max(uderzenie × TRAMP_GAIN,
-// pół ekranu), kolejne na tej samej ×TRAMP_AGAIN. Pozioma prędkość bez zmian. Przed hitGround.
+// pół ekranu), kolejne na tej samej ×TRAMP_AGAIN. Poziomo co najmniej TRAMP_FWD. Przed hitGround.
 function hitTramps(s) {
   if (s.vy > 0) return;
   for (let i = 0; i < s.tramps.length; i++) {
@@ -645,6 +729,7 @@ function hitTramps(s) {
     if (s.y - PLAYER_R > t.h) continue;
     const impact = -s.vy;
     s.y = t.h + PLAYER_R;
+    s.vx = Math.min(s.maxV, Math.max(s.vx, TRAMP_FWD));
     if (!t.used) {
       t.used = true;
       s.bounces++;
@@ -709,6 +794,8 @@ function pruneBehind(s) {
   pruneList(s.obstacles, limit, true);
   pruneList(s.tramps, limit, true);
   pruneList(s.dyns, limit, false);
+  pruneList(s.birds, limit, false);
+  pruneList(s.mfbals, limit, false);
 }
 
 // Platformy działają tylko od góry (one-way): ląduje się na nich, lecąc w dół,
@@ -795,8 +882,10 @@ function flyStep(s, actions) {
 
   // 3) kolizje: najpierw zbieranie, potem bomby (wybuch ma pierwszeństwo przed ziemią)
   collectPickups(s);
+  collectMfBals(s);
   hitBoosts(s);
   hitDyns(s);
+  hitBirds(s);
 
   let boomed = false;
   for (let i = 0; i < s.bombs.length; i++) {

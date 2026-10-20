@@ -4,13 +4,13 @@
 // Importy UI z ?v= (ta sama wartość wszędzie, podbijana razem z ?v= w strona/index.html), żeby
 // przeglądarka nie mieszała nowych i starych modułów. Moduły UI importują też sim.js i replay.js z ?v=;
 // tylko replay.js importuje './sim.js' bez ?v= (deploy.sh podmienia ten import na serwerze).
-import { createGame } from './game.js?v=55';
-import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=55';
-import { createInventory } from './inventory.js?v=55';
-import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=55';
-import { createKonto, KONTO_CSS } from './konto.js?v=55';
-import { createRanking, mountPageRanking, RANKING_CSS } from './ranking.js?v=55';
-import { KARTA_CSS, renderHero, renderMf, renderDrop, itemBox } from './karta.js?v=55';
+import { createGame } from './game.js?v=62';
+import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=62';
+import { createInventory } from './inventory.js?v=62';
+import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=62';
+import { createKonto, KONTO_CSS } from './konto.js?v=62';
+import { createRanking, mountPageRanking, RANKING_CSS } from './ranking.js?v=62';
+import { KARTA_CSS, renderHero, renderMf, renderDrop, itemBox } from './karta.js?v=62';
 
 export const CSS = `;   // eksport tylko dla out/karta-stany.html (zrzuty stanów karty)
 .lotnik-fall{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:80}
@@ -91,6 +91,9 @@ export const CSS = `;   // eksport tylko dla out/karta-stany.html (zrzuty stanó
 }
 body.playing>:not(.lotnik-stage),body.playing>:not(.lotnik-stage) *,body.playing>:not(.lotnik-stage) ::before,body.playing>:not(.lotnik-stage) ::after{animation-play-state:paused!important}
 body.playing .lavadrop{display:none!important}
+.lotnik-off{position:fixed;left:10px;bottom:10px;z-index:81;cursor:pointer;background:rgba(15,23,42,.78);color:#cbd5e1;font:600 11px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:7px 10px;border-radius:999px;border:1px solid rgba(248,250,252,.2)}
+.lotnik-off:hover{color:#f8fafc;border-color:rgba(248,250,252,.45)}
+body.playing .lotnik-off{display:none}
 body.lt-hide>:not(.lotnik-stage):not(.lotnik-dim){visibility:hidden!important}
 .lotnik-fall[hidden],.lotnik-tip[hidden],.lotnik-dim[hidden],.lotnik-stage[hidden],.lotnik-card[hidden],.lotnik-inv[hidden]{display:none!important}
 `;
@@ -124,6 +127,9 @@ let game = null;
 let active = false;
 let opening = false;
 const TIP_TEXT = 'Kliknij spadający awatar, żeby zagrać';
+const OFF_KEY = 'lotnik.awatary.off';
+let avOff = false, offBtn = null;
+try { avOff = localStorage.getItem(OFF_KEY) === '1'; } catch (err) { /* domyślnie włączone */ }
 
 // --- serwer: bilet partii (/start) i zapis wyniku (/end) ----------------------
 // Bez biletu gra pokazuje planszę, ale proca czeka na bilet (game.js lateTicket); wynik ponawiany (sendResult).
@@ -444,6 +450,25 @@ function build() {
 
   document.body.appendChild(layer);
   document.body.appendChild(tip);
+  // Wyłącznik spadających awatarów (jak „❄ wyłącz awatary” w Piłeczce), zapamiętany w przeglądarce.
+  offBtn = el('button', 'lotnik-off');
+  offBtn.type = 'button';
+  const setOff = function () { offBtn.textContent = avOff ? 'Włącz awatary' : 'Wyłącz awatary'; };
+  setOff();
+  offBtn.addEventListener('click', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    avOff = !avOff;
+    try { localStorage.setItem(OFF_KEY, avOff ? '1' : '0'); } catch (err) { /* tylko do zamknięcia strony */ }
+    setOff();
+    if (avOff) {
+      stopSpawning();
+      layer.replaceChildren();
+      layer.hidden = true;
+      tip.hidden = true;
+    } else if (!gateIfLocked()) startSpawning();
+  });
+  document.body.appendChild(offBtn);
   document.body.appendChild(dim);
   document.body.appendChild(stage);
   document.body.appendChild(eqView);               // po scenie: pierwsze .lotnik-x / .lotnik-inv w DOM to dalej gra
@@ -515,7 +540,7 @@ function spawnOne(delay) {
 }
 
 function startSpawning() {
-  if (spawnTimer || active || !layer || pool.length === 0) return;
+  if (avOff || spawnTimer || active || !layer || pool.length === 0) return;
   layer.hidden = false;
   tip.hidden = false;
   spawnOne(2.5);
@@ -596,6 +621,7 @@ function startGame(item, ticket) {
   game = createGame({
     canvas: canvas,
     avatarUrl: item.url,
+    birdUrls: pool.map(function (p) { return p.url; }),
     owners: topOwners(pool),
     nick: item.nick,
     loadout: inventory.equipped(),
@@ -692,6 +718,10 @@ function showResult(result) {
         pendingDrop = p.drop;
         dropState = { equipped: !!p.equipped, old: null, msg: p.lost ? 'Poprzedni nierozstrzygnięty przedmiot przepadł (pełna skrzynia).' : '' };
         showDrop(pendingDrop);
+      } else if (p && p.limit) {   // straż: dzienny limit przedmiotów (serwer), sama partia się liczy
+        cardDrop.textContent = '';
+        cardDrop.appendChild(el('div', 'lt-drop-msg', 'Dzienny limit przedmiotów, wróć jutro. Wynik się liczy.'));
+        cardDrop.hidden = false;
       }
       if (res.would && !hero.acc) { hero.would = res.would; renderHero(cardHero, hero, cardWho); }
     } else {

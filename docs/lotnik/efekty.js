@@ -1,13 +1,15 @@
 // efekty.js — efekty gry bez wpływu na fizykę: cząstki, wstrząs, błysk i zwolnienie po łuku, duży zysk „+N”,
 // równanie MF na żywo. game.js woła on(f) dla każdego sim.fx, tick(dt), flight(sim, dt) i update(dt) co klatkę; draw.js czyta pola.
 // Jak dodać efekt: nowa gałąź `f.k` w on() (sim.js wypluwa zdarzenie w s.fx), pola rysuje draw.js.
-import { mfFromMeters, MF_PER_KM } from './items.js?v=55';
-import { COLORS } from './draw.js?v=55';
+import { mfFromMeters, MF_PER_KM } from './items.js?v=62';
+import { COLORS } from './draw.js?v=62';
 
 export function createEfekty() {
   const fx = {
     particles: [],
     labels: [],       // „+1”/„+2” za strefy MF, lecą z piłeczki: { v, age } (draw.js rysuje względem piłeczki)
+    hits: [],         // „+N MF” za ptaka/balon MF, lecą nad piłeczką (max 4): { v, gold, big, bal, age, idle, bump }; girlanda sumuje się w jednym
+    falls: [],        // spadające awatary zestrzelonych ptaków (max 4): { x, y, vx, vy, rot, vr, age, b: {x, y, place} }
     // Równanie MF na żywo (lewa krawędź, jedna linia): znaki { ch, c } (c: '' | 'sum' | 'mf' | 'x' | 'd' | 'dm' | 'z1' | 'z2'),
     // `shown` = ile już „napisane”, `ver` rośnie przy każdej zmianie widoku (draw.js trzyma podręczny obraz).
     eq: { list: [], shown: 0, ver: 0, on: false },
@@ -66,7 +68,9 @@ export function createEfekty() {
   fx.reset = function () {
     fx.particles.length = 0;
     fx.labels.length = 0;
-    fx.eq = { list: [], shown: 0, ver: 0, on: false };
+    fx.hits.length = 0;
+    fx.falls.length = 0;
+    fx.eq ={ list: [], shown: 0, ver: 0, on: false };
     eqTotal = 0; openArc = null; distDone = 0; distT = 0; eqPen = 0; ended = false; parenN = 0; arcIdle = 0;
     zonePend = { 1: 0, 2: 0 }; zoneOpen = false; zoneAge = 0; zoneIdle = 0;
     fx.shake = 0;
@@ -220,6 +224,30 @@ export function createEfekty() {
         });
       }
       fx.shake = 14;
+    } else if (f.k === 'bird') {
+      // Ptak zestrzelony: rozbłysk, ~14 piór (wolno opadają i się kołyszą, fx.update `p.f`), spadający awatar.
+      if (fx.particles.length <= 200) fx.particles.push({ x: f.x, y: f.y, vx: 0, vy: 0, life: 0.2, ring: 0.2, size: 40 });
+      for (let i = 0; i < 14; i++) {
+        if (fx.particles.length > 200) break;
+        const a = Math.random() * Math.PI * 2, sp = 120 + Math.random() * 260;
+        fx.particles.push({
+          x: f.x,
+          y: f.y,
+          vx: Math.cos(a) * sp,
+          vy: Math.sin(a) * sp + 120,
+          life: 1.1 + Math.random() * 0.7,
+          size: 3 + Math.random() * 2.5,
+          col: i % 3 ? '#f8fafc' : '#7dd3fc',
+          f: true,
+          rot: Math.random() * Math.PI,
+          vr: (Math.random() - 0.5) * 8,
+          ph: Math.random() * 6
+        });
+      }
+      if (fx.falls.length >= 4) fx.falls.shift();
+      fx.falls.push({ x: f.x, y: f.y, vx: 60 + Math.random() * 80, vy: 150, rot: 0, vr: (Math.random() < 0.5 ? -1 : 1) * (5 + Math.random() * 3),
+        age: 0, b: { x: f.x, y: f.y, place: f.place === undefined ? -1 : f.place } });
+      fx.shake = Math.min(8, fx.shake + 2);
     } else if (f.k === 'arc') {
       // Fajerwerk: rozbłysk iskier + napis „łuk 30 × 5 = 150” (suma łuku × f.mult, sim.js arcMult).
       const cols = [COLORS.mf10, COLORS.mf15, COLORS.mf20, COLORS.boost, COLORS.text];
@@ -268,6 +296,7 @@ export function createEfekty() {
     } else if (f.k === 'mf') {
       // Równanie: kulka łuku otwiera nawias (inny łuk zamyka poprzedni bez × 10), kulka bez łuku to zwykłe „+ v”.
       const arc = f.arc === undefined ? null : f.arc;
+      if (f.bal || f.bird) zoneFlush();   // balon MF / ptak w strefie: zaległe „+ 1/+ 2” stref przed „+ 30”
       if (arc !== openArc) {
         closeArc();   // suma przy „)” bez tej kulki, więc doliczamy ją dopiero niżej
         if (arc !== null) { put(fx.eq.list.length ? ' + (' : '('); openArc = arc; parenN = 0; }
@@ -277,6 +306,16 @@ export function createEfekty() {
       eqTotal += f.v;
       put(num(f.v));
       addGain(f.v);
+      if (f.bird || f.bal) {
+        // Napis „+N MF” nad piłeczką; kolejny balon girlandy (≤ 0,3 s) dolicza się do poprzedniego z podskokiem.
+        const last = fx.hits[fx.hits.length - 1];
+        if (f.bal && last && last.bal && last.idle < 0.3) { last.v += f.v; last.idle = 0; last.bump = 0; }
+        else {
+          if (fx.hits.length >= 4) fx.hits.shift();
+          const top = !!f.bird && f.v > 10;   // ptak #1–#3 (zwykły 10 MF)
+          fx.hits.push({ v: f.v, gold: top || !!f.bal, big: top, bal: !!f.bal, age: 0, idle: 0, bump: 0 });
+        }
+      }
       const col = f.v >= 20 ? COLORS.mf20 : (f.v >= 15 ? COLORS.mf15 : COLORS.mf10);
       for (let i = 0; i < 5; i++) {
         if (fx.particles.length > 120) break;
@@ -298,14 +337,38 @@ export function createEfekty() {
       fx.labels[i].age += dt;
       if (fx.labels[i].age > 0.9) fx.labels.splice(i, 1);
     }
+    for (let i = fx.hits.length - 1; i >= 0; i--) {
+      const h = fx.hits[i];
+      h.age += dt; h.idle += dt; h.bump += dt;
+      if (h.idle > 0.8) fx.hits.splice(i, 1);
+    }
     for (let i = fx.particles.length - 1; i >= 0; i--) {
       const p = fx.particles[i];
       p.life -= dt;
       if (p.life <= 0) { fx.particles.splice(i, 1); continue; }
+      if (p.ring) continue;   // rozbłysk stoi w miejscu
+      if (p.f) {   // pióro: opór powietrza, wolne opadanie, kołysanie
+        const k = Math.max(0, 1 - 3 * dt);
+        p.vx *= k;
+        p.vy = Math.max(-110, p.vy * k - 250 * dt);
+        p.rot += p.vr * dt;
+        p.x += (p.vx + Math.sin(p.life * 5 + p.ph) * 50) * dt;
+        p.y += p.vy * dt;
+        continue;
+      }
       p.vy -= 900 * dt;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       if (p.y < 2) { p.y = 2; p.vy *= -0.35; p.vx *= 0.7; }
+    }
+    for (let i = fx.falls.length - 1; i >= 0; i--) {
+      const a = fx.falls[i];
+      a.age += dt;
+      if (a.age > 0.8) { fx.falls.splice(i, 1); continue; }
+      a.vy -= 900 * dt;
+      a.x += a.vx * dt;
+      a.y += a.vy * dt;
+      a.rot += a.vr * dt;
     }
     if (fx.shake > 0) fx.shake = Math.max(0, fx.shake - dt * 40);
   };
