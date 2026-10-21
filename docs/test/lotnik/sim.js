@@ -14,7 +14,8 @@ export const DT = 1 / 120;
 // v8: bomba (też w łańcuchu) nie oddaje podrzutu; podrzuty wracają tylko z odnawiania i dynamitu.
 // v9: podrzut przy małej prędkości poziomej pcha też w prawo (PUFF_SLOW_ADD, maleje do zera przy PUFF_SLOW_REF).
 // v10: pełny łuk oddaje podrzuty: zwykły +2 (ARC_PUFFS_PLAIN), łuk 1.–3. miejsca komplet do puffMax.
-export const SIM_VER = 10;
+// v11: słabiej: pełny łuk zwykły +1, 3./2./1. miejsce +2/+3/+4 (arcPuffs).
+export const SIM_VER = 11;
 
 const GRAVITY = 1500;
 const AIR_DRAG = 0.22;          // opór powietrza (1/s)
@@ -60,7 +61,9 @@ const PUFF_SLOW_REF = 1000;     // (piłka prawie stojąca nie skacze w miejscu;
 const PUFF_COOL = 12;           // 0,1 s między podrzutami (kroki)
 const PUFF_START = 5;
 const PUFF_MAX = 6;             // limit podrzutów (odnawianie, dynamit i pełny łuk dobijają do niego)
-const ARC_PUFFS_PLAIN = 2;      // pełny zwykły łuk: +2 podrzuty; łuk z awatarem (1.–3. miejsce): komplet
+// Pełny łuk oddaje podrzuty (do puffMax): 1./2./3. miejsce +4/+3/+2, zwykły +1.
+const ARC_PUFFS = [4, 3, 2], ARC_PUFFS_PLAIN = 1;
+export function arcPuffs(owner) { return owner >= 0 ? ARC_PUFFS[owner] : ARC_PUFFS_PLAIN; }
 const PUFF_REGEN = 120 * 15;    // bez przedmiotów: 1 podrzut wraca co 15 s lotu (kroki)
 
 const BOMB_R = 13;
@@ -769,7 +772,7 @@ function collectPickups(s) {
       const bonus = arc.total * (mult - 1);
       s.mf += bonus;
       s.arcBonuses++;
-      s.puffs = arc.owner >= 0 ? Math.max(s.puffs, s.puffMax) : Math.min(s.puffMax, s.puffs + ARC_PUFFS_PLAIN);
+      s.puffs = Math.min(s.puffMax, s.puffs + arcPuffs(arc.owner));
       s.fx.push({ k: 'arc', x: p.x, y: p.y, v: arc.total, bonus: bonus, mult: mult, owner: arc.owner, n: arc.size, each: p.value });
     }
   }
