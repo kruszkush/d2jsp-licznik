@@ -15,7 +15,8 @@ export const DT = 1 / 120;
 // v9: podrzut przy małej prędkości poziomej pcha też w prawo (PUFF_SLOW_ADD, maleje do zera przy PUFF_SLOW_REF).
 // v10: pełny łuk oddaje podrzuty: zwykły +2 (ARC_PUFFS_PLAIN), łuk 1.–3. miejsca komplet do puffMax.
 // v11: słabiej: pełny łuk zwykły +1, 3./2./1. miejsce +2/+3/+4 (arcPuffs).
-export const SIM_VER = 11;
+// v12: łuki o 60% rzadziej (odstęp ×2,5: 2250–6000 zamiast 900–2400).
+export const SIM_VER = 12;
 
 const GRAVITY = 1500;
 const AIR_DRAG = 0.22;          // opór powietrza (1/s)
@@ -107,7 +108,7 @@ const PICKUP_R = 24;            // promień pojedynczego Magic Find = rysowany (
 const ARC_STEP = 26;            // odstęp kuleczek w łuku (rysunek nachodzi na siebie jak dotąd)
 const ARC_FROM = 900;           // nagrody (bomby, łuki) zaczynają się za pierwszym ekranem, nie przed procą
 // Strumienie obiektów (jednostki świata, 12 = 1 m): odstęp między kolejnymi i pasmo wysokości.
-const ARC_LO = 120, ARC_HI = 700, ARC_GAP_LO = 900, ARC_GAP_HI = 2400;
+const ARC_LO = 120, ARC_HI = 700, ARC_GAP_LO = 2250, ARC_GAP_HI = 6000;   // v12: ×2,5 (łuki o 60% rzadziej)
 const BOOST_LO = 100, BOOST_HI = 600, BOOST_GAP_LO = 1500, BOOST_GAP_HI = 4500;
 const PLAT_LO = 150, PLAT_HI = 560, PLAT_GAP_LO = 1200, PLAT_GAP_HI = 3600;
 // Trampolina (ziemia): odbicie bez straty poziomej, w górę max(uderzenie × TRAMP_GAIN, pół ekranu).
