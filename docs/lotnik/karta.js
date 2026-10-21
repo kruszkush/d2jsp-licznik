@@ -1,7 +1,7 @@
 // karta.js — zawartość karty końca gry: wynik z nickiem, tabelka Magic Find, przedmiot w stylu Diablo 2.
 // nakladka.js składa kartę i podpina zdarzenia; tu tylko rysowanie (DOM) z danych. Ramka przedmiotu
 // (`itemBox`) jest wspólna dla dropu i panelu Ekwipunek.
-import { RARITY, TYPES, TIERS, AFFIXES, AFFIX_CHAIN, LEGACY_TYPE, affixLine, affixRange, tierRange, itemName, rarityChances, mfFromMeters } from './items.js?v=72';
+import { RARITY, TYPES, TIERS, AFFIXES, AFFIX_CHAIN, LEGACY_TYPE, affixLine, affixRange, tierRange, itemName, rarityChances, mfFromMeters } from './items.js?v=73';
 
 export const KARTA_CSS = `
 .lotnik-card .lt-hero{flex:none;position:relative;margin:-18px -16px 0;padding:14px 16px 14px;isolation:isolate;overflow:hidden}
@@ -207,6 +207,8 @@ export const KARTA_CSS = `
 .lt-x.pop{animation:lt-pop .4s ease-out both}
 @keyframes lt-pop{0%{transform:scale(2.2);opacity:0}60%{transform:scale(.9);opacity:1}100%{transform:none}}
 .lt-mfnote{color:#6d6d6a;font-size:11px;margin-top:8px}
+.lt-unl{margin-top:5px}
+.lt-unl b{color:#e8c25a;font-weight:600}
 .lt-item .lt-hide{opacity:0}
 .lt-item .lt-in{animation:lt-in .35s ease-out both}
 @keyframes lt-in{from{opacity:0;transform:translateY(-4px)}}
@@ -485,7 +487,7 @@ function klamra(blocks, label, left) {
 }
 
 // Zablokowany afiks: prawdziwy wylosowany, zamazany; szansa miejsca, ✗ tylko przy nieudanym rzucie.
-function lockedBlock(a, p, rolled, type, mfu) {
+function lockedBlock(a, p, rolled, type) {
   const line = affixLine(a);
   const b = el('div', 'lt-lk' + (rolled ? ' rolled' : ''));
   const g = el('div', 'lt-ghost', line ? line.text : '');
@@ -500,8 +502,6 @@ function lockedBlock(a, p, rolled, type, mfu) {
   txt.appendChild(document.createTextNode('szansa '));
   txt.appendChild(el('b', null, p === undefined ? '?' : pctRound(p)));
   if (rolled) txt.appendChild(el('span', 'lt-x', '✗'));
-  // Przy jakim MF padła ta szansa (inaczej „62%” nie mówi, skąd się wzięło).
-  if (typeof mfu === 'number') txt.appendChild(document.createTextNode(' (' + mfu + '% MF)'));
   b.appendChild(txt);
   return b;
 }
@@ -547,7 +547,7 @@ export function itemBox(item, chances) {
   if (locked.length && lchain.length) {
     const lw = el('div', 'lt-locked');
     const done = affixes.length - min;   // ile rzutów się udało; locked[0] = pierwszy nieudany
-    for (let j = 0; j < locked.length; j++) lw.appendChild(lockedBlock(locked[j], lchain[done + j], j === 0 && done < lchain.length, item.type, item.mfu));
+    for (let j = 0; j < locked.length; j++) lw.appendChild(lockedBlock(locked[j], lchain[done + j], j === 0 && done < lchain.length, item.type));
     box.appendChild(lw);
   }
   // Legenda złotych afiksów (prośba użytkownika 19.10: bez żargonu „ponad pewne”).
@@ -566,6 +566,15 @@ export function itemBox(item, chances) {
       note.appendChild(document.createTextNode(': każdy affix ma ' + pctRound(item.up) + ' na '));
       note.appendChild(el('span', 'lt-clv', '🍀'));   // ten sam kolor koniczynki co przy afiksach
       note.appendChild(document.createTextNode(' wyższy stopień'));
+    }
+    // Wyjaśnienie zablokowanych afiksów (🔓 złote jak koniczynka, w tym samym miejscu zdania).
+    if (locked.length && lchain.length) {
+      const u = el('div', 'lt-unl');
+      u.appendChild(el('b', null, 'Odblokowanie'));
+      u.appendChild(document.createTextNode(': każdy kolejny affix ma '));
+      u.appendChild(el('span', 'lt-clv', '🔓'));
+      u.appendChild(document.createTextNode(' osobny rzut, a szansa rośnie z MF. Nieudany rzut (✗) blokuje następne.'));
+      note.appendChild(u);
     }
     box.appendChild(note);
   }
