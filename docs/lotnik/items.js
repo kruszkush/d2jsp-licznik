@@ -357,10 +357,11 @@ export function tierUpChance(mfTotal) {
 // p = baza + (sufit − baza)·MF/(MF + K): rośnie z MF, wyższe afiksy trudniejsze i wolniej rosną. Liczby tymczasowe.
 // Rzadki: 4. afiks najłatwiejszy, 5. trudniejszy, 6. najtrudniejszy przy każdym MF (decyzja użytkownika 21.10, cofa
 // połowienie pierwszego rzutu z 20.10, które odwróciło kolejność). 4.: 30% bez MF, ~46% przy 100, ~90% przy 2000, ~95% przy 4300.
-// Magiczny osobno, łatwiej niż 4. rzadkiego (decyzja użytkownika 20.10): 30% bez MF, ~65% przy 1000 MF.
+// Magiczny osobno, łatwiej niż 4. rzadkiego (decyzje użytkownika 20.10 i 21.10): ta sama K co 4. rzadkiego, baza 0,45, sufit 1
+// → zawsze o 15·(1 − MF/(MF+K)) pkt wyżej: 45% bez MF, ~86% przy 1000, ~96% przy 4300.
 const CHAIN_TOP = 0.9;
 export const AFFIX_CHAIN = {
-  m: { min: 1, next: [{ base: 0.3, k: 150, top: 0.7 }] },
+  m: { min: 1, next: [{ base: 0.45, k: 340, top: 1 }] },
   r: { min: 3, next: [{ base: 0.3, k: 340, top: 1 }, { base: 0.25, k: 400, top: 0.85 }, { base: 0.12, k: 1000, top: 0.7 }] }
 };
 export function nextAffixChances(rarity, mfTotal) {
