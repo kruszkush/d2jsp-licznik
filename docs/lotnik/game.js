@@ -1,10 +1,10 @@
 // game.js — gra-nakładka: pętla, wejście, kamera. Fizyka w sim.js, rysowanie w draw.js.
 // Canvas jest przezroczysty (clearRect) — przyciemniona strona licznika przebija spod spodu.
-import { create, step, DT, GEOM, START_TICKS_BACK, TICK, SPEED, SIM_VER, MAX_FLY_STEPS } from './sim.js?v=64';
-import { AIM_MAX_STEPS, STEPS_PER_SEC } from './replay.js?v=64';
-import { drawScene, COLORS, zoneLevels } from './draw.js?v=64';
-import { createEfekty } from './efekty.js?v=64';
-import { modsFor } from './items.js?v=64';
+import { create, step, DT, GEOM, START_TICKS_BACK, TICK, SPEED, SIM_VER, MAX_FLY_STEPS } from './sim.js?v=65';
+import { AIM_MAX_STEPS, STEPS_PER_SEC } from './replay.js?v=65';
+import { drawScene, COLORS, zoneLevels } from './draw.js?v=65';
+import { createEfekty } from './efekty.js?v=65';
+import { modsFor } from './items.js?v=65';
 
 const GROUND_MARGIN = 56;        // ile px zostawiamy pod linią ziemi
 const BEST_KEY = 'lotnik.best';
@@ -110,13 +110,13 @@ export function createGame(opts) {
   function testMods(m) { return TEST ? Object.assign({}, m, { chainBlast: 1 }) : m; }
 
   // Odtwarzacz starej partii: watch.sim = moduł sim_v{N}.js (out/odtworz.html). Listy obiektów, których stara fizyka
-  // nie miała (ptaki, balony MF), zostają puste dla draw.js.
+  // nie miała (każda lista ze stanu bieżącej fizyki: trampoliny w v1, ptaki, balony MF…), zostają puste dla draw.js.
   const stepSim = watch && watch.sim ? watch.sim.step : step;
   function newSim() {
     if (!(watch && watch.sim)) return create(seed, runMods, { owners: runOwners, dense: TEST });
     const s = watch.sim.create(seed, runMods, { owners: runOwners });
-    if (!s.birds) s.birds = [];
-    if (!s.mfbals) s.mfbals = [];
+    const now = create(seed, runMods, { owners: runOwners });
+    for (const k in now) if (Array.isArray(now[k]) && !Array.isArray(s[k])) s[k] = [];
     return s;
   }
 
@@ -605,6 +605,9 @@ export function createGame(opts) {
   return {
     restart: restart,
     setSpeed: function (k) { speed = k > 0 ? k : 1; },   // odtwarzacz: 1× / 4×
+    // Okienko z nagraniem nad grą: pętla stoi; po wznowieniu bez skoku czasu (last = 0 jak na starcie).
+    pause: function () { if (raf) cancelAnimationFrame(raf); raf = 0; },
+    resume: function () { if (dead || raf) return; last = 0; raf = requestAnimationFrame(frame); },
     setLoadout: setLoadout,
     getLoadout: function () { return loadout.slice(); },
     // Podgląd stanu do testów w konsoli (nie wpływa na symulację).

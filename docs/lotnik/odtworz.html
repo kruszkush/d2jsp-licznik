@@ -19,13 +19,16 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
 .ok{color:#86efac;font-weight:700}
 </style></head>
 <body><canvas id="c"></canvas>
-<div id="bar"><button id="x1" class="on">1×</button><button id="x4">4×</button><button id="again">Od nowa</button><span id="msg">Wczytywanie…</span></div>
+<div id="bar"><button id="x1" class="on">1×</button><button id="x4">4×</button><button id="x8">8×</button><button id="again">Od nowa</button><span id="msg">Wczytywanie…</span></div>
 <script type="module">
-import { createGame, SIM_VER } from './game.js?v=64';
+import { createGame, SIM_VER } from './game.js?v=65';
 const STARE = location.pathname.includes('/out/') ? '../serwer/stare/' : './stare/';
 const P = new URLSearchParams(location.search);
 const gid = P.get('gid') || '';
 const test = P.get('srv') === 'test';
+// embed=1: okienko w rankingu gry (nakladka.js): start w 4×, bez tekstów technicznych i bez pytania o hasło, Esc zamyka okienko.
+const embed = P.get('embed') === '1';
+if (embed) addEventListener('keydown', (e) => { if (e.key === 'Escape') parent.postMessage({ lotnik: 'zamknij-nagranie' }, location.origin); });
 const API = 'https://us-east1-rich-chimera-344319.cloudfunctions.net/' + (test ? 'lotnik-test' : 'lotnik');
 const msg = document.getElementById('msg');
 const say = (t, cls) => { msg.textContent = t; msg.className = cls || ''; };
@@ -35,7 +38,7 @@ async function load() {
   const headers = { 'Content-Type': 'application/json' };
   let h = '';
   try { h = localStorage.getItem('lotnik.haslo') || ''; } catch (e) { /* bez zapisu */ }
-  if (test && !h) h = prompt('Hasło testerów (lotnik-test):') || '';
+  if (test && !h && !embed) h = prompt('Hasło testerów (lotnik-test):') || '';
   if (test && h) headers['X-Lotnik-Haslo'] = h;
   const r = await fetch(API + '/partia', { method: 'POST', headers, body: JSON.stringify({ gid }) });
   const j = await r.json().catch(() => ({}));
@@ -45,7 +48,7 @@ async function load() {
 
 function play() {
   if (game) game.destroy();
-  say(`gid ${gid} · serwer: ${part.meters} m${part.usunieta ? ' · USUNIĘTA' : ''}`);
+  say(embed ? '' : `gid ${gid} · serwer: ${part.meters} m${part.usunieta ? ' · USUNIĘTA' : ''}`);
   game = createGame({
     canvas: document.getElementById('c'),
     nick: '',
@@ -53,22 +56,22 @@ function play() {
     onEnd: (res) => {
       const same = Math.floor(res.meters) === Math.floor(part.meters);
       window.odtworzWynik = { meters: res.meters, server: part.meters, same };
-      say(`koniec: ${res.meters} m, serwer ${part.meters} m · ${same ? 'zgodne' : 'NIEZGODNE'}`, same ? 'ok' : 'err');
+      if (embed) say(`Koniec lotu: ${res.meters} m`, 'ok');
+      else say(`koniec: ${res.meters} m, serwer ${part.meters} m · ${same ? 'zgodne' : 'NIEZGODNE'}`, same ? 'ok' : 'err');
     },
     onClose: () => {}
   });
   setSpeed(speed);
 }
 
-let speed = 1;
+let speed = embed ? 4 : 1;
 function setSpeed(k) {
   speed = k;
   if (game) game.setSpeed(k);
-  document.getElementById('x1').className = k === 1 ? 'on' : '';
-  document.getElementById('x4').className = k === 4 ? 'on' : '';
+  for (const x of [1, 4, 8]) document.getElementById('x' + x).className = k === x ? 'on' : '';
 }
-document.getElementById('x1').onclick = () => setSpeed(1);
-document.getElementById('x4').onclick = () => setSpeed(4);
+for (const x of [1, 4, 8]) document.getElementById('x' + x).onclick = () => setSpeed(x);
+setSpeed(speed);
 document.getElementById('again').onclick = () => { if (part) play(); };
 
 if (!/^[0-9a-f]{16}$/.test(gid)) say('Podaj ?gid=<16 znaków hex>&srv=prod|test', 'err');

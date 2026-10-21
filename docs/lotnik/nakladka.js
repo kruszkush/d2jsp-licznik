@@ -4,13 +4,13 @@
 // Importy UI z ?v= (ta sama wartość wszędzie, podbijana razem z ?v= w strona/index.html), żeby
 // przeglądarka nie mieszała nowych i starych modułów. Moduły UI importują też sim.js i replay.js z ?v=;
 // tylko replay.js importuje './sim.js' bez ?v= (deploy.sh podmienia ten import na serwerze).
-import { createGame } from './game.js?v=64';
-import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=64';
-import { createInventory } from './inventory.js?v=64';
-import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=64';
-import { createKonto, KONTO_CSS } from './konto.js?v=64';
-import { createRanking, mountPageRanking, RANKING_CSS } from './ranking.js?v=64';
-import { KARTA_CSS, renderHero, renderMf, renderDrop, itemBox } from './karta.js?v=64';
+import { createGame } from './game.js?v=65';
+import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=65';
+import { createInventory } from './inventory.js?v=65';
+import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=65';
+import { createKonto, KONTO_CSS } from './konto.js?v=65';
+import { createRanking, mountPageRanking, RANKING_CSS } from './ranking.js?v=65';
+import { KARTA_CSS, renderHero, renderMf, renderDrop, itemBox } from './karta.js?v=65';
 
 export const CSS = `;   // eksport tylko dla out/karta-stany.html (zrzuty stanów karty)
 .lotnik-fall{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:80}
@@ -54,6 +54,13 @@ export const CSS = `;   // eksport tylko dla out/karta-stany.html (zrzuty stanó
 .lotnik-ekwv .lt-eqv-note{margin-top:8px;font-size:10px;color:#94a3b8;line-height:1.45}
 .lotnik-ekwv .lotnik-inv{padding-top:0}
 .lotnik-ekwv .lotnik-inv h3{margin:0}
+.lotnik-nagr{position:fixed;inset:0;z-index:96;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center}
+.lotnik-nagr[hidden]{display:none!important}
+.lotnik-nagr .lt-nagr-box{position:relative;width:min(96vw,1100px);height:min(88vh,640px);background:#0f172a;border-radius:12px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.lotnik-nagr iframe{width:100%;height:100%;border:0;display:block}
+.lotnik-nagr .lt-nagr-head{position:absolute;left:10px;bottom:8px;z-index:2;color:#e2e8f0;font:600 13px system-ui,sans-serif;background:rgba(15,23,42,.8);padding:4px 10px;border-radius:8px;pointer-events:none}
+.lotnik-nagr .lt-nagr-x{position:absolute;top:8px;right:8px;z-index:2}
+.lt-eqv-play{margin:6px 0 0;width:100%}
 .lt-eqv-head{position:sticky;top:0;z-index:5;background:rgba(15,23,42,.98);padding:14px 0 0;margin:0 0 4px}
 .lt-eqv-head .lt-inv-close{right:-6px}
 .lt-eqv-tabs{display:flex;gap:4px;margin-top:10px;border-bottom:1px solid rgba(248,250,252,.18)}
@@ -117,6 +124,7 @@ let layer = null, tip = null, dim = null, stage = null, canvas = null;
 let card = null, cardHero = null, cardWho = null, cardWin = null, cardMeta = null, cardMf = null;
 let curItem = null;
 let cardDrop = null, cardInv = null, konto = null, ranking = null, cardStatus = null;
+let nagrView = null, nagrFrame = null, nagrHead = null, eqPlay = null, eqRow = null;   // okienko z nagraniem lotu (▶ w rankingu)
 let pageRank = null, eqView = null, eqTitle = null, eqBody = null, eqNote = null, eqTabs = null, eqDoc = null, eqUi = null, eqSeq = 0;   // karta rankingu na stronie, podgląd ekwipunku
 let invPanel = null, invBody = null;
 let inventory = null, ekw = null;            // inventory.js (serwer) i panel ekwipunek.js
@@ -403,8 +411,9 @@ function build() {
   card.appendChild(row2);
   card.appendChild(konto.out);
   const avatarsNow = function () { const d = readData(); return d && d.avatars; };
-  ranking = createRanking(apiPost, el, konto.token, avatarsNow, showRecordEq);
-  pageRank = mountPageRanking(apiPost, el, konto.token, avatarsNow, showRecordEq, function () { return SERWER_TEST && !haslo(); });
+  const onRow = function (e, watch) { if (watch) showReplay(e); else showRecordEq(e); };
+  ranking = createRanking(apiPost, el, konto.token, avatarsNow, onRow);
+  pageRank = mountPageRanking(apiPost, el, konto.token, avatarsNow, onRow, function () { return SERWER_TEST && !haslo(); });
 
   // Podgląd ekwipunku z rekordowego lotu (klik w gracza w rankingu; jak w Piłeczce): okno nad stroną i nad grą.
   eqView = el('div', 'lotnik-ekwv');
@@ -416,7 +425,10 @@ function build() {
   eqClose.setAttribute('aria-label', 'Zamknij podgląd ekwipunku');
   eqTabs = el('div', 'lt-eqv-tabs');
   const eqHead = el('div', 'lt-eqv-head');
-  eqHead.append(eqTitle, eqClose, eqTabs);   // przypięte przy przewijaniu: nick, ✕ i zakładki
+  eqPlay = el('button', 'lotnik-btn lt-eqv-play', '▶ Obejrzyj lot');
+  eqPlay.type = 'button';
+  eqPlay.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); if (eqRow) showReplay(eqRow); });
+  eqHead.append(eqTitle, eqClose, eqTabs, eqPlay);   // przypięte przy przewijaniu: nick, ✕, zakładki i nagranie
   eqBody = el('div');
   eqNote = el('div', 'lt-eqv-note');
   eqPanel.append(eqHead, eqBody, eqNote);
@@ -850,8 +862,46 @@ function eqTabsShow(tabs, cur) {
   eqNote.textContent = cur.note;
 }
 
+// --- nagranie lotu z rankingu ----------------------------------------------------
+// Odtwarzacz (out/odtworz.html, po publikacji lotnik/odtworz.html obok nakładki) w iframe z embed=1: lot z wejść partii
+// rekordu (/partia), start w 4×. Gra pod spodem stoi (game.pause), póki okienko otwarte; Esc z iframe przez postMessage.
+const ODTWORZ = new URL(/\/lotnik\/nakladka\.js/.test(import.meta.url) ? 'odtworz.html' : 'out/odtworz.html', import.meta.url).href;
+function showReplay(e) {
+  if (!nagrView) {
+    nagrView = el('div', 'lotnik-nagr');
+    const box = el('div', 'lt-nagr-box');
+    nagrFrame = el('iframe');
+    nagrFrame.title = 'Nagranie lotu';
+    nagrHead = el('div', 'lt-nagr-head');
+    const x = el('button', 'lotnik-btn lotnik-x lt-nagr-x', '✕');
+    x.type = 'button';
+    x.setAttribute('aria-label', 'Zamknij nagranie');
+    x.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); hideReplay(); });
+    nagrView.addEventListener('click', function (ev) { if (ev.target === nagrView) hideReplay(); });
+    box.append(nagrFrame, nagrHead, x);
+    nagrView.appendChild(box);
+    document.body.appendChild(nagrView);
+    window.addEventListener('message', function (ev) {
+      if (ev.origin === location.origin && ev.data && ev.data.lotnik === 'zamknij-nagranie') hideReplay();
+    });
+    document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && !nagrView.hidden) hideReplay(); });
+  }
+  nagrHead.textContent = e.nick + ' · ' + e.meters + ' m';
+  nagrFrame.src = ODTWORZ + (ODTWORZ.includes('?') ? '&' : '?') + 'embed=1&srv=' + (SERWER_TEST ? 'test' : 'prod') + '&gid=' + encodeURIComponent(e.gid);
+  nagrView.hidden = false;
+  if (game) game.pause();
+  nagrFrame.focus();
+}
+function hideReplay() {
+  if (!nagrView || nagrView.hidden) return;
+  nagrView.hidden = true;
+  nagrFrame.src = 'about:blank';   // zatrzymuje pętlę odtwarzacza
+  if (game) game.resume();
+}
+
 function showRecordEq(e) {
   const my = ++eqSeq;
+  eqRow = e;
   eqTitle.replaceChildren();
   if (e.verified && /^\d{1,12}$/.test(String(e.uid || ''))) {
     const a = el('a', null, e.nick);
