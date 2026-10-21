@@ -19,14 +19,14 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
 .ok{color:#86efac;font-weight:700}
 </style></head>
 <body><canvas id="c"></canvas>
-<div id="bar"><button id="x1" class="on">1×</button><button id="x4">4×</button><button id="x8">8×</button><button id="again">Od nowa</button><span id="msg">Wczytywanie…</span></div>
+<div id="bar"><button id="x1" class="on">1×</button><button id="x2">2×</button><button id="x4">4×</button><button id="x8">8×</button><button id="again">Od nowa</button><span id="msg">Wczytywanie…</span></div>
 <script type="module">
-import { createGame, SIM_VER } from './game.js?v=70';
+import { createGame, SIM_VER } from './game.js?v=71';
 const STARE = location.pathname.includes('/out/') ? '../serwer/stare/' : './stare/';
 const P = new URLSearchParams(location.search);
 const gid = P.get('gid') || '';
 const test = P.get('srv') === 'test';
-// embed=1: okienko w rankingu gry (nakladka.js): start w 4×, bez tekstów technicznych i bez pytania o hasło, Esc zamyka okienko.
+// embed=1: okienko w rankingu gry (nakladka.js): start w 1× jak bez embed, bez tekstów technicznych i bez pytania o hasło, Esc zamyka okienko.
 const embed = P.get('embed') === '1';
 if (embed) addEventListener('keydown', (e) => { if (e.key === 'Escape') parent.postMessage({ lotnik: 'zamknij-nagranie' }, location.origin); });
 const API = 'https://us-east1-rich-chimera-344319.cloudfunctions.net/' + (test ? 'lotnik-test' : 'lotnik');
@@ -64,13 +64,13 @@ function play() {
   setSpeed(speed);
 }
 
-let speed = embed ? 4 : 1;
+let speed = 1;
 function setSpeed(k) {
   speed = k;
   if (game) game.setSpeed(k);
-  for (const x of [1, 4, 8]) document.getElementById('x' + x).className = k === x ? 'on' : '';
+  for (const x of [1, 2, 4, 8]) document.getElementById('x' + x).className = k === x ? 'on' : '';
 }
-for (const x of [1, 4, 8]) document.getElementById('x' + x).onclick = () => setSpeed(x);
+for (const x of [1, 2, 4, 8]) document.getElementById('x' + x).onclick = () => setSpeed(x);
 setSpeed(speed);
 document.getElementById('again').onclick = () => { if (part) play(); };
 

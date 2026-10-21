@@ -4,13 +4,13 @@
 // Importy UI z ?v= (ta sama wartość wszędzie, podbijana razem z ?v= w strona/index.html), żeby
 // przeglądarka nie mieszała nowych i starych modułów. Moduły UI importują też sim.js i replay.js z ?v=;
 // tylko replay.js importuje './sim.js' bez ?v= (deploy.sh podmienia ten import na serwerze).
-import { createGame } from './game.js?v=70';
-import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=70';
-import { createInventory } from './inventory.js?v=70';
-import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=70';
-import { createKonto, KONTO_CSS } from './konto.js?v=70';
-import { createRanking, mountPageRanking, RANKING_CSS } from './ranking.js?v=70';
-import { KARTA_CSS, renderHero, renderMf, renderDrop, itemBox } from './karta.js?v=70';
+import { createGame } from './game.js?v=71';
+import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=71';
+import { createInventory } from './inventory.js?v=71';
+import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=71';
+import { createKonto, KONTO_CSS } from './konto.js?v=71';
+import { createRanking, mountPageRanking, RANKING_CSS } from './ranking.js?v=71';
+import { KARTA_CSS, renderHero, renderMf, renderDrop, itemBox } from './karta.js?v=71';
 
 export const CSS = `;   // eksport tylko dla out/karta-stany.html (zrzuty stanów karty)
 .lotnik-fall{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:80}
@@ -101,7 +101,10 @@ body.playing .lavadrop{display:none!important}
 .lotnik-off{position:fixed;left:10px;bottom:10px;z-index:81;cursor:pointer;background:rgba(15,23,42,.78);color:#cbd5e1;font:600 11px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:7px 10px;border-radius:999px;border:1px solid rgba(248,250,252,.2)}
 .lotnik-off:hover{color:#f8fafc;border-color:rgba(248,250,252,.45)}
 body.playing .lotnik-off{display:none}
-body.lt-hide>:not(.lotnik-stage):not(.lotnik-dim){visibility:hidden!important}
+body.lt-hide>:not(.lotnik-stage):not(.lotnik-dim):not(.lotnik-ekwv):not(.lotnik-nagr){visibility:hidden!important}
+body.lt-nagr-on>:not(.lotnik-nagr){visibility:hidden!important}
+body.lt-nagr-on *,body.lt-nagr-on ::before,body.lt-nagr-on ::after{animation-play-state:paused!important}
+body.lt-nagr-on .lotnik-nagr{background:#020617}
 .lotnik-fall[hidden],.lotnik-tip[hidden],.lotnik-dim[hidden],.lotnik-stage[hidden],.lotnik-card[hidden],.lotnik-inv[hidden]{display:none!important}
 `;
 
@@ -864,7 +867,7 @@ function eqTabsShow(tabs, cur) {
 
 // --- nagranie lotu z rankingu ----------------------------------------------------
 // Odtwarzacz (out/odtworz.html, po publikacji lotnik/odtworz.html obok nakładki) w iframe z embed=1: lot z wejść partii
-// rekordu (/partia), start w 4×. Gra pod spodem stoi (game.pause), póki okienko otwarte; Esc z iframe przez postMessage.
+// rekordu (/partia), start w 1× (2×/4×/8× w odtwarzaczu). Gra pod spodem stoi (game.pause), póki okienko otwarte; Esc z iframe przez postMessage.
 const ODTWORZ = new URL(/\/lotnik\/nakladka\.js/.test(import.meta.url) ? 'odtworz.html' : 'out/odtworz.html', import.meta.url).href;
 function showReplay(e) {
   if (!nagrView) {
@@ -889,6 +892,10 @@ function showReplay(e) {
   nagrHead.textContent = e.nick + ' · ' + e.meters + ' m';
   nagrFrame.src = ODTWORZ + (ODTWORZ.includes('?') ? '&' : '?') + 'embed=1&srv=' + (SERWER_TEST ? 'test' : 'prod') + '&gid=' + encodeURIComponent(e.gid);
   nagrView.hidden = false;
+  // Telefon (Mi Note 10, 21.10, out/telefon-nagranie.mjs): strona i gra pod półprzezroczystym tłem podwajały pracę GPU
+  // (150 zamiast 59 flushy/s) i dawały zacięcia, więc póki okienko otwarte, wszystko pod nim schowane i bez animacji.
+  document.body.classList.add('lt-nagr-on');
+  stopSpawning();
   if (game) game.pause();
   nagrFrame.focus();
 }
@@ -896,7 +903,9 @@ function hideReplay() {
   if (!nagrView || nagrView.hidden) return;
   nagrView.hidden = true;
   nagrFrame.src = 'about:blank';   // zatrzymuje pętlę odtwarzacza
+  document.body.classList.remove('lt-nagr-on');
   if (game) game.resume();
+  else if (!SERWER_TEST || haslo()) startSpawning();
 }
 
 function showRecordEq(e) {
