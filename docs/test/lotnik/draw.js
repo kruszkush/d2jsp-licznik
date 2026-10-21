@@ -1,8 +1,8 @@
 // draw.js — całe rysowanie nakładki. Tylko canvas 2D, bez fizyki.
 // Canvas jest przezroczysty: rysujemy postać, procę, bomby, platformy i HUD,
 // a przyciemniona strona licznika przebija z pod spodu (jeden div w nakladka.js).
-import { GEOM, TICK, PICKUP_BASE, arcMult, previewShot } from './sim.js?v=62';
-import { mfFromMeters } from './items.js?v=62';
+import { GEOM, TICK, PICKUP_BASE, arcMult, previewShot } from './sim.js?v=66';
+import { mfFromMeters } from './items.js?v=66';
 
 const TAU = Math.PI * 2;
 // Jeden pasek na środku u góry: dystans, MF za dystans, rekord, podrzuty. MF na żywo: równanie po lewej (drawMfLine).
@@ -884,13 +884,16 @@ function drawBombs(r) {
   const { ctx, sx, sy, scale, cam, view, sim, now } = r;
   const groundY = sy(0);
   const spr = getBombSprite();
+  // Rysujemy promień trafienia (b.r × blastRadius, jak hitBomb), żeby afiks „Rozmiar bomb” było widać.
+  const grow = sim.mods && sim.mods.blastRadius > 0 ? sim.mods.blastRadius : 1;
   for (let i = 0; i < sim.bombs.length; i++) {
     const b = sim.bombs[i];
     if (!b.alive) continue;
-    if (b.x + b.r < cam.x - 80 || b.x - b.r > cam.x + view.w + 80) continue;
+    const br = b.r * grow;
+    if (b.x + br < cam.x - 80 || b.x - br > cam.x + view.w + 80) continue;
     const x = sx(b.x);
     const y = sy(b.y);
-    const rad = Math.max(5, b.r * scale);
+    const rad = Math.max(5, br * scale);
 
     if (b.air) {
       drawBalloon(ctx, x, y, rad, now, b.x * 0.013);
@@ -1488,6 +1491,7 @@ function drawPuffHint(r) {
 
 function drawHint(r) {
   const { ctx, W, H, sim } = r;
+  if (r.watch) return;   // odtwarzacz: bez podpowiedzi i bez zapisu „umie” widza
   if (sim.phase === 'fly') learn('strzal');
   if (sim.phase === 'fly' && sim.puffsUsed > 0) learn('podrzut');
   if (sim.phase === 'aim' && !r.drag && !learned('strzal')) drawShotHint(r);
@@ -1507,7 +1511,7 @@ function drawHint(r) {
   const narrow = W < 640;
   let text = sim.puffs > 0
     ? 'Klik / tap / spacja: podrzut w górę · trafiaj w bomby'
-    : 'Brak podrzutów · leć do bomby';
+    : 'Brak podrzutów · wracają w locie';
   if ((W < 520 || r.lite) && sim.puffs > 0) text = r.lite ? 'Tap: podrzut · trafiaj w bomby' : 'Klik / tap: podrzut · trafiaj w bomby';
   let fs = narrow ? 11 : 12;
   const font = function (size) {

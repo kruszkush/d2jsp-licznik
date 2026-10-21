@@ -26,6 +26,9 @@ export const RANKING_CSS = `
 .lotnik-rank .lt-r-m{font-weight:800;color:#fbbf24;flex:none;text-align:right}
 .lotnik-rank .lt-r-dev{font-size:12px;margin-right:5px;font-weight:400}
 .lotnik-rank .lt-r-plays{display:block;font-size:10px;color:#94a3b8;font-weight:500}
+.lt-r-play{flex:none;width:28px;height:28px;border-radius:50%;border:0;padding:0 0 0 2px;font-size:12px;line-height:28px;cursor:pointer;
+  background:#dc2626;color:#fff;box-shadow:0 1px 3px rgba(0,0,0,.35)}
+.lt-r-play:hover{background:#ef4444}
 .lotnik-rank .lt-r-gap{text-align:center;color:#64748b;padding:2px 0}
 .lotnik-rank .lt-rank-note{margin-top:8px;font-size:10px;color:#94a3b8;line-height:1.45;white-space:pre-line}
 .lotnik-rank[hidden]{display:none!important}
@@ -66,7 +69,7 @@ function games(n) {
 
 // Wspólne dla obu obudów: dane z serwera i rysowanie wierszy jednego okresu.
 // apiPost(path, body, ms) → Promise<{ ok, j }>; el(tag, cls, text); token() → token sesji albo null; avatars() → D.avatars;
-// onRow(e) → klik w gracza (ekwipunek z rekordu), tylko gdy wpis ma `gid`.
+// onRow(e, watch) → klik w gracza (ekwipunek z rekordu) albo w ▶ (watch = true, nagranie lotu), tylko gdy wpis ma `gid`.
 function makeRows(el, token, avatars, onRow) {
   function avatar(e) {
     const a = el('span', 'lt-r-av');
@@ -107,6 +110,14 @@ function makeRows(el, token, avatars, onRow) {
     m.appendChild(document.createTextNode(e.meters + ' m'));
     if (e.plays) m.appendChild(el('small', 'lt-r-plays', games(e.plays)));
     r.appendChild(m);
+    if (clk) {   // nagranie rekordowego lotu (odtworzenie z wejść partii)
+      const w = el('button', 'lt-r-play', '▶');
+      w.type = 'button';
+      w.title = 'Obejrzyj lot';
+      w.setAttribute('aria-label', 'Obejrzyj rekordowy lot: ' + e.nick);
+      w.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); onRow(e, true); });
+      r.appendChild(w);
+    }
     return r;
   }
 

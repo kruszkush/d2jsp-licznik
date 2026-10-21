@@ -11,7 +11,9 @@ export const DT = 1 / 120;
 // v5: kuleczki łuków 4/3/2 MF (1.–3. miejsce) i 1 MF (zwykły) zamiast 8/6/4/2; pełny łuk ×5/×4/×3/×2 zamiast ×10.
 // v6: dynamit wyrzuca też mocno w prawo; bomba z boku i trampolina dają minimalny pęd do przodu; ptaki i balony MF.
 // v7: ptaki wyżej (125–250 m) i większe, dają MF wg miejsca awatara; balony MF większe, w poziomej girlandzie.
-export const SIM_VER = 7;
+// v8: bomba (też w łańcuchu) nie oddaje podrzutu; podrzuty wracają tylko z odnawiania i dynamitu.
+// v9: podrzut przy małej prędkości poziomej pcha też w prawo (PUFF_SLOW_ADD, maleje do zera przy PUFF_SLOW_REF).
+export const SIM_VER = 9;
 
 const GRAVITY = 1500;
 const AIR_DRAG = 0.22;          // opór powietrza (1/s)
@@ -52,9 +54,11 @@ const PLAIN_OWNER = Object.freeze({ mult: 1, size: 4 });
 
 const PUFF_UP = 900;            // klik: podrzut ustawia prędkość w górę (bez kumulacji) — 3× mocniej niż 300
 const PUFF_FWD = 8;             // podrzut lekko popycha do przodu (nie jest napędem)
+const PUFF_SLOW_ADD = 400;      // podrzut przy małej prędkości: dodatek w prawo, malejący do zera przy PUFF_SLOW_REF
+const PUFF_SLOW_REF = 1000;     // (piłka prawie stojąca nie skacze w miejscu; szybki lot bez zmian)
 const PUFF_COOL = 12;           // 0,1 s między podrzutami (kroki)
 const PUFF_START = 5;
-const PUFF_MAX = 6;             // limit podrzutów (bomba dodaje +1)
+const PUFF_MAX = 6;             // limit podrzutów (odnawianie i dynamit dobijają do niego)
 const PUFF_REGEN = 120 * 15;    // bez przedmiotów: 1 podrzut wraca co 15 s lotu (kroki)
 
 const BOMB_R = 13;
@@ -596,7 +600,7 @@ function hitBomb(s, b) {
   if (!b.alive) return false;
   const blastR = b.r * s.mods.blastRadius;
   if (!segmentHit(s, b.x, b.y, PLAYER_R + blastR)) return false;
-  // Łańcuch: każda dodatkowa bomba +100% do dodatku z wybuchu i +1 podrzut (sufit jak zwykle).
+  // Łańcuch: każda dodatkowa bomba +100% do dodatku z wybuchu (sufit jak zwykle). Od v8 bomba nie daje podrzutu.
   b.alive = false;
   const k = 1 + (s.mods.chainBlast > 0 ? chainBombs(s, b) : 0);
 
@@ -609,7 +613,6 @@ function hitBomb(s, b) {
     s.vx = Math.min(s.maxV, s.vx + BOMB_SIDE_FWD * Math.max(0, 1 - s.vx / BOMB_ADD_REF));
     s.grounded = false;
     s.bombsHit += k;
-    s.puffs = Math.min(s.puffMax, s.puffs + k);
     s.fx.push({
       k: 'boom', x: b.x, y: b.y,
       r: blastR,
@@ -635,7 +638,6 @@ function hitBomb(s, b) {
   s.vy = clamp(s.vy, 0, upCap(s));
   s.grounded = false;
   s.bombsHit += k;
-  s.puffs = Math.min(s.puffMax, s.puffs + k);
   s.fx.push({
     k: 'boom', x: b.x, y: b.y,
     r: blastR,
@@ -837,7 +839,8 @@ function flyStep(s, actions) {
     const up = PUFF_UP * s.mods.puffUp;
     s.vy = Math.min(upCap(s), Math.max(s.vy, up));
     // puffFwd = ułamek bazowej siły podrzutu w górę (samo PUFF_FWD to prawie zero).
-    s.vx = clamp(s.vx + PUFF_FWD + PUFF_UP * s.mods.puffFwd, -s.maxV, s.maxV);
+    const slow = PUFF_SLOW_ADD * Math.max(0, 1 - Math.max(0, s.vx) / PUFF_SLOW_REF);
+    s.vx = clamp(s.vx + PUFF_FWD + slow + PUFF_UP * s.mods.puffFwd, -s.maxV, s.maxV);
     // freePuff: szansa z generatora `play` (nie z mapy), że ładunek zostaje.
     const free = s.mods.freePuff > 0 && rand(s, 'play') < s.mods.freePuff;
     if (!free) s.puffs--;

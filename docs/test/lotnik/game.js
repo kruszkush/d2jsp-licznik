@@ -1,10 +1,10 @@
 // game.js — gra-nakładka: pętla, wejście, kamera. Fizyka w sim.js, rysowanie w draw.js.
 // Canvas jest przezroczysty (clearRect) — przyciemniona strona licznika przebija spod spodu.
-import { create, step, DT, GEOM, START_TICKS_BACK, TICK, SPEED, SIM_VER, MAX_FLY_STEPS } from './sim.js?v=62';
-import { AIM_MAX_STEPS, STEPS_PER_SEC } from './replay.js?v=62';
-import { drawScene, COLORS, zoneLevels } from './draw.js?v=62';
-import { createEfekty } from './efekty.js?v=62';
-import { modsFor } from './items.js?v=62';
+import { create, step, DT, GEOM, START_TICKS_BACK, TICK, SPEED, SIM_VER, MAX_FLY_STEPS } from './sim.js?v=66';
+import { AIM_MAX_STEPS, STEPS_PER_SEC } from './replay.js?v=66';
+import { drawScene, COLORS, zoneLevels } from './draw.js?v=66';
+import { createEfekty } from './efekty.js?v=66';
+import { modsFor } from './items.js?v=66';
 
 const GROUND_MARGIN = 56;        // ile px zostawiamy pod linią ziemi
 const BEST_KEY = 'lotnik.best';
@@ -25,6 +25,8 @@ const TOUCH = typeof matchMedia === 'function' && matchMedia('(pointer:coarse)')
 // mysz 1; ?tempo=0.5–1 nadpisuje. Mnoży tylko czas rzeczywisty, kroki fizyki stałe DT, więc wynik, MF
 // i powtórka bez zmian; serwer sprawdza tylko grę za szybką.
 const TEMPO = Math.min(1, Math.max(0.5, Number(PARAMS.get('tempo')) || (TOUCH ? 0.8 : 1)));
+
+export { SIM_VER };   // odtwarzacz: czy partia potrzebuje starej fizyki (watch.sim)
 
 function newSeed() {
   return Math.floor(Math.random() * 4294967296);
@@ -107,8 +109,19 @@ export function createGame(opts) {
 
   function testMods(m) { return TEST ? Object.assign({}, m, { chainBlast: 1 }) : m; }
 
+  // Odtwarzacz starej partii: watch.sim = moduł sim_v{N}.js (out/odtworz.html). Listy obiektów, których stara fizyka
+  // nie miała (każda lista ze stanu bieżącej fizyki: trampoliny w v1, ptaki, balony MF…), zostają puste dla draw.js.
+  const stepSim = watch && watch.sim ? watch.sim.step : step;
+  function newSim() {
+    if (!(watch && watch.sim)) return create(seed, runMods, { owners: runOwners, dense: TEST });
+    const s = watch.sim.create(seed, runMods, { owners: runOwners });
+    const now = create(seed, runMods, { owners: runOwners });
+    for (const k in now) if (Array.isArray(now[k]) && !Array.isArray(s[k])) s[k] = [];
+    return s;
+  }
+
   let seed = 0;
-  let sim = create(seed, runMods, { owners: runOwners, dense: TEST });   // zastępcza; bilet bierze restart(true) na starcie
+  let sim = newSim();   // zastępcza; bilet bierze restart(true) na starcie
   let acc = 0;
   let last = 0;
   let raf = 0;
@@ -197,7 +210,7 @@ export function createGame(opts) {
     if (freshSeed || watch) takeTicket();
     else { ticket = null; runMods = testMods(mods); }
     lateAt = freshSeed && !ticket && nextTicket && !TEST ? 0 : -1;
-    sim = create(seed, runMods, { owners: runOwners, dense: TEST });
+    sim = newSim();
     pending = watch ? watch.inputs.slice() : [];
     log = [];
     finished = false;
@@ -252,7 +265,7 @@ export function createGame(opts) {
       let guard = 0;
       while (acc >= DT && guard < 40) {
         const acts = takeActions(sim.step);
-        step(sim, acts);
+        stepSim(sim, acts);
         for (let i = 0; i < sim.fx.length; i++) fx.on(sim.fx[i]);
         acc -= DT;
         guard++;
@@ -414,6 +427,7 @@ export function createGame(opts) {
     updateCamera(dt, p);
     const pull = drag ? pullFromDrag(drag) : { x: 0, y: 0 };
     drawScene({
+      watch: !!watch,
       ctx: ctx,
       W: W,
       H: H,
@@ -503,9 +517,10 @@ export function createGame(opts) {
     pushAction(['shot', qx, qy]);
   }
 
+  // Straż: zdarzenia ze skryptu (dispatchEvent, isTrusted false) nie sterują grą; testy klikają przez CDP Input.dispatch*.
   function onPointerDown(e) {
     e.preventDefault();
-    if (watch) return;
+    if (watch || !e.isTrusted) return;
     if (sim.phase === 'aim') {
       if (drag || waitingTicket()) return;
       const p = canvasPoint(e);
@@ -517,7 +532,7 @@ export function createGame(opts) {
   }
 
   function onPointerMove(e) {
-    if (!drag || e.pointerId !== drag.id) return;
+    if (!drag || e.pointerId !== drag.id || !e.isTrusted) return;
     e.preventDefault();
     const p = canvasPoint(e);
     drag.x = p.x;
@@ -526,7 +541,7 @@ export function createGame(opts) {
 
   function onPointerUp(e) {
     e.preventDefault();
-    if (drag && e.pointerId === drag.id) fireDrag();
+    if (drag && e.pointerId === drag.id && e.isTrusted) fireDrag();
   }
 
   function onPointerCancel(e) {
@@ -536,7 +551,7 @@ export function createGame(opts) {
   function onContextMenu(e) { e.preventDefault(); }
 
   function onKeyDown(e) {
-    if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;   // pisanie w formularzu konta
+    if (!e.isTrusted || (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName))) return;   // skrypt albo pisanie w formularzu konta
     if (e.code === 'Space' || e.key === ' ') {
       e.preventDefault();
       if (!e.repeat) puff();
@@ -590,6 +605,9 @@ export function createGame(opts) {
   return {
     restart: restart,
     setSpeed: function (k) { speed = k > 0 ? k : 1; },   // odtwarzacz: 1× / 4×
+    // Okienko z nagraniem nad grą: pętla stoi; po wznowieniu bez skoku czasu (last = 0 jak na starcie).
+    pause: function () { if (raf) cancelAnimationFrame(raf); raf = 0; },
+    resume: function () { if (dead || raf) return; last = 0; raf = requestAnimationFrame(frame); },
     setLoadout: setLoadout,
     getLoadout: function () { return loadout.slice(); },
     // Podgląd stanu do testów w konsoli (nie wpływa na symulację).

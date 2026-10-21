@@ -1,7 +1,7 @@
 // karta.js — zawartość karty końca gry: wynik z nickiem, tabelka Magic Find, przedmiot w stylu Diablo 2.
 // nakladka.js składa kartę i podpina zdarzenia; tu tylko rysowanie (DOM) z danych. Ramka przedmiotu
 // (`itemBox`) jest wspólna dla dropu i panelu Ekwipunek.
-import { RARITY, TYPES, TIERS, AFFIXES, AFFIX_CHAIN, LEGACY_TYPE, affixLine, affixRange, tierRange, itemName, rarityChances, mfFromMeters } from './items.js?v=62';
+import { RARITY, TYPES, TIERS, AFFIXES, AFFIX_CHAIN, LEGACY_TYPE, affixLine, affixRange, tierRange, itemName, rarityChances, mfFromMeters } from './items.js?v=66';
 
 export const KARTA_CSS = `
 .lotnik-card .lt-hero{flex:none;position:relative;margin:-18px -16px 0;padding:14px 16px 14px;isolation:isolate;overflow:hidden}
@@ -259,7 +259,7 @@ export function renderHero(node, o, who) {
     const prev = Math.floor(a.prev || 0);
     o = { ...o, rec: m > prev, prevBest: prev, best: Math.max(prev, m), first: 'Pierwszy wynik na koncie' };
   }
-  const rec = !!o.rec && !o.test && !o.wait;
+  const rec = !!o.rec && !o.test && !o.wait && !(a && a.czeka);   // wstrzymany #1 (straż): bez fanfar, linijka niżej
   const game = rec && !!(a && a.game);
   node.replaceChildren();
   if (node.parentNode) {
@@ -297,6 +297,8 @@ export function renderHero(node, o, who) {
     const w = el('div', 'lt-deltaw');
     w.appendChild(d);
     node.appendChild(w);
+  } else if (a && a.czeka) {
+    node.appendChild(el('div', 'lt-rank lt-czeka', 'Rekord gry czeka na sprawdzenie — pojawi się w rankingu po zatwierdzeniu.'));
   } else renderProg(node, m, o);
   if (!o.test && a && a.place) node.appendChild(rankLine(a, rec));
   else if (!o.test && !a && o.would) node.appendChild(rankLine({ place: o.would, would: true }, true));
