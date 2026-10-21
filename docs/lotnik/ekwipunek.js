@@ -2,9 +2,9 @@
 // pas) i skrzynia 4×4. Klik w przedmiot = statystyki pod jego rzędem (itemBox z karta.js) + dymki przy rogach: ✓ Załóż albo ↓ Zdejmij, ✗ Zniszcz.
 // Wygląd przedmiotu z Piłeczki (d2jsp-licznik/docs/gra.js, itemEl): awatar użytej piłeczki + ikona typu w kolorze rzadkości.
 // Stan i akcje: inventory.js (serwer). Tu tylko DOM.
-import { RARITY, TYPES, SLOT_ORDER, slotType, itemName, statSummary } from './items.js?v=71';
-import { activeItems, freeCells } from './skrzynia.js?v=71';
-import { itemBox } from './karta.js?v=71';
+import { RARITY, TYPES, SLOT_ORDER, slotType, itemName, statSummary } from './items.js?v=72';
+import { activeItems, freeCells } from './skrzynia.js?v=72';
+import { itemBox } from './karta.js?v=72';
 
 export const EKW_CSS = `
 .lt-doll{position:relative;width:300px;height:258px;margin:22px auto 0}

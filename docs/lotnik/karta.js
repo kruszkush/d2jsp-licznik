@@ -1,7 +1,7 @@
 // karta.js — zawartość karty końca gry: wynik z nickiem, tabelka Magic Find, przedmiot w stylu Diablo 2.
 // nakladka.js składa kartę i podpina zdarzenia; tu tylko rysowanie (DOM) z danych. Ramka przedmiotu
 // (`itemBox`) jest wspólna dla dropu i panelu Ekwipunek.
-import { RARITY, TYPES, TIERS, AFFIXES, AFFIX_CHAIN, LEGACY_TYPE, affixLine, affixRange, tierRange, itemName, rarityChances, mfFromMeters } from './items.js?v=71';
+import { RARITY, TYPES, TIERS, AFFIXES, AFFIX_CHAIN, LEGACY_TYPE, affixLine, affixRange, tierRange, itemName, rarityChances, mfFromMeters } from './items.js?v=72';
 
 export const KARTA_CSS = `
 .lotnik-card .lt-hero{flex:none;position:relative;margin:-18px -16px 0;padding:14px 16px 14px;isolation:isolate;overflow:hidden}
@@ -485,7 +485,7 @@ function klamra(blocks, label, left) {
 }
 
 // Zablokowany afiks: prawdziwy wylosowany, zamazany; szansa miejsca, ✗ tylko przy nieudanym rzucie.
-function lockedBlock(a, p, rolled, type) {
+function lockedBlock(a, p, rolled, type, mfu) {
   const line = affixLine(a);
   const b = el('div', 'lt-lk' + (rolled ? ' rolled' : ''));
   const g = el('div', 'lt-ghost', line ? line.text : '');
@@ -500,6 +500,8 @@ function lockedBlock(a, p, rolled, type) {
   txt.appendChild(document.createTextNode('szansa '));
   txt.appendChild(el('b', null, p === undefined ? '?' : pctRound(p)));
   if (rolled) txt.appendChild(el('span', 'lt-x', '✗'));
+  // Przy jakim MF padła ta szansa (inaczej „62%” nie mówi, skąd się wzięło).
+  if (typeof mfu === 'number') txt.appendChild(document.createTextNode(' (' + mfu + '% MF)'));
   b.appendChild(txt);
   return b;
 }
@@ -545,7 +547,7 @@ export function itemBox(item, chances) {
   if (locked.length && lchain.length) {
     const lw = el('div', 'lt-locked');
     const done = affixes.length - min;   // ile rzutów się udało; locked[0] = pierwszy nieudany
-    for (let j = 0; j < locked.length; j++) lw.appendChild(lockedBlock(locked[j], lchain[done + j], j === 0 && done < lchain.length, item.type));
+    for (let j = 0; j < locked.length; j++) lw.appendChild(lockedBlock(locked[j], lchain[done + j], j === 0 && done < lchain.length, item.type, item.mfu));
     box.appendChild(lw);
   }
   // Legenda złotych afiksów (prośba użytkownika 19.10: bez żargonu „ponad pewne”).
