@@ -4,7 +4,7 @@
 //
 // Dokument: { v, slots: {helm..belt: item|null}, chest: [item|null], pending: [item] }.
 // Logika liczy na chest.length, nie na stałej (większa skrzynia = dłuższa tablica).
-import { SLOT_ORDER, CHEST_SIZE, LEGACY_TYPE, slotAccepts, modsFor } from './items.js?v=68';
+import { SLOT_ORDER, CHEST_SIZE, LEGACY_TYPE, slotAccepts, modsFor } from './items.js?v=69';
 
 export const ERR = {
   full: 'Skrzynia pełna. Zniszcz jakiś przedmiot, żeby zrobić miejsce.',
