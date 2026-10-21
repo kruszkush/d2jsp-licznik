@@ -1,12 +1,12 @@
 // draw.js — całe rysowanie nakładki. Tylko canvas 2D, bez fizyki.
 // Canvas jest przezroczysty: rysujemy postać, procę, bomby, platformy i HUD,
 // a przyciemniona strona licznika przebija z pod spodu (jeden div w nakladka.js).
-import { GEOM, TICK, PICKUP_BASE, arcMult, previewShot } from './sim.js?v=66';
-import { mfFromMeters } from './items.js?v=66';
+import { GEOM, TICK, PICKUP_BASE, arcMult, previewShot } from './sim.js?v=67';
+import { mfFromMeters } from './items.js?v=67';
 
 const TAU = Math.PI * 2;
 // Jeden pasek na środku u góry: dystans, MF za dystans, rekord, podrzuty. MF na żywo: równanie po lewej (drawMfLine).
-export const HUD = { y: 10, w: 240, h: 116 };
+export const HUD = { y: 10, w: 240, h: 124 };
 
 export const COLORS = {
   woodDark: '#2a1608',
@@ -529,7 +529,44 @@ function drawBrackets(r) {
     ctx.fillStyle = COLORS.accent;
     ctx.fill();
     label(ctx, '×' + arcMult(a.owner), bx, by + 4.5, 11, '#1f1300', 'center', 800);
+    // Druga, zielona klamra pod rzędem (lustro złotej): pasek podrzutów jak w HUD = ile podrzutów daje pełny łuk (v10).
+    const hd = R * 0.5 + 40, bd = 14;     // pod napisami „N MF” pod kulkami
+    ctx.beginPath();
+    ctx.moveTo(x1 - ux * (hd - 8), y1 - uy * (hd - 8));
+    ctx.lineTo(x1 - ux * hd, y1 - uy * hd);
+    ctx.quadraticCurveTo(mx - ux * (hd + 2 * bd), my - uy * (hd + 2 * bd), x2 - ux * hd, y2 - uy * hd);
+    ctx.lineTo(x2 - ux * (hd - 8), y2 - uy * (hd - 8));
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = COLORS.green;
+    ctx.stroke();
+    // pasek siedzi na szczycie klamry, wzdłuż rzędu; zwykły łuk +2 podrzuty, łuk z awatarem komplet (sim.js ARC_PUFFS_PLAIN)
+    drawLukPuffs(ctx, a.owner >= 0 ? sim.puffMax : 2, mx - ux * (hd + bd), my - uy * (hd + bd), ang);
   });
+}
+
+// Pasek podrzutów jak w HUD (puffDots), pełne kropki = ile podrzutów daje łuk.
+function drawLukPuffs(ctx, n, x, y, ang) {
+  const gap = 19, rad = 7, w = (n - 1) * gap + rad * 2 + 10;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(ang);
+  ctx.beginPath();
+  ctx.roundRect(-w / 2, -rad - 4, w, rad * 2 + 8, rad + 4);
+  ctx.fillStyle = 'rgba(15,23,42,0.9)';
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = COLORS.green;
+  ctx.stroke();
+  for (let i = 0; i < n; i++) {
+    ctx.beginPath();
+    ctx.arc(-((n - 1) * gap) / 2 + i * gap, 0, rad, 0, TAU);
+    ctx.fillStyle = COLORS.green;
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(187,247,208,0.7)';
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 function drawBoosts(r) {
@@ -1294,7 +1331,7 @@ function drawHudCompact(r) {
   const wd = ctx.measureText(dist).width;
   ctx.font = '800 11px Consolas, "Cascadia Mono", "Courier New", monospace';
   const wm = mf ? ctx.measureText(mf).width + 10 : 0;
-  const gap = 11;
+  const gap = 15;
   const wp = sim.puffMax * gap;
   const pw = 14 + wd + wm + 12 + wp + 8;
   // na środku, ale nie pod przyciskami ⛶ ✕ w prawym górnym rogu (nakladka.js .lotnik-top, ~90 px)
@@ -1305,7 +1342,7 @@ function drawHudCompact(r) {
   mono(ctx, dist, px + 14, mid + 6, 16, COLORS.text, 'left', 800);
   if (mf) mono(ctx, mf, px + 14 + wd + 8, mid + 4, 11, COLORS.distMf, 'left', 800);
   const dotsX = px + 14 + wd + wm + 12;
-  puffDots(ctx, sim, dotsX + wp / 2, mid, gap, 3.5);
+  puffDots(ctx, sim, dotsX + wp / 2, mid, gap, 5.5);
 }
 
 function drawHud(r) {
@@ -1328,7 +1365,7 @@ function drawHud(r) {
   // podrzuty: liczba i kropki; pierwsza pusta kropka napełnia się jak zegar do odnowienia
   label(ctx, 'PODRZUTY ' + sim.puffs + '/' + sim.puffMax, cx, py + 92, 8,
     sim.puffs > 0 ? COLORS.dim : COLORS.red, 'center', 700);
-  puffDots(ctx, sim, cx, py + 104, Math.min(13, (pw - 40) / sim.puffMax), 4);
+  puffDots(ctx, sim, cx, py + 109, Math.min(19, (pw - 30) / sim.puffMax), 6.5);
 }
 
 // Równanie MF na żywo (efekty.js `fx.eq`): jedna linia przy lewej krawędzi na środku wysokości, nowy znak zawsze
