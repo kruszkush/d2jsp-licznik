@@ -1,10 +1,10 @@
 // game.js — gra-nakładka: pętla, wejście, kamera. Fizyka w sim.js, rysowanie w draw.js.
 // Canvas jest przezroczysty (clearRect) — przyciemniona strona licznika przebija spod spodu.
-import { create, step, DT, GEOM, START_TICKS_BACK, TICK, SPEED, SIM_VER, MAX_FLY_STEPS } from './sim.js?v=69';
-import { AIM_MAX_STEPS, STEPS_PER_SEC } from './replay.js?v=69';
-import { drawScene, COLORS, zoneLevels } from './draw.js?v=69';
-import { createEfekty } from './efekty.js?v=69';
-import { modsFor } from './items.js?v=69';
+import { create, step, DT, GEOM, START_TICKS_BACK, TICK, SPEED, SIM_VER, MAX_FLY_STEPS } from './sim.js?v=70';
+import { AIM_MAX_STEPS, STEPS_PER_SEC } from './replay.js?v=70';
+import { drawScene, COLORS, zoneLevels } from './draw.js?v=70';
+import { createEfekty } from './efekty.js?v=70';
+import { modsFor } from './items.js?v=70';
 
 const GROUND_MARGIN = 56;        // ile px zostawiamy pod linią ziemi
 const BEST_KEY = 'lotnik.best';
@@ -256,7 +256,7 @@ export function createGame(opts) {
     let dt = (now - last) / 1000;
     last = now;
     if (dt > 0.1) dt = 0.1;
-    // zwolnienie po łuku: wolniej tyka symulacja (kroki stałe DT, więc tor lotu się nie zmienia)
+    // mnożnik tempa z efektów (obecnie zawsze 1)
     const ts = fx.tick(dt);
 
     if (lateAt >= 0) lateTicket();

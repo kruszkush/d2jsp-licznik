@@ -1,8 +1,8 @@
-// efekty.js — efekty gry bez wpływu na fizykę: cząstki, wstrząs, błysk i zwolnienie po łuku, duży zysk „+N”,
+// efekty.js — efekty gry bez wpływu na fizykę: cząstki, wstrząs, błysk po łuku, duży zysk „+N”,
 // równanie MF na żywo. game.js woła on(f) dla każdego sim.fx, tick(dt), flight(sim, dt) i update(dt) co klatkę; draw.js czyta pola.
 // Jak dodać efekt: nowa gałąź `f.k` w on() (sim.js wypluwa zdarzenie w s.fx), pola rysuje draw.js.
-import { mfFromMeters, MF_PER_KM } from './items.js?v=69';
-import { COLORS } from './draw.js?v=69';
+import { mfFromMeters, MF_PER_KM } from './items.js?v=70';
+import { COLORS } from './draw.js?v=70';
 
 export function createEfekty() {
   const fx = {
@@ -15,7 +15,6 @@ export function createEfekty() {
     eq: { list: [], shown: 0, ver: 0, on: false },
     shake: 0,
     flash: 0,         // błysk ekranu przy zebraniu łuku (1 → 0)
-    slowT: 0,         // zwolnienie czasu przy zebraniu łuku (s czasu rzeczywistego)
     gain: null        // duży zysk MF na środku: { v, age } (sumuje zdarzenia w krótkim oknie)
   };
   let gainSum = 0;    // suma zysku w bieżącym oknie
@@ -64,7 +63,7 @@ export function createEfekty() {
     if (zoneOpen) putSum();
   }
 
-  // Nowa partia (błysk i zwolnienie wygasają same).
+  // Nowa partia (błysk wygasa sam).
   fx.reset = function () {
     fx.particles.length = 0;
     fx.labels.length = 0;
@@ -79,10 +78,8 @@ export function createEfekty() {
     gainWin = 0;
   };
 
-  // Co klatkę przed krokami fizyki: mnożnik tempa (zwolnienie po łuku; kroki stałe DT, więc tor lotu się nie zmienia).
+  // Co klatkę przed krokami fizyki: mnożnik tempa (zawsze 1; zwolnienie po łuku usunięte 21.10).
   fx.tick = function (dt) {
-    const ts = fx.slowT > 0 ? 0.35 : 1;
-    fx.slowT = Math.max(0, fx.slowT - dt);
     fx.flash = Math.max(0, fx.flash - dt * 2.5);
     gainWin = Math.max(0, gainWin - dt);
     if (fx.gain) {
@@ -95,7 +92,7 @@ export function createEfekty() {
       const n = Math.min(fx.eq.list.length - fx.eq.shown, Math.floor(eqPen));
       if (n > 0) { fx.eq.shown += n; eqPen -= n; fx.eq.ver++; }
     } else eqPen = 0;
-    return ts;
+    return 1;
   };
 
   // Co klatkę: przyrost MF za dystans dopisuje się co ≥ 1,5 s (gdy ≥ 3 MF i żaden łuk nie jest otwarty);
@@ -283,8 +280,7 @@ export function createEfekty() {
       addGain(f.bonus, true);   // kulki łuku już doliczone przy 'mf', tu tylko dopłata (razem = suma × f.mult)
       // Słupek na środku ekranu: wiersze dodawane po kolei, potem × mnożnik i wynik.
       fx.shake = Math.min(8, fx.shake + 2);
-      fx.flash = 1;            // błysk + krótkie zwolnienie (tylko tempo rysowania, fizyka bez zmian)
-      fx.slowT = 0.45;
+      fx.flash = 1;            // błysk bez zwolnienia czasu (21.10: piłka nie może wyglądać na hamującą)
     } else if (f.k === 'launch') {
       fx.eq.on = true;
     } else if (f.k === 'zone') {
