@@ -1,8 +1,8 @@
 // draw.js — całe rysowanie nakładki. Tylko canvas 2D, bez fizyki.
 // Canvas jest przezroczysty: rysujemy postać, procę, bomby, platformy i HUD,
 // a przyciemniona strona licznika przebija z pod spodu (jeden div w nakladka.js).
-import { GEOM, TICK, PICKUP_BASE, arcMult, previewShot } from './sim.js?v=67';
-import { mfFromMeters } from './items.js?v=67';
+import { GEOM, TICK, PICKUP_BASE, arcMult, arcPuffs, previewShot } from './sim.js?v=68';
+import { mfFromMeters } from './items.js?v=68';
 
 const TAU = Math.PI * 2;
 // Jeden pasek na środku u góry: dystans, MF za dystans, rekord, podrzuty. MF na żywo: równanie po lewej (drawMfLine).
@@ -539,8 +539,8 @@ function drawBrackets(r) {
     ctx.lineWidth = 2.5;
     ctx.strokeStyle = COLORS.green;
     ctx.stroke();
-    // pasek siedzi na szczycie klamry, wzdłuż rzędu; zwykły łuk +2 podrzuty, łuk z awatarem komplet (sim.js ARC_PUFFS_PLAIN)
-    drawLukPuffs(ctx, a.owner >= 0 ? sim.puffMax : 2, mx - ux * (hd + bd), my - uy * (hd + bd), ang);
+    // pasek siedzi na szczycie klamry, wzdłuż rzędu; kropki = ile podrzutów daje pełny łuk (sim.js arcPuffs)
+    drawLukPuffs(ctx, arcPuffs(a.owner), mx - ux * (hd + bd), my - uy * (hd + bd), ang);
   });
 }
 
