@@ -355,13 +355,13 @@ export function tierUpChance(mfTotal) {
 
 // Afiksy łańcuchem: pewne minimum, potem rzut na każdy kolejny (udany → rzut na następny).
 // p = baza + (sufit − baza)·MF/(MF + K): rośnie z MF, wyższe afiksy trudniejsze i wolniej rosną. Liczby tymczasowe.
-// Pierwszy rzut (2. magicznego, 4. rzadkiego) o połowę słabszy (decyzja użytkownika 20.10): baza 0,2, sufit 0,45
-// zamiast 0,4 / 0,9 → szanse na 4/5/6 rzadkiego dokładnie ×0,5 przy każdym MF.
+// Rzadki: 4. afiks najłatwiejszy, 5. trudniejszy, 6. najtrudniejszy przy każdym MF (decyzja użytkownika 21.10, cofa
+// połowienie pierwszego rzutu z 20.10, które odwróciło kolejność). 4.: 30% bez MF, ~46% przy 100, ~90% przy 2000, ~95% przy 4300.
 // Magiczny osobno, łatwiej niż 4. rzadkiego (decyzja użytkownika 20.10): 30% bez MF, ~65% przy 1000 MF.
 const CHAIN_TOP = 0.9;
 export const AFFIX_CHAIN = {
   m: { min: 1, next: [{ base: 0.3, k: 150, top: 0.7 }] },
-  r: { min: 3, next: [{ base: 0.2, k: 150, top: 0.45 }, { base: 0.25, k: 400 }, { base: 0.12, k: 1000 }] }
+  r: { min: 3, next: [{ base: 0.3, k: 340, top: 1 }, { base: 0.25, k: 400, top: 0.85 }, { base: 0.12, k: 1000, top: 0.7 }] }
 };
 export function nextAffixChances(rarity, mfTotal) {
   const ch = AFFIX_CHAIN[rarity];
