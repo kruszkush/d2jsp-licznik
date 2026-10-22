@@ -4,13 +4,13 @@
 // Importy UI z ?v= (ta sama wartość wszędzie, podbijana razem z ?v= w strona/index.html), żeby
 // przeglądarka nie mieszała nowych i starych modułów. Moduły UI importują też sim.js i replay.js z ?v=;
 // tylko replay.js importuje './sim.js' bez ?v= (deploy.sh podmienia ten import na serwerze).
-import { createGame } from './game.js?v=75';
-import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=75';
-import { createInventory } from './inventory.js?v=75';
-import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=75';
-import { createKonto, KONTO_CSS } from './konto.js?v=75';
-import { createRanking, mountPageRanking, RANKING_CSS } from './ranking.js?v=75';
-import { KARTA_CSS, renderHero, renderMf, renderDrop, itemBox } from './karta.js?v=75';
+import { createGame } from './game.js?v=76';
+import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=76';
+import { createInventory } from './inventory.js?v=76';
+import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=76';
+import { createKonto, KONTO_CSS } from './konto.js?v=76';
+import { createRanking, mountPageRanking, RANKING_CSS } from './ranking.js?v=76';
+import { KARTA_CSS, renderHero, renderMf, renderDrop, itemBox } from './karta.js?v=76';
 
 export const CSS = `;   // eksport tylko dla out/karta-stany.html (zrzuty stanów karty)
 .lotnik-fall{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:80}
@@ -256,7 +256,7 @@ function keepSpare() {
 // zamknięcie gry albo odświeżenie strony go nie gubi (resendPending przy starcie). Drugi /end tej samej partii
 // serwer odsyła jako zapisany (zgubiona odpowiedź), więc ponawianie jest bezpieczne.
 const PENDING_KEY = LS_PREFIX + 'lotnik.doWyslania';
-const TICKET_TTL_MS = 13 * 60 * 1000;    // serwer: 2 min celowania + 10 min lotu + 2 min zapasu (minuta luzu na zegary)
+const TICKET_TTL_MS = 25 * 60 * 1000;    // serwer (TICKET_TTL = 26 min): celowanie + lot przy tempie 0,5 + zapas; minuta luzu na zegary
 const RETRY_S = [1, 2, 4, 8, 15, 30];    // dalej co 30 s
 function pendingAll() {
   try { return JSON.parse(localStorage.getItem(PENDING_KEY) || '{}') || {}; } catch (err) { return {}; }
