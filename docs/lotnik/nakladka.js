@@ -4,13 +4,13 @@
 // Importy UI z ?v= (ta sama wartość wszędzie, podbijana razem z ?v= w strona/index.html), żeby
 // przeglądarka nie mieszała nowych i starych modułów. Moduły UI importują też sim.js i replay.js z ?v=;
 // tylko replay.js importuje './sim.js' bez ?v= (deploy.sh podmienia ten import na serwerze).
-import { createGame } from './game.js?v=76';
-import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=76';
-import { createInventory } from './inventory.js?v=76';
-import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=76';
-import { createKonto, KONTO_CSS } from './konto.js?v=76';
-import { createRanking, mountPageRanking, RANKING_CSS } from './ranking.js?v=76';
-import { KARTA_CSS, renderHero, renderMf, renderDrop, itemBox } from './karta.js?v=76';
+import { createGame } from './game.js?v=77';
+import { itemName, SLOT_ORDER, slotAccepts } from './items.js?v=77';
+import { createInventory } from './inventory.js?v=77';
+import { createEkwipunek, EKW_CSS } from './ekwipunek.js?v=77';
+import { createKonto, KONTO_CSS } from './konto.js?v=77';
+import { createRanking, mountPageRanking, RANKING_CSS } from './ranking.js?v=77';
+import { KARTA_CSS, renderHero, renderMf, renderDrop, itemBox } from './karta.js?v=77';
 
 export const CSS = `;   // eksport tylko dla out/karta-stany.html (zrzuty stanów karty)
 .lotnik-fall{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:80}
@@ -26,8 +26,6 @@ export const CSS = `;   // eksport tylko dla out/karta-stany.html (zrzuty stanó
 .lotnik-btn:hover{border-color:rgba(251,191,36,.85)}
 .lotnik-x,.lotnik-fs{width:35px;height:35px;padding:0;font-size:15px;line-height:1}
 .lotnik-card{position:absolute;left:50%;top:calc(50% + 24px);transform:translate(-50%,-50%);width:min(340px,calc(100vw - 32px));max-height:calc(100vh - 72px);max-height:calc(100dvh - 72px);overflow:auto;display:flex;flex-direction:column;box-sizing:border-box;background:rgba(15,23,42,.985);border:1px solid rgba(248,250,252,.22);border-radius:16px;padding:18px 16px 16px;text-align:center;color:#f8fafc;box-shadow:0 18px 50px rgba(0,0,0,.5);z-index:3;font:500 13px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-.lotnik-card .lt-win{margin-top:6px;font-size:15px;font-weight:700;color:#facc15;line-height:1.35}
-.lotnik-card .lt-win small{display:block;font-size:12px;font-weight:600;color:#fde68a}
 .lotnik-card .lt-meta{font-size:11px;color:#94a3b8;margin-top:4px;white-space:pre-line}
 .lotnik-card .lt-meta:empty{display:none}
 .lotnik-card .lt-meta-err{color:#fca5a5}
@@ -124,7 +122,7 @@ function topOwners(list) {
 }
 
 let layer = null, tip = null, dim = null, stage = null, canvas = null;
-let card = null, cardHero = null, cardWho = null, cardWin = null, cardMeta = null, cardMf = null;
+let card = null, cardHero = null, cardWho = null, cardMeta = null, cardMf = null;
 let curItem = null;
 let cardDrop = null, cardInv = null, konto = null, ranking = null, cardStatus = null;
 let nagrView = null, nagrFrame = null, nagrHead = null, eqPlay = null, eqRow = null;   // okienko z nagraniem lotu (▶ w rankingu)
@@ -256,7 +254,7 @@ function keepSpare() {
 // zamknięcie gry albo odświeżenie strony go nie gubi (resendPending przy starcie). Drugi /end tej samej partii
 // serwer odsyła jako zapisany (zgubiona odpowiedź), więc ponawianie jest bezpieczne.
 const PENDING_KEY = LS_PREFIX + 'lotnik.doWyslania';
-const TICKET_TTL_MS = 25 * 60 * 1000;    // serwer (TICKET_TTL = 26 min): celowanie + lot przy tempie 0,5 + zapas; minuta luzu na zegary
+const TICKET_TTL_MS = 23 * 3600 * 1000;  // serwer (TICKET_TTL = 24 h): lot nie ma limitu; godzina luzu na zegary
 const RETRY_S = [1, 2, 4, 8, 15, 30];    // dalej co 30 s
 function pendingAll() {
   try { return JSON.parse(localStorage.getItem(PENDING_KEY) || '{}') || {}; } catch (err) { return {}; }
@@ -273,13 +271,14 @@ function sendResult(onDone, onRetry) {
   const body = Object.assign({ g: run.ticket.g, inputs: run.inputs, ball: curItem ? { uid: curItem.uid, nick: curItem.nick } : null,
     dev: TOUCH ? 'm' : 'd' },
     inventory ? inventory.ident() : {});
-  const p = { body: body, until: (run.ticket.at || Date.now()) + TICKET_TTL_MS, meters: Math.floor(run.meters) };
+  const p = { body: body, until: (run.ticket.at || Date.now()) + TICKET_TTL_MS, meters: Math.floor(run.meters),
+    dur: Date.now() - (run.ticket.at || Date.now()) };   // czas od /start: powtórka długiego lotu na serwerze trwa dłużej
   pendingSet(run.ticket.gid, p);
   postPending(run.ticket.gid, p, 0, onDone, onRetry);
 }
 
 function postPending(gid, p, n, onDone, onRetry) {
-  apiPost('/end', p.body, 15000).then(function (r) {
+  apiPost('/end', p.body, 15000 + Math.floor((p.dur || 0) / 50)).then(function (r) {   // +1 s na 50 s lotu (powtórka jest ok. 3000× szybsza od gry)
     const again = !r.status || r.status >= 500 || r.status === 429;
     const wait = RETRY_S[Math.min(n, RETRY_S.length - 1)] * 1000;
     if (again && Date.now() + wait < p.until) {
@@ -351,11 +350,6 @@ function build() {
   card = el('div', 'lotnik-card');
   card.hidden = true;
   cardHero = el('div', 'lt-hcore');
-  // Lot do bezpiecznika 10 min: koniec gry, dalej się nie da.
-  cardWin = el('div', 'lt-win');
-  cardWin.appendChild(document.createTextNode('Koniec gry! Pokonałeś grę, gratulacje!'));
-  cardWin.appendChild(el('small', null, 'Doleciałeś do granicy 10 minut lotu, dalej się już nie da.'));
-  cardWin.hidden = true;
   cardMeta = el('div', 'lt-meta');
   cardMf = el('div', 'lt-mf');
   cardDrop = el('div', 'lt-drop');
@@ -384,7 +378,6 @@ function build() {
   hero.append(cardHero, cardMeta);
   cardHero.appendChild(who);
   card.appendChild(hero);
-  card.appendChild(cardWin);
   cardNew = el('div', 'lt-new', 'Jest nowa wersja gry.');
   cardNew.hidden = true;
   const reload = el('button', 'lotnik-btn', 'Odśwież');
@@ -697,7 +690,6 @@ function showResult(result) {
     if (kb == null) hero.wait = true; else hero.acc = { prev: kb };
   }
   renderHero(cardHero, hero, cardWho);
-  cardWin.hidden = !result.beaten;
   renderMf(cardMf, result.mf || 0, result.meters);
   pendingDrop = null;
   dropState = null;

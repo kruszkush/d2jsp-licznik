@@ -16,7 +16,8 @@ export const DT = 1 / 120;
 // v10: pełny łuk oddaje podrzuty: zwykły +2 (ARC_PUFFS_PLAIN), łuk 1.–3. miejsca komplet do puffMax.
 // v11: słabiej: pełny łuk zwykły +1, 3./2./1. miejsce +2/+3/+4 (arcPuffs).
 // v12: łuki o 60% rzadziej (odstęp ×2,5: 2250–6000 zamiast 900–2400).
-export const SIM_VER = 12;
+// v13: bez limitu lotu (wcześniej 10 min = koniec gry); lot kończy się tylko spoczynkiem.
+export const SIM_VER = 13;
 
 const GRAVITY = 1500;
 const AIR_DRAG = 0.22;          // opór powietrza (1/s)
@@ -28,7 +29,6 @@ const GROUND_FRICTION = 0.9;    // strata poziomej prędkości przy odbiciu
 const ROLL_FRICTION = 2.4;      // tarcie toczenia (1/s)
 const REST_SPEED = 36;          // poniżej tej prędkości uznajemy, że postać stoi
 const REST_STEPS = 48;          // 0,4 s stania = koniec partii
-export const MAX_FLY_STEPS = 120 * 600; // bezpiecznik: 10 min lotu = koniec gry, „Pokonałeś grę” na karcie
 const MAX_SPEED = 3800;         // sufit po łańcuchu bomb i boosterów (wyżej niż moc procy +35%)
 // MF w strefach (decyzja 19.10): kosmos +1, czerwień +2 co 0,3 s lotu w strefie (progi = połowa przejścia tła w draw.js).
 // Wyżej od v4 (prośba użytkownika 19.10: kosmos tam, gdzie była czerwień, czerwień dużo wyżej).
@@ -779,7 +779,7 @@ function collectPickups(s) {
   }
 }
 
-// Czyszczenie list (wydajność powtórki na serwerze: 10 min lotu = tysiące bomb i kulek).
+// Czyszczenie list (wydajność powtórki na serwerze: długi lot = tysiące bomb i kulek).
 // Bez zmiany wyniku: vx raz nieujemne już nigdy nie spada poniżej zera (podrzut dodaje,
 // bomba daje ≥ 80, pozostałe zmiany tylko mnożą przez dodatnie), więc x już nie maleje,
 // a obiekty dalej niż PRUNE_BACK za piłką i tak są pomijane (pętle: 400–500 jedn. za nią).
@@ -940,7 +940,7 @@ function flyStep(s, actions) {
   s.meters = Math.floor(s.dist / 12);
   if (s.flySteps % PRUNE_EVERY === 0) pruneBehind(s);
 
-  if (s.restCount > REST_STEPS || s.flySteps > MAX_FLY_STEPS) {
+  if (s.restCount > REST_STEPS) {
     s.phase = 'over';
   }
 }
