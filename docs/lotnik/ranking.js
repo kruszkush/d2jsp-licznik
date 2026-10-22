@@ -23,6 +23,8 @@ export const RANKING_CSS = `
 .lotnik-rank .lt-r-nick{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
 .lotnik-rank .lt-r-vf{font-size:10px;font-weight:700;color:#94a3b8}
 .lotnik-rank .lt-r-vf.ok{color:#4ade80}
+.lotnik-rank .lt-r-nick.ban{text-decoration:line-through!important;color:#94a3b8}
+.lotnik-rank .lt-r-vf.banned{color:#f87171;font-weight:800}
 .lotnik-rank .lt-r-m{font-weight:800;color:#fbbf24;flex:none;text-align:right}
 .lotnik-rank .lt-r-dev{font-size:12px;margin-right:5px;font-weight:400}
 .lotnik-rank .lt-r-plays{display:block;font-size:10px;color:#94a3b8;font-weight:500}
@@ -47,6 +49,8 @@ export const RANKING_CSS = `
 .lt-prank .lt-r-nick{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lt-prank .lt-r-vf{font-size:11px;font-weight:600;color:var(--mute)}
 .lt-prank .lt-r-vf.ok{color:#1f9d55}
+.lt-prank .lt-r-nick.ban{text-decoration:line-through;color:var(--mute)}
+.lt-prank .lt-r-vf.banned{color:#dc2626;font-weight:800}
 .lt-prank .lt-r-m{flex:none;text-align:right;font-variant-numeric:tabular-nums}
 .lt-prank .lt-r-dev{font-size:12px;margin-right:5px;opacity:.8;font-weight:400}
 .lt-prank .lt-r-plays{display:block;font-size:10.5px;color:var(--mute);font-weight:400}
@@ -98,8 +102,9 @@ function makeRows(el, token, avatars, onRow) {
     r.appendChild(el('span', 'lt-r-pos', e.rank + '.'));
     r.appendChild(avatar(e));
     const pn = el('span', 'lt-r-pn');
-    pn.appendChild(el('span', 'lt-r-nick', e.nick));
-    pn.appendChild(el('small', 'lt-r-vf' + (e.verified ? ' ok' : ''), e.verified ? 'verified' : 'unverified'));
+    pn.appendChild(el('span', 'lt-r-nick' + (e.ban ? ' ban' : ''), e.nick));
+    if (e.ban) pn.appendChild(el('small', 'lt-r-vf banned', 'BANNED'));
+    else pn.appendChild(el('small', 'lt-r-vf' + (e.verified ? ' ok' : ''), e.verified ? 'verified' : 'unverified'));
     r.appendChild(pn);
     const m = el('b', 'lt-r-m');
     if (e.dev === 'm' || e.dev === 'd') {
