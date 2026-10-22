@@ -147,7 +147,7 @@ function makeRows(el, token, avatars, onRow) {
     let note = 'Graczy: ' + p.total + '.';
     if (!token()) note += ' Zaloguj się po grze, żeby zobaczyć swoje miejsce.';
     else if (!me) note += ' Nie masz jeszcze wyniku w tym okresie.';
-    note += '\nLiczy się najlepszy lot konta. Konto niezweryfikowane znika z rankingu po 3 dniach.';
+    note += '\nLiczy się najlepszy lot konta. W rankingu tylko konta zweryfikowane.';
     box.appendChild(el(tag, 'lt-rank-note', note));
   }
 

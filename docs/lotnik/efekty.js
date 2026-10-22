@@ -1,8 +1,8 @@
 // efekty.js — efekty gry bez wpływu na fizykę: cząstki, wstrząs, błysk po łuku, duży zysk „+N”,
 // równanie MF na żywo. game.js woła on(f) dla każdego sim.fx, tick(dt), flight(sim, dt) i update(dt) co klatkę; draw.js czyta pola.
 // Jak dodać efekt: nowa gałąź `f.k` w on() (sim.js wypluwa zdarzenie w s.fx), pola rysuje draw.js.
-import { mfFromMeters, MF_PER_KM } from './items.js?v=78';
-import { COLORS } from './draw.js?v=78';
+import { mfFromMeters, MF_PER_KM } from './items.js?v=79';
+import { COLORS } from './draw.js?v=79';
 
 export function createEfekty() {
   const fx = {

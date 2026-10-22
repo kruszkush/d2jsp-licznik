@@ -169,8 +169,8 @@ export function createKonto(apiPost, el, avatars, status, onAuth, lsPrefix) {
   function daysLine(k, long) {
     const left = timeLeft(k);
     const line = el('div', 'lt-acc-msg lt-acc-how');
-    if (left == null) line.textContent = 'Masz 3 dni od założenia konta, inaczej wynik nie trafi do rankingu.';
-    else if (long) line.append('Na weryfikację zostały ', el('b', 'lt-acc-days', left), ', potem wynik zniknie z rankingu.');
+    if (left == null) line.textContent = 'Wynik trafi do rankingu po weryfikacji. Masz na nią 3 dni od założenia konta.';
+    else if (long) line.append('Wynik trafi do rankingu po weryfikacji. Zostały na nią ', el('b', 'lt-acc-days', left), '.');
     else line.append('Zostały ', el('b', 'lt-acc-days', left), '.');
     return line;
   }
