@@ -2,11 +2,11 @@
 
 Licznik postów z forum d2jsp (sekcja Polska) + gra „Lotnik” (kod i serwer w repo `lotnik`, publikacja `sh scripts/publikuj.sh test|podglad|prod` w tamtym repo; stan: `E:\Vibe coding\lotnik\STAN.md`). Strona: https://kruszkush.github.io/d2jsp-licznik/ (GitHub Pages — repo MUSI zostać publiczne). Bieżący stan zawsze czytaj z repo; liczby poniżej to historia.
 
-## Dwa automaty, dwa foldery
-- `E:\Vibe coding\d2jsp-licznik` — kopia robocza (tu edytujemy, commit + push).
-- `E:\Vibe coding\d2jsp-licznik-bot` — celowo osobny klon dla zadania Windows `d2jsp-licznik` (`scripts/pc-cron.vbs` → `pc-cron.ps1`); sync przed każdym przebiegiem, nie edytować ręcznie. Log: `E:\Vibe coding\_logi\d2jsp-licznik-bot.log`.
-- Zapasowa VM `d2jsp` (GCP, us-east1-b) USUNIĘTA celowo przez użytkownika (październik 2026, podejrzenie kosztów). Jedyne źródło danych = PC. `scripts/serwer-cron.sh` i źródło `server` w `state.json` zostały w kodzie, ale nic ich nie uruchamia.
-- Automat PC co ok. 2 h. Logika zapasu (historia): `serwer-cron.sh` pomijał przebieg, gdy `pcHealthy` (`scripts/pc-zdrowy.mjs`).
+## Automat i foldery
+- `E:\Vibe coding\d2jsp-licznik` — kopia robocza (tu edytujemy, commit + push). Na tym PC nie ma już automatu.
+- Automat (od 24.10.2026): drugi laptop z Linuxem w domu (stale włączony, dostęp SSH/RustDesk), cron → `scripts/serwer-cron.sh` w `~/d2jsp-licznik`, źródło `server` w `state.json` (commity „Dane: …”), co ok. 2 h + 21:05. Profil Chrome `~/.chrome-d2jsp` zalogowany na d2jsp (awatary); sekret Lotnika przez `LOTNIK_ENV`. Wylogowanie z d2jsp → ponowne logowanie w tym profilu przez RustDesk.
+- Dawny automat PC (zadanie Windows `d2jsp-licznik`, `scripts/pc-cron.ps1/.vbs`, klon `d2jsp-licznik-bot`) wyłączony 24.10.2026, klon usunięty. Źródło `pc` nieaktywne; `serwer-cron.sh` pomija przebieg tylko, gdy `pcHealthy` (`scripts/pc-zdrowy.mjs`) — przy wyłączonym PC zawsze pobiera.
+- VM `d2jsp` w GCP usunięta (październik 2026); GCP zostaje tylko dla serwerów gier.
 
 ## Zasady, których nie łamać (naprawy Codexa, 1.10.2026)
 - Blokada/backoff/status są osobne per źródło w `state.json.sources` — blokada Cloudflare serwera nie może zatrzymywać PC (wcześniej wspólny stan zatrzymał oba).
