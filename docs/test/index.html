@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Licznik postów d2jsp 17.5-test</title>
+<title>Licznik postów d2jsp 17.6-test</title>
 <style>
 :root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e4e2dc;--acc:#b4441f;--bar:#d9825f;
  --gold:#c9961a;--gold2:#f3d46b;--goldbg:#fff8e3;--goldline:#efd89a;--silver:#9aa0a6;--bronze:#b3713f}
@@ -331,7 +331,7 @@ function computeAll() {
       const x = by.get(p.key) || by.set(p.key, { p, users: new Map(), total: 0 }).get(p.key);
       x.users.set(u, (x.users.get(u) || 0) + 1); x.total++;
     }
-    const past = []; let current = null;
+    const past = []; let current = null, counting = null;
     for (const x of [...by.values()].sort((a, b) => b.p.start - a.p.start)) {
       x.rank = [...x.users].sort((a, b) => b[1] - a[1]);
       if (!P[t].ok(x.p)) continue;
@@ -341,10 +341,11 @@ function computeAll() {
         past.push(x);
         for (const u of x.winners) (cups.get(u) || cups.set(u, []).get(u)).push({ t, label: x.p.label });
       }
+      else if (x.p.end <= now && x.p.end > doneUpTo && !counting) counting = x; // okres już minął, ale nie ma jeszcze pełnego pobrania po jego końcu
     }
     const cp = P[t].of(now);
     if (!current) current = { p: cp, rank: [], total: 0, notYet: !P[t].ok(cp) };
-    res[t] = { past, current };
+    res[t] = { past, current, counting };
   }
   return res;
 }
@@ -378,14 +379,17 @@ function cupDom(id, t, x, leader) {
 function renderCups(R) {
   reign = new Set(R.m.past[0]?.winners || []); // fioletowy nick do czasu kolejnego mistrza miesiąca
   wchamp = new Set(R.w.past[0]?.winners || []); // złoty nick + plakietka w rankingu do kolejnego mistrza tygodnia
-  const last = R.w.past[0];
-  $('champ').innerHTML = last
+  const last = R.w.past[0], cnt = R.w.counting;
+  $('champ').innerHTML = cnt // po niedzieli 21:00, do pierwszego pełnego pobrania po końcu tygodnia
+    ? `${cupSvg('w', 'big')}<div class="lab">Mistrz tygodnia</div><div class="wk" title="${cnt.p.label}">${cnt.p.nice}</div>
+       <div class="who tbd">podliczanie wyników…</div><div class="meta">wynik pojawi się kilka minut po 21:00</div>`
+    : last
     ? `${cupSvg('w', 'big')}<div class="lab">Mistrz tygodnia</div><div class="wk" title="${last.p.label}">${last.p.nice}</div>
        <div class="who">${last.winners.map((u) => { const av = D.avatars?.[u]; return `<span class="rav champav"${av ? ` style="background-image:url('${esc(av)}')"` : ''}>${av ? '' : esc(nick(u)[0].toUpperCase())}</span>${link(u)}`; }).join(' & ')}</div>
        <div class="meta">${fmt(last.rank[0][1])} postów · ${Math.round(last.rank[0][1] / last.total * 100)}% całego tygodnia</div>`
     : `${cupSvg('w', 'big')}<div class="lab">Pierwszy puchar</div><div class="meta">zostanie przyznany po niedzieli</div>`;
 
-  cupDom('champ', 'w', last, false);
+  if (!cnt) cupDom('champ', 'w', last, false);
 
   // Mistrz miesiąca i roku: duże karty jak tygodnia; zwycięzca ostatniego okresu albo kto prowadzi w bieżącym
   const cap = (x) => x[0].toUpperCase() + x.slice(1);
