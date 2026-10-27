@@ -31,7 +31,6 @@ export const KONTO_CSS = `
 .lotnik-card .lt-acc-code:hover{background:rgba(248,113,113,.12)}
 .lotnik-card .lt-acc-go{background:#fbbf24;border-color:#fbbf24;color:#111827;font-weight:800}
 .lotnik-card .lt-acc-go:hover{background:#fcd34d}
-.lotnik-card .lt-acc-days{color:#fbbf24}
 .lotnik-card .lt-acc-wait{text-align:center;font-weight:700;font-size:12px;color:#fbbf24}
 .lotnik-card .lt-acc-tip{margin-top:7px;padding:6px 8px;border-radius:8px;background:rgba(248,113,113,.1);color:#fecaca;line-height:1.35}
 .lotnik-card .lt-acc-line{display:flex;justify-content:center;align-items:center;gap:6px;flex-wrap:wrap;margin-top:7px;color:#94a3b8}
@@ -159,21 +158,6 @@ export function createKonto(apiPost, el, avatars, status, onAuth, lsPrefix) {
   function verSet(k, v) {
     try { localStorage.setItem(verKey(k), JSON.stringify(v)); } catch (e) { /* tryb prywatny */ }
   }
-  // „Zostały 2 dni 14 h” do końca 3 dni od założenia (created z serwera); brak daty = null.
-  function timeLeft(k) {
-    if (!Number.isFinite(k.created)) return null;
-    const s = Math.max(0, k.created + 3 * 86400 - Date.now() / 1000);
-    const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600);
-    return d ? d + (d === 1 ? ' dzień ' : ' dni ') + h + ' h' : h + ' h';
-  }
-  function daysLine(k, long) {
-    const left = timeLeft(k);
-    const line = el('div', 'lt-acc-msg lt-acc-how');
-    if (left == null) line.textContent = 'Wynik trafi do rankingu po weryfikacji. Masz na nią 3 dni od założenia konta.';
-    else if (long) line.append('Wynik trafi do rankingu po weryfikacji. Zostały na nią ', el('b', 'lt-acc-days', left), '.');
-    else line.append('Zostały ', el('b', 'lt-acc-days', left), '.');
-    return line;
-  }
   function copyKod(k) {
     showAccount(copyText(k.kod) ? 'Kod ' + k.kod + ' skopiowany.' : 'Nie udało się skopiować, przepisz kod ręcznie.', false);
   }
@@ -219,7 +203,6 @@ export function createKonto(apiPost, el, avatars, status, onAuth, lsPrefix) {
       row.appendChild(button('Otwórz temat jeszcze raz', 'lt-acc-link', verify));
       box.appendChild(row);
       if (msg) box.appendChild(el('div', 'lt-acc-msg' + (err ? ' lt-acc-err' : ''), msg));
-      box.appendChild(daysLine(k, false));
       return;
     }
     box.appendChild(el('div', 'lt-acc-msg lt-acc-red lt-acc-head', '⚠ Konto niezweryfikowane'));
@@ -237,7 +220,7 @@ export function createKonto(apiPost, el, avatars, status, onAuth, lsPrefix) {
     const row = el('div', 'lt-acc-row');
     row.appendChild(button('Zweryfikuj', 'lt-acc-go', verify));
     box.appendChild(row);
-    box.appendChild(daysLine(k, true));
+    box.appendChild(el('div', 'lt-acc-msg lt-acc-how', 'Wynik trafi do rankingu po weryfikacji.'));
     const more = el('details', 'lt-acc-more');
     more.appendChild(el('summary', null, 'Jak to działa?'));
     const ul = el('ul');
