@@ -18,7 +18,7 @@ LIMIT=40m
 # „przed”: niedziela 20:35 bez losowego opóźnienia, twardo do 20:57, żeby 21:05 było wolne
 [ "${1:-}" = przed ] && LIMIT=22m
 # „ranking”: wyniki tygodnia mają być od razu — szybsze tempo (5–12 s) i jedna próba także w trakcie własnej przerwy po blokadzie
-[ "${1:-}" = ranking ] && export FORCE=1 D2_FAST=1
+[ "${1:-}" = ranking ] && export FORCE=1 D2_FAST=1 && LIMIT=15m
 timeout $LIMIT xvfb-run -a node scripts/update.mjs
 code=$?
 node scripts/sync.mjs publish "Dane: $(date +%F\ %H:%M)" || code=1
