@@ -11,8 +11,10 @@ import { VERIFY_T, queueCodes, lotnikSync } from './lotnik-sync.mjs';
 const F = Number(process.argv[2] || 230);
 const FILE = 'docs/data.json', STATE = 'state.json';
 const B = 'https://forums.d2jsp.org/';
-const GAP = () => SOURCE === 'pc' ? 3000 + Math.random() * 3000 : 5000 + Math.random() * 7000; // PC: 3–6 s, serwer: 5–12 s
-const MAX_PAGES = 70;       // limit podstron na przebieg (reszta w następnym)
+// serwer sprawdza co ~30 min, więc może czytać spokojnie jak człowiek: 20–60 s między podstronami
+const GAP = () => SOURCE === 'pc' ? 3000 + Math.random() * 3000 : 20000 + Math.random() * 40000; // PC: 3–6 s, serwer: 20–60 s
+const MAX_PAGES = SOURCE === 'pc' ? 70 : 40; // limit podstron na przebieg (reszta w następnym); serwer: 40 × ~40 s mieści się w timeout
+
 const FLOOR_OVERLAP = 6 * 3600e3; // dla tematów bez stanu: posty od (ostatni pełny przebieg − 6 h)
 
 const data = JSON.parse(readFileSync(FILE, 'utf8'));
