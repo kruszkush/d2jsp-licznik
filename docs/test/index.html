@@ -362,7 +362,7 @@ function updateNote() {
   const paused = sources.filter((s) => s.blockedUntil > now);
   if (sources.length && !alive.length) notes.push(paused.length ? `przerwa pobierania do ${new Date(Math.min(...paused.map((s) => s.blockedUntil))).toLocaleString('pl-PL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}` : 'pobieranie wstrzymane');
   const c = P.w.of(now);
-  $('raceNote').innerHTML = `Koniec: niedziela 21:00 (za ${until(c.end)})<br><b>Ostatnia aktualizacja:</b> ${when}<br>${notes.length ? notes.join(' · ') + '<br>' : ''}Automatyczne sprawdzanie co ok. 2 h.`;
+  $('raceNote').innerHTML = `Koniec: niedziela 21:00 (za ${until(c.end)})<br><b>Ostatnia aktualizacja:</b> ${when}<br>${notes.length ? notes.join(' · ') + '<br>' : ''}Automatyczne sprawdzanie co ok. 30 min (w nocy raz między 1:30 a 5:30).`;
 }
 setInterval(() => { if (D) updateNote(); }, 60000);
 
