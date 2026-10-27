@@ -354,15 +354,10 @@ const until = (ms) => { const l = ms - Date.now(), d = Math.floor(l / day), h = 
 function updateNote() {
   const up = new Date(D.updated), now = Date.now(), today = ymd(now) === ymd(up), yest = ymd(now - day) === ymd(up);
   const when = `${today ? 'dziś' : yest ? 'wczoraj' : up.toLocaleDateString('pl-PL')} ${up.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}`;
-  const sources = Object.values(D.collection?.sources || {}), notes = [];
+  const notes = [];
   if (now - up.getTime() > 3 * 3600e3) notes.push('aktualizacja opóźniona');
-  if ((D.complete || 0) < up.getTime() - 15 * 60e3) notes.push('dane mogą być niepełne — trwa uzupełnianie');
-  // ostrzeżenie tylko, gdy żadne źródło nie działa (PC nieaktualny > 4 h też się nie liczy)
-  const alive = sources.filter((s) => !(s.blockedUntil > now) && now - (s.okAt || s.finishedAt || 0) < 4 * 3600e3);
-  const paused = sources.filter((s) => s.blockedUntil > now);
-  if (sources.length && !alive.length) notes.push(paused.length ? `przerwa pobierania do ${new Date(Math.min(...paused.map((s) => s.blockedUntil))).toLocaleString('pl-PL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}` : 'pobieranie wstrzymane');
   const c = P.w.of(now);
-  $('raceNote').innerHTML = `Koniec: niedziela 21:00 (za ${until(c.end)})<br><b>Ostatnia aktualizacja:</b> ${when}<br>${notes.length ? notes.join(' · ') + '<br>' : ''}Automatyczne sprawdzanie co ok. 30 min (w nocy raz między 1:30 a 5:30).`;
+  $('raceNote').innerHTML = `Koniec: niedziela 21:00 (za ${until(c.end)})<br><b>Ostatnia aktualizacja:</b> ${when}<br>${notes.join(' · ')}`;
 }
 setInterval(() => { if (D) updateNote(); }, 60000);
 
