@@ -11,6 +11,7 @@ import { VERIFY_T, queueCodes, lotnikSync } from './lotnik-sync.mjs';
 const F = Number(process.argv[2] || 230);
 const FILE = 'docs/data.json', STATE = 'state.json';
 const B = 'https://forums.d2jsp.org/';
+const SOURCE = process.env.D2_SOURCE || (process.platform === 'win32' ? 'pc' : 'server');
 // serwer sprawdza co ~30 min, więc może czytać spokojnie jak człowiek: 20–60 s między podstronami
 const GAP = () => SOURCE === 'pc' ? 3000 + Math.random() * 3000 : process.env.D2_FAST ? 5000 + Math.random() * 7000 : 20000 + Math.random() * 40000; // PC: 3–6 s, serwer: 20–60 s (niedzielny ranking: 5–12 s)
 const MAX_PAGES = SOURCE === 'pc' ? 70 : 40; // limit podstron na przebieg (reszta w następnym); serwer: 40 × ~40 s mieści się w timeout
@@ -21,7 +22,6 @@ const data = JSON.parse(readFileSync(FILE, 'utf8'));
 const st = existsSync(STATE) ? JSON.parse(readFileSync(STATE, 'utf8')) : { topics: {} };
 const START = Date.now();
 const LOTNIK = process.env.LOTNIK_SYNC || ''; // adres serwera Lotnika (scripts/lotnik-sync.mjs); puste = wyłączone
-const SOURCE = process.env.D2_SOURCE || (process.platform === 'win32' ? 'pc' : 'server');
 const src = sourceState(st, SOURCE);
 const report = (status, reason = '') => {
   Object.assign(src, { lastAttempt: START, status, reason, finishedAt: Date.now() });
