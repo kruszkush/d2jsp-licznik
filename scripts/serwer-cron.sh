@@ -1,12 +1,13 @@
 #!/bin/bash
-# Uruchamiane z crona na laptopie (co 30 min o losowej minucie, w nocy jeden przebieg między 1:30 a 5:30). Po blokadzie skrypt sam robi przerwę (state.json).
+# Uruchamiane z crona na laptopie (co 30 min o losowej minucie, w nocy jeden przebieg między 1:30 a 5:30, w niedzielę dokładnie o 21:05 „ranking”). Po blokadzie skrypt sam robi przerwę (state.json).
 # Chrome ma trwały profil (~/.chrome-d2jsp), więc zapamiętuje przejście sprawdzenia przeglądarki jak u zwykłego użytkownika.
 set -u
 cd "$HOME/d2jsp-licznik" || exit 1
 # Przed przebiegiem pobieramy świeży kod i scalamy lokalny postęp z GitHubem,
 # zachowując posty oraz osobne przerwy obu źródeł. Potem uruchamiamy świeży skrypt.
 if [ -z "${D2_SYNCED:-}" ]; then
-  exec 9>/tmp/d2jsp.lock; flock -n 9 || exit 0
+  # „ranking” (niedziela 21:05, koniec tygodniowego rankingu) nie może przepaść: czeka, aż poprzedni przebieg się skończy
+  exec 9>/tmp/d2jsp.lock; if [ "${1:-}" = ranking ]; then flock -w 3000 9; else flock -n 9; fi || exit 0
   node scripts/sync.mjs prepare || exit 1
   D2_SYNCED=1 exec bash "$0" "$@"
 fi
