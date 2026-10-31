@@ -3,6 +3,13 @@
 # Chrome ma trwały profil (~/.chrome-d2jsp), więc zapamiętuje przejście sprawdzenia przeglądarki jak u zwykłego użytkownika.
 set -u
 cd "$HOME/d2jsp-licznik" || exit 1
+# Ostatni dzień miesiąca (także roku) kończy się o 21:00 jak niedziela (patrz edge() na stronie): zwykłe przebiegi 20:35 i 21:05 stają się „przed” i „ranking”.
+if [ "${1:-}" = los ] && [ "$(TZ=Europe/Warsaw date -d tomorrow +%d)" = 01 ]; then
+  case "$(TZ=Europe/Warsaw date +%H:%M)" in
+    20:3[5-9]) set -- przed ;;
+    21:0[5-9]) set -- ranking ;;
+  esac
+fi
 # Przed przebiegiem pobieramy świeży kod i scalamy lokalny postęp z GitHubem,
 # zachowując posty oraz osobne przerwy obu źródeł. Potem uruchamiamy świeży skrypt.
 if [ -z "${D2_SYNCED:-}" ]; then

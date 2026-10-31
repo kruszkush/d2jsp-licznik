@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Licznik postów d2jsp 17.6-test</title>
+<title>Licznik postów d2jsp 17.7-test</title>
 <style>
 :root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e4e2dc;--acc:#b4441f;--bar:#d9825f;
  --gold:#c9961a;--gold2:#f3d46b;--goldbg:#fff8e3;--goldline:#efd89a;--silver:#9aa0a6;--bronze:#b3713f}
@@ -389,16 +389,18 @@ function renderCups(R) {
   // Mistrz miesiąca i roku: duże karty jak tygodnia; zwycięzca ostatniego okresu albo kto prowadzi w bieżącym
   const cap = (x) => x[0].toUpperCase() + x.slice(1);
   for (const t of ['m', 'y']) {
-    const { past, current: c } = R[t], won = past[0];
+    const { past, current: c, counting: cnt } = R[t], won = past[0];
     const upcoming = c.notYet ? P[t].of(plMidnight((t === 'm' ? FIRST_MONTH + '-01' : START)) + 3600e3) : c.p;
     const standings = !c.notYet && c.rank.length
-      ? `<div class="lead"><span>${won ? cap(c.p.label) + ' · w toku' : 'na czele'}</span>${c.rank.slice(0, 5).map(([u, n], i) => `<div class="ld"><span class="ldn">${i + 1}. ${link(u)}</span><span class="ldv">${fmt(n)}</span></div>`).join('')}</div>` : '';
-    const head = `${cupSvg(t, 'big')}<div class="lab">Mistrz ${TYPE[t].name}${t === 'y' ? ' ' + (won ? won.p : upcoming).key : ''}</div>`;
-    const body = won
+      ? `<div class="lead"><span>${won || cnt ? cap(c.p.label) + ' · w toku' : 'na czele'}</span>${c.rank.slice(0, 5).map(([u, n], i) => `<div class="ld"><span class="ldn">${i + 1}. ${link(u)}</span><span class="ldv">${fmt(n)}</span></div>`).join('')}</div>` : '';
+    const head = `${cupSvg(t, 'big')}<div class="lab">Mistrz ${TYPE[t].name}${t === 'y' ? ' ' + (cnt || won ? (cnt || won).p : upcoming).key : ''}</div>`;
+    const body = cnt // po 21:00 ostatniego dnia okresu, do pierwszego pełnego pobrania po jego końcu
+      ? `${t === 'y' ? '' : `<div class="wk">${cap(cnt.p.label)}</div>`}<div class="who tbd">podliczanie wyników…</div><div class="meta">wynik pojawi się kilka minut po 21:00</div>`
+      : won
       ? `${t === 'y' ? '' : `<div class="wk">${cap(won.p.label)}</div>`}<div class="who">${won.winners.map(link).join(' & ')}</div><div class="meta">${fmt(won.rank[0][1])} postów · ${Math.round(won.rank[0][1] / won.total * 100)}% całego okresu</div>`
       : `${t === 'y' ? (upcoming.label.includes('od') ? `<div class="wk">liczony od ${dm(START)}</div>` : '') : `<div class="wk">${cap(upcoming.label)}</div>`}<div class="who tbd">jeszcze nieznany</div><div class="meta">${c.notYet ? 'liczenie od ' + (t === 'm' ? '1.10' : dm(START)) : 'przyznanie za ' + until(c.p.end)}</div>`;
     $('champ' + t.toUpperCase()).innerHTML = head + body + standings;
-    cupDom('champ' + t.toUpperCase(), t, won || (c.notYet ? null : c), !won);
+    if (!cnt) cupDom('champ' + t.toUpperCase(), t, won || (c.notYet ? null : c), !won);
   }
 
   const c = R.w.current, lead = c.rank[0]?.[1] || 1;
