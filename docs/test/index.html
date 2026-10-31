@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Licznik postów d2jsp 17.7-test</title>
+<title>Licznik postów d2jsp 17.8-test</title>
 <style>
 :root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e4e2dc;--acc:#b4441f;--bar:#d9825f;
  --gold:#c9961a;--gold2:#f3d46b;--goldbg:#fff8e3;--goldline:#efd89a;--silver:#9aa0a6;--bronze:#b3713f}
@@ -61,6 +61,7 @@ a{color:var(--ink);text-decoration:none}a:hover{color:var(--acc)}
 .domtag{margin-left:6px;font-size:11px;padding:1px 6px;border-radius:6px;background:var(--gold);color:#fff;white-space:nowrap}
 .wch a{color:var(--gold)!important;font-weight:600}
 .wtag{margin-left:6px;font-size:11px;padding:1px 7px;border-radius:9px;background:rgba(201,150,26,.15);color:var(--gold);border:1px solid rgba(201,150,26,.4);white-space:nowrap}.wtag svg{vertical-align:-2px} /* aktualny mistrz tygodnia w rankingu */
+.mtag{margin-left:6px;font-size:11px;padding:1px 7px;border-radius:9px;background:rgba(155,93,229,.15);color:#b98cff;border:1px solid rgba(155,93,229,.5);white-space:nowrap}.mtag svg{vertical-align:-2px} /* panujący mistrz miesiąca w rankingu */
 @keyframes domPulse{0%,100%{--gc:var(--goldline)}50%{--gc:color-mix(in srgb,var(--goldline) 65%,var(--gold))}}
 @keyframes domShine{from{background-position:100% 0}to{background-position:0 0}}
 body.playing #rankCard.dom tr.lead,body.playing #rankCard.dom tr.lead td{animation:none}
@@ -158,14 +159,10 @@ aside{position:sticky;top:16px}
 .ystar{color:#3fb0d8;margin-left:4px;text-shadow:0 0 6px rgba(63,176,216,.6);cursor:default}
 .reign a,.reign{color:#b98cff!important;font-weight:700;text-shadow:0 0 8px rgba(155,93,229,.75)}
 .cup.fire{width:1em;height:1.22em;vertical-align:-.2em;overflow:visible}
-.cup.fire .fl{transform-origin:32px 12px;animation:flick .45s ease-in-out infinite alternate}
-@keyframes flick{from{transform:scale(.92,.86)}to{transform:scale(1.05,1.08)}}
-@media (prefers-reduced-motion:reduce){.cup.fire .fl{animation:none}}
-.firew{position:relative;display:inline-block}
-.cup.fire{}
-.cup.fire .fl{animation:flick .4s ease-in-out infinite alternate}
+.cup.fire .fl{transform-origin:32px 12px;animation:flick .4s ease-in-out infinite alternate}
 @keyframes flick{from{transform:scale(.9,.84) skewX(-3deg)}to{transform:scale(1.06,1.1) skewX(3deg)}}
-.lavadrop{position:fixed;left:0;top:0;width:2.5px;height:2.5px;border-radius:50%;background:#ff4a1a;box-shadow:0 0 3px 1px rgba(255,60,10,.7);pointer-events:none;z-index:39}
+@media (prefers-reduced-motion:reduce){.cup.fire .fl{animation:none}}
+.lavadrop{position:fixed;left:0;top:0;width:2.5px;height:2.5px;border-radius:50%;pointer-events:none;z-index:39}.lavadrop.fm{background:#a86bf0;box-shadow:0 0 3px 1px rgba(155,93,229,.7)}.lavadrop.fw{background:#e0ad2a;box-shadow:0 0 3px 1px rgba(201,150,26,.7)}
 #snowfall{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:38;--sf:#8fb6d9} /* śnieg na /test/: drobne płatki nad treścią, pod grą i oknami (z-index 40+) */
 @media (prefers-color-scheme:dark){#snowfall{--sf:#eef6ff}}
 #snowfall i{position:absolute;top:0;left:0;border-radius:50%;background:var(--sf);will-change:transform;contain:layout}
@@ -210,22 +207,12 @@ aside{position:sticky;top:16px}
       <path d="M17 46h30l3 11H14z" fill="url(#gy)"/>
       <path d="M32 16l6 7-6 9-6-9z" fill="#fff" fill-opacity=".85"/>
     </symbol>
-    <linearGradient id="gred" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7a4d"/><stop offset=".55" stop-color="#e3261b"/><stop offset="1" stop-color="#7d0a06"/></linearGradient>
-    <linearGradient id="glava" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd23f"/><stop offset=".35" stop-color="#ff6a1a"/><stop offset="1" stop-color="#c41808"/></linearGradient>
-    <symbol id="cupR" viewBox="0 0 64 64">
-      <path d="M18 8h28v14c0 9-6 16-14 16S18 31 18 22z" fill="url(#gred)"/>
-      <path d="M18 12H9c0 10 5 15 11 16M46 12h9c0 10-5 15-11 16" fill="none" stroke="#b3140c" stroke-width="4" stroke-linecap="round"/>
-      <path d="M28 37h8l2 10H26z" fill="#b3140c"/><rect x="20" y="47" width="24" height="8" rx="2" fill="url(#gred)"/>
-      <path d="M25 13c0 6 1 11 4 15" stroke="#fff" stroke-opacity=".4" stroke-width="3" fill="none" stroke-linecap="round"/>
-      <path d="M17 8h30c0 3-2 4-4 4H21c-2 0-4-1-4-4z" fill="url(#glava)"/>
-      <path d="M21 10c-2 0-3 2-3 5v8c0 2 1 3 2 3s2-1 2-3v-8z" fill="url(#glava)"/>
-    </symbol>
   </defs>
 </svg>
 <div class="vtop" id="vtop"></div>
 <div class="wrap">
 <main>
-<h1>Licznik postów — d2jsp Polska <span class="ver">17.5-test</span></h1>
+<h1>Licznik postów — d2jsp Polska <span class="ver">17.8-test</span></h1>
 <p class="sub" id="sub">Ładowanie danych…</p>
 
 <div class="ranges" id="ranges">
@@ -311,13 +298,14 @@ const P = {
 for (const t of Object.keys(P)) { const of = P[t].of, memo = new Map(); P[t].of = (ms) => { const h = Math.floor(ms / 3600e3); let v = memo.get(h); if (!v) memo.set(h, v = of(ms)); return v; }; }
 const TYPE = { w: { name: 'tygodnia', sym: 'cup' }, m: { name: 'miesiąca', sym: 'cupM' }, y: { name: 'roku', sym: 'cupY' } };
 const cupSvg = (t = 'w', cls = 'cup') => `<svg class="${cls}"><use href="#${TYPE[t].sym}"/></svg>`;
+const fireCup = (cls, sym, a, b, c) => `<svg class="cup fire ${cls}" viewBox="0 -14 64 78"><g class="fl"><path d="M32 -12c5 8 13 12 13 23a13 13 0 0 1-26 0c0-7 4-10 5-16 2 5 4 6 5 8 1-5 1-9 3-15z" fill="${a}"/><path d="M32 0c3 5 8 8 8 14a8 8 0 0 1-16 0c0-4 2-7 4-10 1 2 2 3 3 4z" fill="${b}"/><path d="M32 8c2 3 4 4 4 7a4 4 0 0 1-8 0c0-2 1-4 2-5z" fill="${c}"/></g><use href="#${sym}"/></svg>`;
+const FIRE_M = fireCup('fm', 'cupM', '#7b3fd1', '#b98cff', '#f0e2ff'), FIRE_W = fireCup('fw', 'cup', '#c9961a', '#f3c93a', '#fff3b8');
 
-// Odznaki przy nicku w rankingu: puchary (rok, płonące za miesiąc — każdy zamienia jeden złoty, złote za tydzień) i gwiazdka roku za nickiem
-const FIRE = `<span class="firew"><svg class="cup fire" viewBox="0 -14 64 78"><g class="fl"><path d="M32 -12c5 8 13 12 13 23a13 13 0 0 1-26 0c0-7 4-10 5-16 2 5 4 6 5 8 1-5 1-9 3-15z" fill="#e3140a"/><path d="M32 0c3 5 8 8 8 14a8 8 0 0 1-16 0c0-4 2-7 4-10 1 2 2 3 3 4z" fill="#ff7a1a"/><path d="M32 8c2 3 4 4 4 7a4 4 0 0 1-8 0c0-2 1-4 2-5z" fill="#ffd23f"/></g><use href="#cupR"/></svg></span>`;
+// Odznaki przy nicku w rankingu: puchary (płonące fioletowe za miesiąc jako pierwsze, rok, złote za tydzień — każdy tytuł miesiąca przekształca jeden w płonący) i gwiazdka roku za nickiem
 function nickBadges(u) {
   const c = cups.get(u) || [], n = (t) => c.filter((k) => k.t === t).length, y = n('y'), m = n('m'), w = n('w');
   const title = c.map((k) => 'Mistrz ' + TYPE[k.t].name + ': ' + k.label).join(', ');
-  const icons = cupSvg('y').repeat(y) + FIRE.repeat(m) + cupSvg('w').repeat(Math.max(0, w - m));
+  const icons = FIRE_M.repeat(m) + cupSvg('y').repeat(y) + FIRE_W.repeat(Math.min(m, w)) + cupSvg('w').repeat(Math.max(0, w - m));
   return `<span class="${reign.has(u) ? 'reign' : ''}"${reign.has(u) ? ' title="Panujący mistrz miesiąca"' : ''}>${link(u)}</span>${y ? '<span class="ystar" title="Mistrz roku">★</span>' : ''}${icons ? `<span class="mini" title="${esc(title)}">${icons}</span>` : ''}`;
 }
 function computeAll() {
@@ -459,7 +447,7 @@ $('chart').addEventListener('mouseover', (e) => { const c = e.target.closest('.c
 $('chart').addEventListener('mouseleave', () => { $('pie').hidden = true; });
 $('chart').addEventListener('click', (e) => { const c = e.target.closest('.col'); if (c) showPie(c); });
 document.addEventListener('scroll', () => { $('pie').hidden = true; }, { passive: true });
-// Czerwony "śnieg": z płonących pucharów po trochu sypią się malutkie żarzące drobinki (jedna pętla animacji na wszystkie)
+// Z płonących pucharów po trochu sypią się iskry w ich kolorze (jedna pętla animacji na wszystkie)
 (() => {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const parts = [];
@@ -468,7 +456,7 @@ document.addEventListener('scroll', () => { $('pie').hidden = true; }, { passive
     for (const c of [...document.querySelectorAll('.cup.fire')].slice(0, 4)) {
       const r = c.getBoundingClientRect();
       if (!r.width || r.bottom < 0 || r.top > innerHeight) continue;
-      const d = document.createElement('div'); d.className = 'lavadrop'; document.body.appendChild(d);
+      const d = document.createElement('div'); d.className = 'lavadrop ' + (c.classList.contains('fw') ? 'fw' : 'fm'); document.body.appendChild(d);
       parts.push({ d, x0: r.left + r.width * (.25 + Math.random() * .5), y0: r.top + r.height * (.45 + Math.random() * .4), fall: 25 + Math.random() * 45, dur: 1600 + Math.random() * 1400, sway: (Math.random() - .5) * 14, t0: performance.now() });
     }
   }, 380);
@@ -527,12 +515,12 @@ document.getElementById('legendSlot').outerHTML = `<footer class="legend">
   <div class="lg">
     <div><span class="ic">@Y@</span><p><b>Puchar roku</b><span>najwięcej postów w całym roku</span></p></div>
     <div><span class="ic"><span class="ystar" style="margin:0">★</span></span><p><b>Błękitna gwiazdka</b><span>przy nicku na zawsze, za każdy tytuł mistrza roku</span></p></div>
-    <div><span class="ic">@F@</span><p><b>Płonący puchar</b><span>każdy tytuł mistrza miesiąca zamienia jeden złoty puchar w płonący</span></p></div>
-    <div><span class="ic">@M@</span><p><b>Puchar miesiąca</b><span>najwięcej postów w miesiącu</span></p></div>
+    <div><span class="ic">@M@</span><p><b>Puchar miesiąca</b><span>najwięcej postów w miesiącu; zostaje na stałe i stoi przy nicku jako pierwszy</span></p></div>
+    <div><span class="ic">@D@</span><p><b>Płonący złoty puchar</b><span>każdy tytuł mistrza miesiąca przekształca jeden złoty puchar w płonący</span></p></div>
     <div><span class="ic"><span class="reign">Nick</span></span><p><b>Fioletowy nick</b><span>panujący mistrz miesiąca, do czasu kolejnego mistrza</span></p></div>
     <div><span class="ic">@W@</span><p><b>Puchar tygodnia</b><span>najwięcej postów od niedzieli 21:00 do niedzieli 21:00</span></p></div>
   </div>
-</footer>`.replace('@Y@', cupSvg('y')).replace('@M@', cupSvg('m')).replace('@F@', FIRE).replace('@W@', cupSvg('w'));
+</footer>`.replace('@Y@', cupSvg('y')).replace('@M@', FIRE_M).replace('@D@', FIRE_W).replace('@W@', cupSvg('w'));
 
 fetch('../data.json?' + Date.now()).then((r) => r.json()).then((d) => {
   D = d;
@@ -617,7 +605,7 @@ function render() {
   $('rows').innerHTML = rank.map((x, i) => ({ x, i }))
     .filter(({ x, i }) => q ? nick(x.u).toLowerCase().includes(q) : i < 15) // bez szukania tylko top 15; szukanie obejmuje wszystkich
     .map(({ x, i }) => { const c = cups.get(x.u);
-      return `<tr${dom && !i ? ' class="lead"' : ''}><td>${i+1}</td><td>${(() => { const av = D.avatars?.[x.u]; return `<span class="rav"${av ? ` style="background-image:url('${esc(av)}')"` : ''}>${av ? '' : esc(nick(x.u)[0].toUpperCase())}</span>`; })()}${wchamp.has(x.u) ? `<span class="wch">${nickBadges(x.u)}</span><span class="wtag">${cupSvg('w')} Mistrz tygodnia</span>` : nickBadges(x.u)}${dom && !i ? `<span class="domtag" title="Przewaga nad 2. miejscem">+${fmt(lead)} przewagi</span>` : ''}</td><td class="n">${fmt(x.n)}</td><td class="n">${x.t.size}</td><td class="w"><div class="share" style="width:${x.n/top*100}%" title="${(x.n/posts.length*100).toFixed(1)}%"></div></td></tr>`; }).join('')
+      return `<tr${dom && !i ? ' class="lead"' : ''}><td>${i+1}</td><td>${(() => { const av = D.avatars?.[x.u]; return `<span class="rav"${av ? ` style="background-image:url('${esc(av)}')"` : ''}>${av ? '' : esc(nick(x.u)[0].toUpperCase())}</span>`; })()}${wchamp.has(x.u) ? `<span class="wch">${nickBadges(x.u)}</span>` : nickBadges(x.u)}${reign.has(x.u) ? `<span class="mtag">${cupSvg('m')} Mistrz miesiąca</span>` : ''}${wchamp.has(x.u) ? `<span class="wtag">${cupSvg('w')} Mistrz tygodnia</span>` : ''}${dom && !i ? `<span class="domtag" title="Przewaga nad 2. miejscem">+${fmt(lead)} przewagi</span>` : ''}</td><td class="n">${fmt(x.n)}</td><td class="n">${x.t.size}</td><td class="w"><div class="share" style="width:${x.n/top*100}%" title="${(x.n/posts.length*100).toFixed(1)}%"></div></td></tr>`; }).join('')
     || '<tr><td colspan="5" style="color:var(--mute)">Brak postów w tym zakresie.</td></tr>';
 
   // zakres do 2 dni: słupki co godzinę (dzienne dałyby tylko 1–2 słupki)
