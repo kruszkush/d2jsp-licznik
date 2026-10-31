@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { mergeData, mergeState } from './collector.mjs';
 const files = ['docs/data.json', 'state.json'];
 function git(args, allowed = [0], quiet = false) {
-  const r = spawnSync('git', args, { encoding: 'utf8' });
+  const r = spawnSync('git', args, { encoding: 'utf8', maxBuffer: Infinity }); // domyślny limit 1 MiB: data.json go przekroczył (ENOBUFS)
   if (!quiet) { if (r.stdout) process.stdout.write(r.stdout); if (r.stderr) process.stderr.write(r.stderr); }
   if (r.error || !allowed.includes(r.status)) throw new Error(`git ${args[0]}: ${r.error?.message || r.stderr || r.status}`);
   return r;
