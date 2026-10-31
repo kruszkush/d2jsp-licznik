@@ -14,7 +14,8 @@ fi
 # zachowując posty oraz osobne przerwy obu źródeł. Potem uruchamiamy świeży skrypt.
 if [ -z "${D2_SYNCED:-}" ]; then
   # „ranking” (niedziela 21:05): przebieg „przed” (20:35) kończy się przed 21:00, więc blokada jest wolna; 5 min zapasu
-  exec 9>/tmp/d2jsp.lock; if [ "${1:-}" = ranking ]; then flock -w 300 9; else flock -n 9; fi || exit 0
+  # „przed” czeka do 2 min na kończący się przebieg z 20:05; pominięcie zostawia ślad w logu
+  exec 9>/tmp/d2jsp.lock; case "${1:-}" in ranking) flock -w 300 9 ;; przed) flock -w 120 9 ;; *) flock -n 9 ;; esac || { echo "$(date '+%F %T') pominięto ${1:-}: poprzedni przebieg jeszcze trwa"; exit 0; }
   node scripts/sync.mjs prepare || exit 1
   D2_SYNCED=1 exec bash "$0" "$@"
 fi
@@ -22,6 +23,10 @@ export TZ=Europe/Warsaw PROFILE="$HOME/.chrome-d2jsp" D2_SOURCE=server
 [ "${1:-}" = los ] && sleep $((RANDOM % 600))   # 0–10 min
 [ "${1:-}" = noc ] && sleep $((RANDOM % 14400)) # 0–4 h (1:30–5:30)
 LIMIT=40m
+# Dzień zamknięcia (niedziela, ostatni dzień miesiąca): przebieg z 20:05 kończy się do 20:32, żeby nie zająć blokady przebiegowi „przed”
+if [ "${1:-}" = los ] && { [ "$(date +%u)" = 7 ] || [ "$(date -d tomorrow +%d)" = 01 ]; } && [ "$(date +%H)" = 20 ] && [ "$(date +%-M)" -lt 32 ]; then
+  LIMIT=$(( $(date -d 20:32 +%s) - $(date +%s) ))s
+fi
 # „przed”: niedziela 20:35 bez losowego opóźnienia, twardo do 20:57, żeby 21:05 było wolne
 [ "${1:-}" = przed ] && LIMIT=22m
 # „ranking”: wyniki tygodnia mają być od razu — szybsze tempo (5–12 s) i jedna próba także w trakcie własnej przerwy po blokadzie
