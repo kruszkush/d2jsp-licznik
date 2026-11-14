@@ -229,7 +229,7 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
   SLOT.innerHTML =
     // Bez nagłówka „Telemark: Skocznie dnia” (Mateusz 14.11: „nie wiadomo, o co chodzi”); przycisk mówi, co robi.
     '<div class="tm-head"><button type="button" class="tm-play">Telemark – zagraj</button>' +
-    '<span class="tm-rules">3 nowe skocznie dziennie, ten sam wiatr dla wszystkich. Tydzień: 5 najlepszych dni, miesiąc: 20, rok: 200. ▶ odtwarza najlepszy skok (dzisiejsze od jutra), nick pokazuje wszystkie skoki.</span></div>' +
+    '<span class="tm-rules">3 nowe skocznie codziennie o północy, ten sam wiatr dla wszystkich. Tydzień: 5 najlepszych dni, miesiąc: 20, rok: 200. ▶ odtwarza najlepszy skok (dzisiejsze od jutra), nick pokazuje wszystkie skoki.</span></div>' +
     (DEMO ? '<p class="tm-demo">Podgląd z przykładowymi danymi (adres z ?tmdemo).</p>' : "") +
     '<div id="tm-body"><p class="empty">Ładowanie wyników Telemarka…</p></div>';
   SLOT.querySelector(".tm-play").addEventListener("click", () => open(""));
