@@ -23,6 +23,7 @@
 #telemark h3{font-size:14px;margin:8px 0 4px}
 #telemark .tm-prev{font-size:13px;color:var(--mute);margin:0 0 6px}
 #telemark .tm-prev b{color:var(--ink)}
+#telemark .tm-prev svg.cup{width:26px;height:26px;vertical-align:-7px}
 #telemark svg.cup{width:16px;height:16px;vertical-align:-3px;margin:0 1px}
 #telemark td.n,#telemark th.n{text-align:right}
 #telemark .tm-best{white-space:nowrap;font-size:13px;color:var(--mute)}
@@ -32,7 +33,7 @@
 #telemark .tm-scroll{max-height:420px;overflow:auto}
 .tm-okno{position:fixed;inset:0;z-index:97;background:#020617;display:flex;align-items:center;justify-content:center}
 .tm-okno[hidden]{display:none!important}
-.tm-okno .tm-box{position:relative;width:min(98vw,1600px);height:min(94vh,1000px);background:#000;border-radius:10px;overflow:hidden}
+.tm-okno .tm-box{position:relative;width:min(97vw,2200px);height:min(94vh,1300px);background:#000;border-radius:10px;overflow:hidden}
 .tm-okno iframe{width:100%;height:100%;border:0;display:block}
 .tm-okno .tm-x{position:absolute;top:8px;right:8px;z-index:2;background:rgba(15,23,42,.85);color:#e2e8f0;border:1px solid rgba(248,250,252,.35);font-size:18px;line-height:1;padding:8px 12px}
 body.tm-on>:not(.tm-okno){visibility:hidden!important}
