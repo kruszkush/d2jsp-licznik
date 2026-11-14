@@ -246,7 +246,7 @@ aside{position:sticky;top:16px}
 
 <div id="telemark"></div>
 
-<div class="card"><h2 id="chartH">Posty dziennie</h2><p class="note" id="chartN" style="margin:-6px 0 10px">Ile postów napisano na forum każdego dnia w wybranym zakresie.</p><div id="chart" class="bars"></div></div>
+<div class="card" id="chartCard"><h2 id="chartH">Posty dziennie</h2><p class="note" id="chartN" style="margin:-6px 0 10px">Ile postów napisano na forum każdego dnia w wybranym zakresie.</p><div id="chart" class="bars"></div></div>
 
 <div class="card" id="rankCard">
   <div id="lsnow"></div>
@@ -455,11 +455,25 @@ function renderCups(R) {
 
   HR = R; drawHist();
 
+  drawFame();
+}
+// Galeria sław: puchary za posty i tytuły Telemarka (znaczek narty; window.tmFame z telemark/strona.js: [{nick, uid, puchary: ['w2026-46', 'm2026-11', 'y2026']}]).
+const SKI = '<svg class="cup ski" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5c1-1 2-1 3 0l15 15M7 3c1-1 2-1 3 0l11 11" fill="none" stroke="#5aa9d6" stroke-width="2.2" stroke-linecap="round"/></svg>';
+function drawFame() {
+  if (!D) return;
+  const tm = new Map();
+  for (const f of window.tmFame || []) if (f.uid) tm.set(String(f.uid), f);
+  const MI = ['styczeń','luty','marzec','kwiecień','maj','czerwiec','lipiec','sierpień','wrzesień','październik','listopad','grudzień'];
+  const tmLabel = (k) => k[0] === 'y' ? k.slice(1) : k[0] === 'm' ? `${MI[+k.slice(6, 8) - 1]} ${k.slice(1, 5)}` : `tydzień ${+k.slice(6)}. ${k.slice(1, 5)}`;
+  const tmOf = (u) => (tm.get(u)?.puchary || []).map((k) => ({ t: k[0], label: tmLabel(k) }));
   const score = (l) => l.reduce((s, c) => s + { y: 10000, m: 100, w: 1 }[c.t], 0);
-  const fame = [...cups].sort((a, b) => score(b[1]) - score(a[1]));
-  $('fame').innerHTML = fame.map(([u, l]) => `<li><div class="grow"><div class="nm">${link(u)}</div></div>${['y', 'm', 'w'].map((t) => { const k = l.filter((c) => c.t === t); return k.length ? `<span class="mini" title="Mistrz ${TYPE[t].name}: ${k.map((c) => c.label).join(', ')}">${cupSvg(t)} ×${k.length}</span>` : ''; }).join('')}</li>`).join('')
+  const who = new Set([...cups.keys(), ...tm.keys()]);
+  const fame = [...who].map((u) => [u, cups.get(u) || [], tmOf(u)]).sort((a, b) => score([...b[1], ...b[2]]) - score([...a[1], ...a[2]]));
+  const badges = (l, ski, what) => ['y', 'm', 'w'].map((t) => { const k = l.filter((c) => c.t === t); return k.length ? `<span class="mini" title="${what}Mistrz ${TYPE[t].name}: ${k.map((c) => c.label).join(', ')}">${ski}${cupSvg(t)} ×${k.length}</span>` : ''; }).join('');
+  $('fame').innerHTML = fame.map(([u, l, t]) => `<li><div class="grow"><div class="nm">${D.users[u] ? link(u) : esc(tm.get(u)?.nick || u)}</div></div>${badges(l, '', '')}${badges(t, SKI, 'Telemark: ')}</li>`).join('')
     || '<li class="empty">Nikt jeszcze nie ma pucharu.</li>';
 }
+window.drawFame = drawFame;
 
 // --- Kołowy wykres dnia: top 3 + reszta, z awatarami ---
 let dayUsers = new Map();
@@ -661,19 +675,10 @@ function render() {
       return `<tr${dom && !i ? ' class="lead"' : ''}><td>${i+1}</td><td>${(() => { const av = D.avatars?.[x.u]; return `<span class="rav"${av ? ` style="background-image:url('${esc(av)}')"` : ''}>${av ? '' : esc(nick(x.u)[0].toUpperCase())}</span>`; })()}${wchamp.has(x.u) ? `<span class="wch">${nickBadges(x.u)}</span>` : nickBadges(x.u)}${reign.has(x.u) ? `<span class="mtag">${cupSvg('m')} Mistrz miesiąca</span>` : ''}${wchamp.has(x.u) ? `<span class="wtag">${cupSvg('w')} Mistrz tygodnia</span>` : ''}${dom && !i ? `<span class="domtag" title="Przewaga nad 2. miejscem">+${fmt(lead)} przewagi</span>` : ''}</td><td class="n">${fmt(x.n)}</td><td class="n">${x.t.size}</td><td class="w"><div class="share" style="width:${x.n/top*100}%" title="${(x.n/posts.length*100).toFixed(1)}%"></div></td></tr>`; }).join('')
     || '<tr><td colspan="5" style="color:var(--mute)">Brak postów w tym zakresie.</td></tr>';
 
-  // zakres do 2 dni: słupki co godzinę (dzienne dałyby tylko 1–2 słupki)
+  // Zakres do 2 dni: bez wykresu (wykres „Posty co godzinę” usunięty, Mateusz 14.11, makieta C Telemarka); dłuższe: posty dziennie.
   const hourly = to - from <= 2 * day;
-  $('chartH').textContent = hourly ? 'Posty co godzinę' : 'Posty dziennie';
-  $('chartN').textContent = hourly ? 'Ile postów napisano na forum w każdej godzinie wybranego zakresu.' : 'Ile postów napisano na forum każdego dnia w wybranym zakresie.';
-  if (hourly) {
-    const h0 = Math.floor(from / 36e5) * 36e5, hv = new Map();
-    for (const p of posts) { const k = Math.floor(p[3] * 1000 / 36e5) * 36e5; hv.set(k, (hv.get(k) || 0) + 1); }
-    const hs = []; for (let x = h0; x <= to; x += 36e5) hs.push(x);
-    const hmax = Math.max(1, ...hs.map((x) => hv.get(x) || 0)), nowH = Math.floor(Date.now() / 36e5) * 36e5;
-    $('chart').innerHTML = hs.map((x, i) => { const d = new Date(x), v = hv.get(x) || 0, hh = String(d.getHours()).padStart(2, '0');
-      return `<div class="col${x === nowH ? ' today' : ''}" data-k="h${x}" data-t="${d.toLocaleDateString('pl-PL', { weekday: 'long' })} ${hh}:00–${hh}:59: ${v} postów${x === nowH ? ' (godzina trwa)' : ''}"><div class="b" style="height:${Math.round(v / hmax * 120)}px"></div><span class="d">${i % 3 === 0 ? hh : '&nbsp;'}</span></div>`; }).join('');
-    return;
-  }
+  $('chartCard').hidden = hourly;
+  if (hourly) return;
   const keys = []; for (let d = new Date(ymd(from) + 'T12:00').getTime(); d <= to; d += day) keys.push(ymd(d));
   const vals = keys.map((k) => days.get(k) || 0), max = Math.max(1, ...vals), many = keys.length > 21, step = Math.ceil(keys.length / 12);
   const WD = ['nd', 'pn', 'wt', 'śr', 'cz', 'pt', 'sb'], td = ymd(Date.now());
