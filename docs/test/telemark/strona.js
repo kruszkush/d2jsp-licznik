@@ -60,7 +60,7 @@
 #telemark .tmc ol .h{color:var(--mute);font-size:11px;margin-bottom:2px;display:block}
 #telemark .tmc li{display:flex;align-items:center;gap:4px}
 #telemark .tmc li .ln{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#telemark .tmc li .lv{color:var(--mute);font-variant-numeric:tabular-nums}
+#telemark .tmc li .lv{color:var(--mute);font-variant-numeric:tabular-nums;min-width:4.6em;text-align:right;margin-left:4px}
 #telemark .rav{border:2px solid var(--c);width:22px;height:22px;margin-right:5px}
 #telemark .tmc li .rav,#telemark .tmr .rav{width:18px;height:18px;border-width:1px;font-size:10px;margin-right:4px}
 #telemark .nk{background:none;border:0;padding:0;color:inherit;font:inherit;font-weight:inherit;cursor:pointer;text-align:left}
@@ -169,7 +169,7 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
   const av = (r) => {
     const url = r.uid ? avatars()[r.uid] : "";
     return url
-      ? `<span class="rav" style="background-image:url('${esc(url).replace(/'/g, "")}')"></span>`
+      ? `<span class="rav" style="background-image:url('${esc(url).replace(/['\\]/g, "")}')"></span>`
       : `<span class="rav">${esc(String(r.nick || "?").charAt(0).toUpperCase())}</span>`;
   };
   let today = "";
