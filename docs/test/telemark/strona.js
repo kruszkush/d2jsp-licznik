@@ -72,6 +72,7 @@
 #telemark .tmr .track i{background:var(--c)}
 #telemark .tmr .v{font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums}
 #telemark .tmr .end{font-size:11px;color:var(--mute);margin-top:4px}
+#telemark .tmr .rule{font-size:11px;color:var(--mute);margin:-2px 0 4px}
 #telemark .tmr .empty{font-size:12px;padding:4px 0;border:0}
 #telemark .tm-demo{font-size:12px;color:var(--acc);margin:0 0 8px}
 .tm-okno{position:fixed;inset:0;z-index:97;background:#020617;display:flex;align-items:center;justify-content:center}
@@ -210,6 +211,7 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
     );
   }
   const RACE = { y: (k) => "rok " + k.slice(1), m: (k) => MIES[+k.slice(6, 8) - 1], w: (k) => weekName(k).replace(" · ", ", ") };
+  const RULE = { y: "liczy się 200 najlepszych dni roku", m: "liczy się 20 najlepszych dni miesiąca", w: "liczy się 5 najlepszych dni z 7" };
   function race(o) {
     const lead = (o.rows[0] && o.rows[0].suma) || 1;
     const rows = o.rows
@@ -221,7 +223,7 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
       )
       .join("");
     return (
-      `<h4>Wyścig · ${esc(RACE[o.k](o.key))}</h4><ul>${rows || '<li class="empty">Jeszcze nikt nie skakał.</li>'}</ul>` +
+      `<h4>Wyścig · ${esc(RACE[o.k](o.key))}</h4><div class="rule">${RULE[o.k]}</div><ul>${rows || '<li class="empty">Jeszcze nikt nie skakał.</li>'}</ul>` +
       `<div class="end">${endText(o)}</div>`
     );
   }
@@ -229,7 +231,8 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
   SLOT.innerHTML =
     // Bez nagłówka „Telemark: Skocznie dnia” (Mateusz 14.11: „nie wiadomo, o co chodzi”); przycisk mówi, co robi.
     '<div class="tm-head"><button type="button" class="tm-play">Telemark – zagraj</button>' +
-    '<span class="tm-rules">3 nowe skocznie codziennie o północy, ten sam wiatr dla wszystkich. Tydzień: 5 najlepszych dni, miesiąc: 20, rok: 200. ▶ odtwarza najlepszy skok (dzisiejsze od jutra), nick pokazuje wszystkie skoki.</span></div>' +
+    // Słowa Mateusza (14.11); zasady liczenia okresów pod nazwą każdego wyścigu (szkic proto/karta-zasady, wersja B).
+    '<span class="tm-rules">Codziennie o północy losowane są 3 skocznie: mała, średnia i duża.</span></div>' +
     (DEMO ? '<p class="tm-demo">Podgląd z przykładowymi danymi (adres z ?tmdemo).</p>' : "") +
     '<div id="tm-body"><p class="empty">Ładowanie wyników Telemarka…</p></div>';
   SLOT.querySelector(".tm-play").addEventListener("click", () => open(""));
