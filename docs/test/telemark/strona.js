@@ -1,6 +1,6 @@
 // Telemark na stronie licznika d2jsp (telemark/docs/zasady_d2jsp.md „Strona licznika”, wygląd: makieta C
 // telemark/proto/strona-mistrzowie/makieta-c.html): karta w lewej kolumnie z przyciskiem gry, mistrzami roku, miesiąca
-// i tygodnia (puchary strony #cupY, #cupM, #cup), wyścigami trwających okresów i miejscem zalogowanego. Gra w dużym oknie
+// i tygodnia (narty strony #nartyY, #nartyM, #nartyW), wyścigami trwających okresów i miejscem zalogowanego. Gra w dużym oknie
 // na wierzchu strony (jak okno nagrań Lotnika); ▶ odtwarza najlepszy skok osoby w okresie (?ogladaj=gid), klik w nick
 // otwiera w grze ekran „Skoki gracza” (?gracz=uid&okres=klucz). Tytuły do galerii sław: window.tmFame + drawFame strony.
 // Dane: /tm/tabele serwera Lotnika (lotnik/serwer/telemark.js). Kopiowane do docs[/test]/telemark/ przez scripts/d2jsp-publikuj.sh.
@@ -51,6 +51,7 @@
 #telemark .tmc li{display:flex;align-items:center;gap:4px;line-height:1.5;margin-top:4px}
 /* Odstęp wierszy jak „Wyniki końcowe” w kartach mistrzów postów (Mateusz 14.11: „wszystko nawalone”). */
 #telemark .tmc li .ln{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#telemark .tmc li .mini{flex:none;margin-left:2px}
 #telemark .tmc li .lv{color:var(--mute);font-variant-numeric:tabular-nums;min-width:4.6em;text-align:right;margin-left:4px}
 #telemark .rav{border:2px solid var(--c);width:22px;height:22px;margin-right:5px}
 #telemark .tmc li .rav,#telemark .tmr .rav{width:18px;height:18px;border-width:1px;font-size:10px;margin-right:4px}
@@ -180,11 +181,13 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
       : `Najlepszy skok: ${String(b.m).replace(".", ",")} m, ${pts(b.p)} pkt`;
     return `<button type="button" class="pl${text ? " t" : ""}" data-gid="${esc(b.gid)}"${later ? " disabled" : ""} title="${tip}" aria-label="Obejrzyj najlepszy skok ${esc(r.nick)}">▶${text ? " " + text : ""}</button>`;
   };
+  // Narty za tytuły Telemarka przy nicku (Mateusz 14.11); układ i iskry z tmBadges strony licznika, jak puchary za posty.
+  const skis = (r) => (typeof window.tmBadges === "function" ? window.tmBadges(r.puchary) : "");
   const li = (r, i, key) =>
-    `<li><span class="ln">${i + 1}. ${nickBtn(r, key)}</span><span class="lv">${pts(r.suma)}</span>${play(r)}</li>`;
+    `<li><span class="ln">${i + 1}. ${nickBtn(r, key)}</span>${skis(r)}<span class="lv">${pts(r.suma)}</span>${play(r)}</li>`;
 
   // --- karta mistrza: zwycięzca poprzedniego okresu, a bez niego „jeszcze nieznany” i kto na czele -----------
-  const CUP = { y: "cupY", m: "cupM", w: "cup" };
+  const CUP = { y: "nartyY", m: "nartyM", w: "nartyW" }; // narty Telemarka z <defs> strony licznika
   const LAB = { y: "Mistrz roku", m: "Mistrz miesiąca", w: "Mistrz tygodnia" };
   function champ(o) {
     const prev = (o.prev && o.prev.podium) || [];
@@ -218,7 +221,7 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
       .slice(0, 3)
       .map(
         (r, i) =>
-          `<li><span class="pos ${r.place <= 3 ? "p" + r.place : ""}">${r.place}</span><div class="grow"><div class="nm">${nickBtn(r, o.key)}</div>` +
+          `<li><span class="pos ${r.place <= 3 ? "p" + r.place : ""}">${r.place}</span><div class="grow"><div class="nm">${nickBtn(r, o.key)}${skis(r)}</div>` +
           `<div class="track"><i style="width:${(r.suma / lead) * 100}%"></i></div></div><span class="v">${whole(r.suma)}</span>${play(r)}</li>`,
       )
       .join("");
@@ -285,7 +288,9 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
   function demo() {
     const day = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Warsaw" });
     const y = day.slice(0, 4);
-    const row = (nick, suma, place, i) => ({ nick, uid: "demo" + i, suma, place, dni: 3, puchary: [],
+    const pm0 = plus(day.slice(0, 8) + "01", -1).slice(0, 7), wk0 = (n) => "w" + y + "-" + String(40 + n).padStart(2, "0");
+    const TYT = { Pozdrawiam: ["m" + pm0, wk0(1), wk0(3)], Kryste_Panie: ["y" + (y - 1), wk0(2), wk0(4)], BrakNicku: [wk0(5)] };
+    const row = (nick, suma, place, i) => ({ nick, uid: "demo" + i, suma, place, dni: 3, puchary: TYT[nick] || [],
       best: { gid: ("000000000000000" + i).slice(-16), p: 150 + i, m: 120.5, hill: "own-20", day: plus(day, -1) } });
     const top = (names, sums) => names.map((n, i) => row(n, sums[i], i + 1, i + names.length * 7));
     const span = (k) => {
@@ -300,7 +305,7 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
       prev: { key: prevKey, zamkniety: true, podium: prev } });
     return {
       day,
-      slawa: [{ nick: "Pozdrawiam", uid: "demo", puchary: ["m" + pm] }],
+      slawa: Object.entries(TYT).map(([nick, puchary]) => ({ nick, uid: "demo-" + nick, puchary })),
       okresy: [
         o("y", "y" + y, top(["Kryste_Panie", "BrakNicku", "ripsi", "fafniro", "kondes"], [9412, 8970.5, 6115.5, 5020, 3904.5]), "y" + (y - 1), []),
         o("m", "m" + day.slice(0, 7), top(["Kryste_Panie", "BrakNicku", "fafniro"], [4377, 3990, 2620]), "m" + pm,
