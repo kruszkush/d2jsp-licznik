@@ -227,7 +227,7 @@ aside{position:sticky;top:16px}
 <div class="vtop" id="vtop"></div>
 <div class="wrap">
 <main>
-<h1>Licznik postów — d2jsp Polska <span class="ver">18.0-test</span></h1>
+<h1>Licznik postów — d2jsp Polska <span class="ver">18.1-test</span></h1>
 <p class="sub" id="sub">Ładowanie danych…</p>
 
 <div class="ranges" id="ranges">
@@ -243,6 +243,8 @@ aside{position:sticky;top:16px}
   <div class="tile"><b id="tTopics">–</b><span>tematów</span></div>
   <div class="tile"><b id="tAvg">–</b><span>postów dziennie</span></div>
 </div>
+
+<div id="telemark"></div>
 
 <div class="card"><h2 id="chartH">Posty dziennie</h2><p class="note" id="chartN" style="margin:-6px 0 10px">Ile postów napisano na forum każdego dnia w wybranym zakresie.</p><div id="chart" class="bars"></div></div>
 
@@ -681,6 +683,7 @@ function render() {
       <span class="d">${show ? `${dt.getDate()}.${String(dt.getMonth() + 1).padStart(2, '0')}${many ? '' : `<i>${WD[dt.getDay()]}</i>`}` : '&nbsp;'}</span></div>`; }).join('');
 }
 </script>
+<script src="telemark/strona.js?v=6782596"></script>
 <script type="module" src="lotnik/nakladka.js?v=70"></script>
 <script>document.getElementById('vtop').textContent = 'wersja ' + document.querySelector('.ver').textContent;</script>
 </body>
