@@ -232,7 +232,7 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
     // Bez nagłówka „Telemark: Skocznie dnia” (Mateusz 14.11: „nie wiadomo, o co chodzi”); przycisk mówi, co robi.
     '<div class="tm-head"><button type="button" class="tm-play">Telemark – zagraj</button>' +
     // Słowa Mateusza (14.11); zasady liczenia okresów pod nazwą każdego wyścigu (szkic proto/karta-zasady, wersja B).
-    '<span class="tm-rules">Codziennie o północy losowane są 3 skocznie: mała, średnia i duża.</span></div>' +
+    '<span class="tm-rules">Codziennie o północy losowane są 3 skocznie z puli 23: mała, średnia i mamucia.</span></div>' +
     (DEMO ? '<p class="tm-demo">Podgląd z przykładowymi danymi (adres z ?tmdemo).</p>' : "") +
     '<div id="tm-body"><p class="empty">Ładowanie wyników Telemarka…</p></div>';
   SLOT.querySelector(".tm-play").addEventListener("click", () => open(""));
