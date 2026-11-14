@@ -60,8 +60,6 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
     frame.src = GAME + (query || '');
     okno.hidden = false;
     document.body.classList.add('tm-on');
-    // Gra Lotnik pod spodem stoi, póki okno otwarte (jak przy nagraniu Lotnika).
-    window.dispatchEvent(new CustomEvent('telemark-okno', { detail: { otwarte: true } }));
     frame.focus();
   }
   function close() {
@@ -69,7 +67,6 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
     okno.hidden = true;
     frame.src = 'about:blank';
     document.body.classList.remove('tm-on');
-    window.dispatchEvent(new CustomEvent('telemark-okno', { detail: { otwarte: false } }));
     if (last && last.focus) last.focus();
     load(true);
   }
