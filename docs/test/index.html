@@ -222,6 +222,27 @@ aside{position:sticky;top:16px}
       <path d="M17 46h30l3 11H14z" fill="url(#gy)"/>
       <path d="M32 16l6 7-6 9-6-9z" fill="#fff" fill-opacity=".85"/>
     </symbol>
+    <!-- Narty Telemarka (Mateusz 14.11, szkic telemark/proto/puchary-telemark wersja B; korona roku jak obręcz na nartach, próba B w korona.html) -->
+    <g id="skis">
+      <g transform="rotate(-24 32 30)"><rect x="28.5" y="4" width="7" height="46" rx="3.5"/><path d="M28.5 8c0-5 3-7 7-7v7z"/></g>
+      <g transform="rotate(24 32 30)"><rect x="28.5" y="4" width="7" height="46" rx="3.5"/><path d="M35.5 8c0-5-3-7-7-7v7z"/></g>
+    </g>
+    <symbol id="nartyW" viewBox="0 0 64 64">
+      <use href="#skis" fill="url(#gg)" stroke="var(--gold)" stroke-width="1.5"/>
+      <rect x="18" y="49" width="28" height="8" rx="2" fill="url(#gg)"/>
+    </symbol>
+    <symbol id="nartyM" viewBox="0 0 64 64">
+      <use href="#skis" fill="url(#gm)" stroke="#7b3fd1" stroke-width="1.5"/>
+      <circle cx="32" cy="29" r="7.5" fill="#7b3fd1"/>
+      <path d="M32 23.5l1.7 3.4 3.8.6-2.8 2.7.7 3.8-3.4-1.8-3.4 1.8.7-3.8-2.8-2.7 3.8-.6z" fill="#fff"/>
+      <path d="M16 49h32l3 8H13z" fill="url(#gm)"/>
+    </symbol>
+    <symbol id="nartyY" viewBox="0 0 64 64">
+      <use href="#skis" fill="url(#gy)" stroke="#2a8fb8" stroke-width="1.5" transform="translate(0 3)"/>
+      <path d="M19 9l4.5 5.5 8.5-6 8.5 6 4.5-5.5 1.5 11H17.5z" fill="#f3c93a" stroke="#a87a10" stroke-width=".8" stroke-linejoin="round"/>
+      <circle cx="32" cy="34" r="6.5" fill="#2a8fb8"/><path d="M32 29.5l3.5 4.5-3.5 5-3.5-5z" fill="#fff"/>
+      <path d="M15 50h34l3 8H12z" fill="url(#gy)"/>
+    </symbol>
   </defs>
 </svg>
 <div class="vtop" id="vtop"></div>
@@ -319,6 +340,20 @@ const TYPE = { w: { name: 'tygodnia', sym: 'cup' }, m: { name: 'miesiąca', sym:
 const cupSvg = (t = 'w', cls = 'cup') => `<svg class="${cls}"><use href="#${TYPE[t].sym}"/></svg>`;
 const fireCup = (cls, sym, a, b, c) => `<svg class="cup fire ${cls}" viewBox="0 -14 64 78"><g class="fl"><path d="M32 -12c5 8 13 12 13 23a13 13 0 0 1-26 0c0-7 4-10 5-16 2 5 4 6 5 8 1-5 1-9 3-15z" fill="${a}"/><path d="M32 0c3 5 8 8 8 14a8 8 0 0 1-16 0c0-4 2-7 4-10 1 2 2 3 3 4z" fill="${b}"/><path d="M32 8c2 3 4 4 4 7a4 4 0 0 1-8 0c0-2 1-4 2-5z" fill="${c}"/></g><use href="#${sym}"/></svg>`;
 const FIRE_M = fireCup('fm', 'cupM', '#7b3fd1', '#b98cff', '#f0e2ff'), FIRE_W = fireCup('fw', 'cup', '#c9961a', '#f3c93a', '#fff3b8');
+// Narty Telemarka: te same kolory, ogień i iskry co puchary za posty, inny kształt (Mateusz 14.11)
+const SKI_SYM = { w: 'nartyW', m: 'nartyM', y: 'nartyY' };
+const skiSvg = (t = 'w', cls = 'cup') => `<svg class="${cls}"><use href="#${SKI_SYM[t]}"/></svg>`;
+const FIRE_SM = fireCup('fm', 'nartyM', '#7b3fd1', '#b98cff', '#f0e2ff'), FIRE_SW = fireCup('fw', 'nartyW', '#c9961a', '#f3c93a', '#fff3b8');
+// klucz tytułu z serwera Telemarka: 'w2026-46', 'm2026-11', 'y2026'
+const tmLabel = (k) => k[0] === 'y' ? k.slice(1) : k[0] === 'm' ? `${MONTHS[+k.slice(6, 8) - 1]} ${k.slice(1, 5)}` : `tydzień ${+k.slice(6)}. ${k.slice(1, 5)}`;
+// Narty przy nicku w tabelach Telemarka (telemark/strona.js): układ jak nickBadges — płonące fioletowe za miesiąc, rok, płonące złote (jedne za każdy miesiąc), reszta złote
+function tmBadges(keys) {
+  if (!keys || !keys.length) return '';
+  const n = (t) => keys.filter((k) => k[0] === t).length, y = n('y'), m = n('m'), w = n('w');
+  const title = 'Telemark: ' + keys.map((k) => 'Mistrz ' + TYPE[k[0]].name + ': ' + tmLabel(k)).join(', ');
+  return `<span class="mini" title="${esc(title)}">${FIRE_SM.repeat(m) + skiSvg('y').repeat(y) + FIRE_SW.repeat(Math.min(m, w)) + skiSvg('w').repeat(Math.max(0, w - m))}</span>`;
+}
+window.tmBadges = tmBadges;
 
 // Odznaki przy nicku w rankingu: puchary (płonące fioletowe za miesiąc jako pierwsze, rok, złote za tydzień — każdy tytuł miesiąca przekształca jeden w płonący) i gwiazdka roku za nickiem
 function nickBadges(u) {
@@ -457,20 +492,17 @@ function renderCups(R) {
 
   drawFame();
 }
-// Galeria sław: puchary za posty i tytuły Telemarka (znaczek narty; window.tmFame z telemark/strona.js: [{nick, uid, puchary: ['w2026-46', 'm2026-11', 'y2026']}]).
-const SKI = '<svg class="cup ski" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5c1-1 2-1 3 0l15 15M7 3c1-1 2-1 3 0l11 11" fill="none" stroke="#5aa9d6" stroke-width="2.2" stroke-linecap="round"/></svg>';
+// Galeria sław: puchary za posty i tytuły Telemarka (narty; window.tmFame z telemark/strona.js: [{nick, uid, puchary: ['w2026-46', 'm2026-11', 'y2026']}]).
 function drawFame() {
   if (!D) return;
   const tm = new Map();
   for (const f of window.tmFame || []) if (f.uid) tm.set(String(f.uid), f);
-  const MI = ['styczeń','luty','marzec','kwiecień','maj','czerwiec','lipiec','sierpień','wrzesień','październik','listopad','grudzień'];
-  const tmLabel = (k) => k[0] === 'y' ? k.slice(1) : k[0] === 'm' ? `${MI[+k.slice(6, 8) - 1]} ${k.slice(1, 5)}` : `tydzień ${+k.slice(6)}. ${k.slice(1, 5)}`;
   const tmOf = (u) => (tm.get(u)?.puchary || []).map((k) => ({ t: k[0], label: tmLabel(k) }));
   const score = (l) => l.reduce((s, c) => s + { y: 10000, m: 100, w: 1 }[c.t], 0);
   const who = new Set([...cups.keys(), ...tm.keys()]);
   const fame = [...who].map((u) => [u, cups.get(u) || [], tmOf(u)]).sort((a, b) => score([...b[1], ...b[2]]) - score([...a[1], ...a[2]]));
-  const badges = (l, ski, what) => ['y', 'm', 'w'].map((t) => { const k = l.filter((c) => c.t === t); return k.length ? `<span class="mini" title="${what}Mistrz ${TYPE[t].name}: ${k.map((c) => c.label).join(', ')}">${ski}${cupSvg(t)} ×${k.length}</span>` : ''; }).join('');
-  $('fame').innerHTML = fame.map(([u, l, t]) => `<li><div class="grow"><div class="nm">${D.users[u] ? link(u) : esc(tm.get(u)?.nick || u)}</div></div>${badges(l, '', '')}${badges(t, SKI, 'Telemark: ')}</li>`).join('')
+  const badges = (l, icon, what) => ['y', 'm', 'w'].map((t) => { const k = l.filter((c) => c.t === t); return k.length ? `<span class="mini" title="${what}Mistrz ${TYPE[t].name}: ${k.map((c) => c.label).join(', ')}">${icon(t)} ×${k.length}</span>` : ''; }).join('');
+  $('fame').innerHTML = fame.map(([u, l, t]) => `<li><div class="grow"><div class="nm">${D.users[u] ? link(u) : esc(tm.get(u)?.nick || u)}</div></div>${badges(l, cupSvg, '')}${badges(t, skiSvg, 'Telemark: ')}</li>`).join('')
     || '<li class="empty">Nikt jeszcze nie ma pucharu.</li>';
 }
 window.drawFame = drawFame;
@@ -587,7 +619,15 @@ document.getElementById('legendSlot').outerHTML = `<footer class="legend">
     <div><span class="ic"><span class="reign">Nick</span></span><p><b>Fioletowy nick</b><span>panujący mistrz miesiąca, do czasu kolejnego mistrza</span></p></div>
     <div><span class="ic">@W@</span><p><b>Puchar tygodnia</b><span>najwięcej postów od niedzieli 21:00 do niedzieli 21:00</span></p></div>
   </div>
-</footer>`.replace('@Y@', cupSvg('y')).replace('@M@', FIRE_M).replace('@D@', FIRE_W).replace('@W@', cupSvg('w'));
+  <h2 style="margin-top:18px">Telemark</h2>
+  <div class="lg">
+    <div><span class="ic">@TY@</span><p><b>Narty roku</b><span>najwięcej punktów w Telemarku z 200 najlepszych dni roku</span></p></div>
+    <div><span class="ic">@TM@</span><p><b>Narty miesiąca</b><span>najwięcej punktów z 20 najlepszych dni miesiąca; stoją przy nicku jako pierwsze</span></p></div>
+    <div><span class="ic">@TD@</span><p><b>Płonące złote narty</b><span>każdy tytuł mistrza miesiąca Telemarka przekształca jedne złote narty w płonące</span></p></div>
+    <div><span class="ic">@TW@</span><p><b>Narty tygodnia</b><span>najwięcej punktów z 5 najlepszych dni tygodnia (poniedziałek–niedziela)</span></p></div>
+  </div>
+</footer>`.replace('@Y@', cupSvg('y')).replace('@M@', FIRE_M).replace('@D@', FIRE_W).replace('@W@', cupSvg('w'))
+  .replace('@TY@', skiSvg('y')).replace('@TM@', FIRE_SM).replace('@TD@', FIRE_SW).replace('@TW@', skiSvg('w'));
 
 fetch('../data.json?' + Date.now()).then((r) => r.json()).then((d) => {
   D = d;
