@@ -51,7 +51,6 @@
 #telemark .tmc li{display:flex;align-items:center;gap:4px;line-height:1.5;margin-top:4px}
 /* Odstęp wierszy jak „Wyniki końcowe” w kartach mistrzów postów (Mateusz 14.11: „wszystko nawalone”). */
 #telemark .tmc li .ln{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#telemark .tmc li .mini{flex:none;margin-left:2px}
 #telemark .tmc li .lv{color:var(--mute);font-variant-numeric:tabular-nums;min-width:4.6em;text-align:right;margin-left:4px}
 #telemark .rav{border:2px solid var(--c);width:22px;height:22px;margin-right:5px}
 #telemark .tmc li .rav,#telemark .tmr .rav{width:18px;height:18px;border-width:1px;font-size:10px;margin-right:4px}
@@ -181,10 +180,9 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
       : `Najlepszy skok: ${String(b.m).replace(".", ",")} m, ${pts(b.p)} pkt`;
     return `<button type="button" class="pl${text ? " t" : ""}" data-gid="${esc(b.gid)}"${later ? " disabled" : ""} title="${tip}" aria-label="Obejrzyj najlepszy skok ${esc(r.nick)}">▶${text ? " " + text : ""}</button>`;
   };
-  // Narty za tytuły Telemarka przy nicku (Mateusz 14.11); układ i iskry z tmBadges strony licznika, jak puchary za posty.
-  const skis = (r) => (typeof window.tmBadges === "function" ? window.tmBadges(r.puchary) : "");
+  // Narty za tytuły Telemarka stoją przy nicku w rankingu postów (nickBadges strony), nie tu (Mateusz 14.11).
   const li = (r, i, key) =>
-    `<li><span class="ln">${i + 1}. ${nickBtn(r, key)}</span>${skis(r)}<span class="lv">${pts(r.suma)}</span>${play(r)}</li>`;
+    `<li><span class="ln">${i + 1}. ${nickBtn(r, key)}</span><span class="lv">${pts(r.suma)}</span>${play(r)}</li>`;
 
   // --- karta mistrza: zwycięzca poprzedniego okresu, a bez niego „jeszcze nieznany” i kto na czele -----------
   const CUP = { y: "nartyY", m: "nartyM", w: "nartyW" }; // narty Telemarka z <defs> strony licznika
@@ -221,7 +219,7 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
       .slice(0, 3)
       .map(
         (r, i) =>
-          `<li><span class="pos ${r.place <= 3 ? "p" + r.place : ""}">${r.place}</span><div class="grow"><div class="nm">${nickBtn(r, o.key)}${skis(r)}</div>` +
+          `<li><span class="pos ${r.place <= 3 ? "p" + r.place : ""}">${r.place}</span><div class="grow"><div class="nm">${nickBtn(r, o.key)}</div>` +
           `<div class="track"><i style="width:${(r.suma / lead) * 100}%"></i></div></div><span class="v">${whole(r.suma)}</span>${play(r)}</li>`,
       )
       .join("");
