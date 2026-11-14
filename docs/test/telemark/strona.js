@@ -1,43 +1,86 @@
-// Telemark na stronie licznika d2jsp (docs/zasady_d2jsp.md, plan docs/plan_d2jsp.md krok 4): przycisk „Telemark”,
-// gra w dużym oknie na wierzchu strony (jak okno nagrań Lotnika, lotnik/nakladka.js showReplay), tabele bieżącego
-// i poprzedniego tygodnia i miesiąca z serwera Lotnika (/tm/tabele), puchary symbolami strony (#cup, #cupM), ▶ odtwarza
-// skok w tym samym oknie (gra z ?ogladaj=gid). Kopiowane do docs[/test]/telemark/ przez scripts/d2jsp-publikuj.sh.
+// Telemark na stronie licznika d2jsp (telemark/docs/zasady_d2jsp.md „Strona licznika”, wygląd: makieta C
+// telemark/proto/strona-mistrzowie/makieta-c.html): karta w lewej kolumnie z przyciskiem gry, mistrzami roku, miesiąca
+// i tygodnia (puchary strony #cupY, #cupM, #cup), wyścigami trwających okresów i miejscem zalogowanego. Gra w dużym oknie
+// na wierzchu strony (jak okno nagrań Lotnika); ▶ odtwarza najlepszy skok osoby w okresie (?ogladaj=gid), klik w nick
+// otwiera w grze ekran „Skoki gracza” (?gracz=uid&okres=klucz). Tytuły do galerii sław: window.tmFame + drawFame strony.
+// Dane: /tm/tabele serwera Lotnika (lotnik/serwer/telemark.js). Kopiowane do docs[/test]/telemark/ przez scripts/d2jsp-publikuj.sh.
 (function () {
   const SLOT = document.getElementById("telemark");
   if (!SLOT) return;
   const PROD = location.hostname === "kruszkush.github.io" && !location.pathname.includes("/test/");
   const API = "https://us-east1-rich-chimera-344319.cloudfunctions.net/" + (PROD ? "lotnik" : "lotnik-test");
   const GAME = new URL("telemark/index.html", document.baseURI).href;
+  const DEMO = !PROD && new URLSearchParams(location.search).has("tmdemo"); // podgląd z przykładowymi danymi (porównanie z makietą)
   const ODSWIEZ_MS = 60000;
   const esc = (s) =>
     String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-  const pts = (p) => p.toFixed(1).replace(".", ",");
-  const haslo = () => {
+  const pts = (p) => p.toLocaleString("pl-PL", { minimumFractionDigits: 1, maximumFractionDigits: 1, useGrouping: "always" });
+  const whole = (p) => Math.round(p).toLocaleString("pl-PL", { useGrouping: "always" });
+  const store = (k) => {
     try {
-      return localStorage.getItem("lotnik.haslo") || "";
+      return localStorage.getItem(k) || "";
     } catch (e) {
       return "";
+    }
+  };
+  const haslo = () => store("lotnik.haslo");
+  // Konto zalogowane w Lotniku na tej stronie (lotnik/konto.js; prod z przedrostkiem „p.”).
+  const me = () => {
+    try {
+      const d = JSON.parse(store((PROD ? "p." : "") + "lotnik.konto") || "null");
+      return d && d.konto && typeof d.konto.nick === "string" ? d.konto : null;
+    } catch (e) {
+      return null;
     }
   };
 
   const css = document.createElement("style");
   css.textContent = `
-#telemark .tm-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
-#telemark .tm-head h2{margin:0}
-#telemark .tm-play{background:var(--acc);color:#fff;border-color:var(--acc);font-weight:600;padding:8px 18px}
-#telemark .tm-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-@media (max-width:760px){#telemark .tm-cols{grid-template-columns:1fr}}
-#telemark h3{font-size:14px;margin:8px 0 4px}
-#telemark .tm-prev{font-size:13px;color:var(--mute);margin:0 0 6px}
-#telemark .tm-prev b{color:var(--ink)}
-#telemark .tm-prev svg.cup{width:26px;height:26px;vertical-align:-7px}
-#telemark svg.cup{width:16px;height:16px;vertical-align:-3px;margin:0 1px}
-#telemark td.n,#telemark th.n{text-align:right}
-#telemark .tm-best{white-space:nowrap;font-size:13px;color:var(--mute)}
-#telemark .tm-w{padding:2px 7px;margin-left:4px;font-size:12px;line-height:1.2}
-#telemark .tm-w[disabled]{opacity:.45;cursor:default}
-#telemark .tm-empty{color:var(--mute);font-size:13px;padding:6px 0}
-#telemark .tm-scroll{max-height:420px;overflow:auto}
+#telemark{border-color:#c9a27e}
+@media (prefers-color-scheme:dark){#telemark{border-color:#4a3a2c}}
+#telemark .tm-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+#telemark .tm-head h2{margin:0;font-size:16px}
+#telemark .tm-play{background:var(--acc);color:#fff;border-color:var(--acc);font-weight:600}
+#telemark .tm-rules{color:var(--mute);font-size:12px;flex:1 1 240px}
+#telemark .tm-cols,#telemark .tm-races{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+#telemark .tm-races{margin-top:10px}
+@media (max-width:760px){#telemark .tm-cols,#telemark .tm-races{grid-template-columns:minmax(0,1fr)}}
+#telemark .tmc{border-radius:10px;padding:10px 12px;border:1px solid var(--line);background:linear-gradient(170deg,var(--tint) 0%,transparent 75%);text-align:center;min-width:0}
+#telemark .tmc.ky,#telemark .tmr.ky{--c:#3fb0d8;--tint:rgba(63,176,216,.18)}
+#telemark .tmc.km,#telemark .tmr.km{--c:#9b5de5;--tint:rgba(155,93,229,.2)}
+#telemark .tmc.kw,#telemark .tmr.kw{--c:var(--gold);--tint:rgba(201,150,26,.2)}
+#telemark .tmc.ky .lab{color:#3fb0d8}#telemark .tmc.km .lab{color:#a46ff0}#telemark .tmc.kw .lab{color:var(--gold)}
+#telemark .tmc .big{width:44px;height:44px;filter:drop-shadow(0 4px 8px rgba(0,0,0,.4))}
+#telemark .tmc .lab{font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700}
+#telemark .tmc .per{font-size:11px;color:var(--mute)}
+#telemark .tmc .who{display:flex;align-items:center;justify-content:center;gap:2px;margin:4px 0 0;font-weight:700;font-size:17px;flex-wrap:wrap}
+#telemark .tmc .none{font-style:italic;color:var(--mute);margin:4px 0 0}
+#telemark .tmc .pts{font-size:11px;color:var(--mute)}
+#telemark .tmc ol{margin:8px 0 0;padding:6px 0 0;border-top:1px dashed var(--line);list-style:none;font-size:12px;text-align:left}
+#telemark .tmc ol .h{color:var(--mute);font-size:11px;margin-bottom:2px;display:block}
+#telemark .tmc li{display:flex;align-items:center;gap:4px}
+#telemark .tmc li .ln{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#telemark .tmc li .lv{color:var(--mute);font-variant-numeric:tabular-nums}
+#telemark .rav{border:2px solid var(--c);width:22px;height:22px;margin-right:5px}
+#telemark .tmc li .rav,#telemark .tmr .rav{width:18px;height:18px;border-width:1px;font-size:10px;margin-right:4px}
+#telemark .nk{background:none;border:0;padding:0;color:inherit;font:inherit;font-weight:inherit;cursor:pointer;text-align:left}
+#telemark .nk:hover{color:var(--acc);text-decoration:underline}
+#telemark .pl{background:none;border:0;padding:0 2px;color:var(--acc);font-size:11px;line-height:1;cursor:pointer}
+#telemark .pl[disabled]{opacity:.4;cursor:default}
+#telemark .pl.t{font-size:11px}
+#telemark .tmr{border:1px solid var(--line);border-radius:10px;padding:8px 12px;min-width:0}
+#telemark .tmr h4{margin:0 0 4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);font-weight:700}
+#telemark .tmr ul{margin:0;padding:0}
+#telemark .tmr li{list-style:none;display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--line);font-size:13px}
+#telemark .tmr li:last-child{border:0}
+#telemark .tmr .pos{width:20px;height:20px;font-size:11px}
+#telemark .tmr .track i{background:var(--c)}
+#telemark .tmr .v{font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums}
+#telemark .tmr .end{font-size:11px;color:var(--mute);margin-top:4px}
+#telemark .tmr .empty{font-size:12px;padding:4px 0;border:0}
+#telemark .tm-me{margin-top:10px;font-size:13px;color:var(--mute);border-top:1px solid var(--line);padding-top:8px}
+#telemark .tm-me b{color:var(--ink)}
+#telemark .tm-demo{font-size:12px;color:var(--acc);margin:0 0 8px}
 .tm-okno{position:fixed;inset:0;z-index:97;background:#020617;display:flex;align-items:center;justify-content:center}
 .tm-okno[hidden]{display:none!important}
 .tm-okno .tm-box{position:relative;width:min(97vw,2200px);height:min(calc(100vh - 56px),1300px);margin-top:44px;background:#000;border-radius:10px;overflow:hidden}
@@ -84,25 +127,37 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
     load(true);
   }
 
-  // --- tabele -------------------------------------------------------------------------------------------------
-  SLOT.className = "card";
-  SLOT.innerHTML =
-    '<div class="tm-head"><h2>Telemark: Skocznie dnia</h2>' +
-    '<button type="button" class="tm-play">Telemark</button></div>' +
-    '<p class="note" style="margin:0 0 8px;color:var(--mute);font-size:13px">Codziennie 3 nowe skocznie, 10 skoków na każdej, ten sam wiatr dla wszystkich. ' +
-    "Tydzień: suma 5 najlepszych dni, miesiąc: 20 najlepszych. ▶ odtwarza skok (dzisiejsze od jutra).</p>" +
-    '<div class="tm-cols"><div id="tm-w"></div><div id="tm-m"></div></div>';
-  SLOT.querySelector(".tm-play").addEventListener("click", () => open(""));
-  SLOT.addEventListener("click", (e) => {
-    const b = e.target.closest("[data-gid]");
-    if (b && !b.disabled) open("?ogladaj=" + encodeURIComponent(b.dataset.gid));
-  });
+  // --- okresy: nazwy i daty (tydzień ISO pn–nd, dzień w czasie polskim) ---------------------------------------
+  const MIES = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
+  const plus = (day, n) => new Date(Date.parse(day + "T12:00:00Z") + n * 864e5).toISOString().slice(0, 10);
+  const dow = (day) => new Date(day + "T12:00:00Z").getUTCDay() || 7;
+  const mondayOf = (day) => plus(day, 1 - dow(day));
+  function isoMonday(key) {
+    const [, y, w] = /^w(\d{4})-(\d{2})$/.exec(key);
+    const jan4 = y + "-01-04";
+    return plus(mondayOf(jan4), 7 * (+w - 1));
+  }
+  // „Listopad · tydzień 3”: jak tygodnie postów na stronie (weekNice): miesiąc czwartku, tydzień 1 = ten z 1. dniem miesiąca.
+  function weekName(key) {
+    const mon = isoMonday(key),
+      thu = plus(mon, 3);
+    const n = Math.round((Date.parse(mon) - Date.parse(mondayOf(thu.slice(0, 8) + "01"))) / (7 * 864e5)) + 1;
+    return `${MIES[+thu.slice(5, 7) - 1]} · tydzień ${n}`;
+  }
+  const name = (key) =>
+    key[0] === "y" ? key.slice(1) : key[0] === "m" ? `${MIES[+key.slice(6, 8) - 1]} ${key.slice(1, 5)}` : weekName(key);
+  const dm = (day) => `${+day.slice(8, 10)}.${day.slice(5, 7)}`;
+  function left(ts) {
+    const s = Math.max(0, ts - Date.now() / 1000),
+      d = Math.floor(s / 86400),
+      h = Math.floor((s % 86400) / 3600);
+    return d >= 3 ? `${d} d` : `${d ? d + " d " : ""}${h} h`;
+  }
+  const WD = ["", "poniedziałek", "wtorek", "środa", "czwartek", "piątek", "sobota", "niedziela"];
+  const endText = (o) =>
+    `Koniec: ${o.k === "w" ? WD[dow(o.koniec)] + " 24:00" : dm(o.koniec)} (za ${left(o.koniecTs)})`;
 
-  const NAZWA = { w: "Tydzień", m: "Miesiąc" };
-  const cups = (keys) =>
-    (keys || []).map((k) => `<svg class="cup"><use href="#${k[0] === "m" ? "cupM" : "cup"}"/></svg>`).join("");
-  // Awatary z forum z danych strony (D.avatars: numer konta d2jsp → obrazek), jak w rankingach strony i Lotnika
-  // (lotnik/ranking.js); bez awatara kółko z pierwszą literą (klasa .rav strony).
+  // --- osoby: awatar, nick (otwiera „Skoki gracza”), ▶ najlepszego skoku -------------------------------------
   const avatars = () => {
     try {
       return (typeof D !== "undefined" && D && D.avatars) || {};
@@ -115,69 +170,114 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
     const url = r.uid ? avatars()[r.uid] : "";
     return url
       ? `<span class="rav" style="background-image:url('${esc(url).replace(/'/g, "")}')"></span>`
-      : `<span class="rav">${esc(
-          String(r.nick || "?")
-            .charAt(0)
-            .toUpperCase(),
-        )}</span>`;
+      : `<span class="rav">${esc(String(r.nick || "?").charAt(0).toUpperCase())}</span>`;
   };
-  const who = (r) =>
-    av(r) +
-    (/^\d{1,12}$/.test(String(r.uid || ""))
-      ? `<a href="https://forums.d2jsp.org/user.php?i=${r.uid}" target="_blank" rel="noopener">${esc(r.nick)}</a>`
-      : esc(r.nick)) +
-    cups(r.puchary);
-  const label = (key) => {
-    const w = /^w(\d{4})-(\d{2})$/.exec(key);
-    if (w) return `tydzień ${+w[2]}. ${w[1]}`;
-    const m = /^m(\d{4})-(\d{2})$/.exec(key);
-    const MIES = [
-      "styczeń",
-      "luty",
-      "marzec",
-      "kwiecień",
-      "maj",
-      "czerwiec",
-      "lipiec",
-      "sierpień",
-      "wrzesień",
-      "październik",
-      "listopad",
-      "grudzień",
-    ];
-    return m ? `${MIES[+m[2] - 1]} ${m[1]}` : key;
-  };
-  function best(b, day) {
+  let today = "";
+  const nickBtn = (r, key) =>
+    r.uid
+      ? `<button type="button" class="nk" data-uid="${esc(r.uid)}" data-okres="${esc(key)}" title="Skoki gracza ${esc(r.nick)}">${esc(r.nick)}</button>`
+      : esc(r.nick);
+  const play = (r, text) => {
+    const b = r.best;
     if (!b) return "";
-    const later = b.day >= day;
-    return (
-      `<span class="tm-best">${b.m.toFixed(1).replace(".", ",")} m · ${pts(b.p)}</span>` +
-      `<button type="button" class="tm-w" data-gid="${esc(b.gid)}"${later ? ' disabled title="Dzisiejsze skoki można obejrzeć od jutra"' : ' title="Obejrzyj skok"'} aria-label="Obejrzyj skok">▶</button>`
-    );
-  }
-  function period(o, day) {
+    const later = b.day >= today;
+    const tip = later
+      ? "Dzisiejsze skoki można obejrzeć od jutra"
+      : `Najlepszy skok: ${String(b.m).replace(".", ",")} m, ${pts(b.p)} pkt`;
+    return `<button type="button" class="pl${text ? " t" : ""}" data-gid="${esc(b.gid)}"${later ? " disabled" : ""} title="${tip}" aria-label="Obejrzyj najlepszy skok ${esc(r.nick)}">▶${text ? " " + text : ""}</button>`;
+  };
+  const li = (r, i, key) =>
+    `<li><span class="ln">${i + 1}. ${av(r)}${nickBtn(r, key)}</span>${play(r)}<span class="lv">${pts(r.suma)}</span></li>`;
+
+  // --- karta mistrza: zwycięzca poprzedniego okresu, a bez niego „jeszcze nieznany” i kto na czele -----------
+  const CUP = { y: "cupY", m: "cupM", w: "cup" };
+  const LAB = { y: "Mistrz roku", m: "Mistrz miesiąca", w: "Mistrz tygodnia" };
+  function champ(o) {
     const prev = (o.prev && o.prev.podium) || [];
     const win = prev.filter((r) => r.place === 1 && r.suma > 0);
-    const prevLine = win.length
-      ? `Poprzedni ${NAZWA[o.k].toLowerCase()} (${label(o.prev.key)}): <svg class="cup"><use href="#${o.k === "m" ? "cupM" : "cup"}"/></svg> <b>${win.map((r) => av(r) + esc(r.nick)).join(" i ")}</b>, ${pts(win[0].suma)} pkt` +
-        (o.prev.zamkniety ? "" : " (puchar po 0:15)")
-      : `Poprzedni ${NAZWA[o.k].toLowerCase()} (${label(o.prev ? o.prev.key : "")}): bez zwycięzcy.`;
+    const head = (key) =>
+      `<svg class="big"><use href="#${CUP[o.k]}"/></svg><div class="lab">${LAB[o.k]}${o.k === "y" ? " " + key.slice(1) : ""}</div>`;
+    if (win.length) {
+      const per = o.k === "y" ? "" : `<div class="per">${esc(name(o.prev.key))}</div>`;
+      return (
+        head(o.prev.key) +
+        per +
+        `<div class="who">${win.map((r) => av(r) + nickBtn(r, o.prev.key)).join(" i ")}</div>` +
+        `<div class="pts">${pts(win[0].suma)} pkt · ${play(win[0], "najlepszy skok")}${o.prev.zamkniety ? "" : " · puchar po 0:15"}</div>` +
+        `<ol><li class="h">wyniki końcowe</li>${prev.slice(0, 5).map((r, i) => li(r, r.place - 1, o.prev.key)).join("")}</ol>`
+      );
+    }
+    const per = o.k === "y" ? `przyznanie ${dm(o.koniec)}` : `${name(o.key)} · przyznanie ${dm(o.koniec)}`;
+    return (
+      head(o.key) +
+      `<div class="per">${esc(per)}</div><div class="none">jeszcze nieznany</div>` +
+      (o.rows.length
+        ? `<ol><li class="h">na czele</li>${o.rows.slice(0, 5).map((r, i) => li(r, r.place - 1, o.key)).join("")}</ol>`
+        : "")
+    );
+  }
+  const RACE = { y: (k) => "rok " + k.slice(1), m: (k) => MIES[+k.slice(6, 8) - 1], w: (k) => weekName(k).replace(" · ", ", ") };
+  function race(o) {
+    const lead = (o.rows[0] && o.rows[0].suma) || 1;
     const rows = o.rows
+      .slice(0, 3)
       .map(
-        (r) =>
-          `<tr><td>${r.place}</td><td>${who(r)}</td><td class="n">${pts(r.suma)}</td><td class="n">${r.dni}</td><td class="n">${best(r.best, day)}</td></tr>`,
+        (r, i) =>
+          `<li><span class="pos ${r.place <= 3 ? "p" + r.place : ""}">${r.place}</span><div class="grow"><div class="nm">${av(r)}${nickBtn(r, o.key)}${play(r)}</div>` +
+          `<div class="track"><i style="width:${(r.suma / lead) * 100}%"></i></div></div><span class="v">${whole(r.suma)}</span></li>`,
       )
       .join("");
     return (
-      `<h3>${NAZWA[o.k]}: ${label(o.key)}</h3><p class="tm-prev">${prevLine}</p>` +
-      (rows
-        ? `<div class="tm-scroll"><table><thead><tr><th>#</th><th>Gracz</th><th class="n">Punkty</th><th class="n">Dni</th><th class="n">Najlepszy skok</th></tr></thead><tbody>${rows}</tbody></table></div>`
-        : '<p class="tm-empty">Jeszcze nikt nie skakał.</p>')
+      `<h4>Wyścig · ${esc(RACE[o.k](o.key))}</h4><ul>${rows || '<li class="empty">Jeszcze nikt nie skakał.</li>'}</ul>` +
+      `<div class="end">${endText(o)}</div>`
     );
   }
+  // Miejsce zalogowanego w trwających okresach (z 50 pierwszych, które daje serwer).
+  function mine(okresy) {
+    const k = me();
+    if (!k) return "Zaloguj się w grze kontem Lotnika, żeby widzieć tu swoje miejsce.";
+    const W = { w: "w tygodniu", m: "w miesiącu", y: "w roku" };
+    const parts = ["w", "m", "y"].map((kk) => {
+      const o = okresy.find((x) => x.k === kk);
+      const r = o && o.rows.find((x) => (k.uid ? x.uid === k.uid : x.nick === k.nick));
+      if (!r) return o && o.rows.length >= 50 ? `poza 50. ${W[kk]}` : `bez skoków ${W[kk]}`;
+      const third = o.rows.find((x) => x.place === 3);
+      const gap = r.place > 3 && third ? `, ${whole(third.suma - r.suma)} pkt do 3. miejsca` : "";
+      return `<b>${r.place}. ${W[kk]}</b>${gap}`;
+    });
+    return `Ty (${esc(k.nick)}): ${parts.join(" · ")}`;
+  }
+
+  SLOT.className = "card";
+  SLOT.innerHTML =
+    '<div class="tm-head"><h2>Telemark: Skocznie dnia</h2><button type="button" class="tm-play">Telemark</button>' +
+    '<span class="tm-rules">3 nowe skocznie dziennie, ten sam wiatr dla wszystkich. Tydzień: 5 najlepszych dni, miesiąc: 20, rok: 200. ▶ odtwarza najlepszy skok (dzisiejsze od jutra), nick pokazuje wszystkie skoki.</span></div>' +
+    (DEMO ? '<p class="tm-demo">Podgląd z przykładowymi danymi (adres z ?tmdemo).</p>' : "") +
+    '<div id="tm-body"><p class="empty">Ładowanie wyników Telemarka…</p></div>';
+  SLOT.querySelector(".tm-play").addEventListener("click", () => open(""));
+  SLOT.addEventListener("click", (e) => {
+    const p = e.target.closest("[data-gid]");
+    if (p && !p.disabled) return open("?ogladaj=" + encodeURIComponent(p.dataset.gid));
+    const n = e.target.closest("[data-uid]");
+    if (n) open("?gracz=" + encodeURIComponent(n.dataset.uid) + "&okres=" + encodeURIComponent(n.dataset.okres));
+  });
+
+  function draw(j) {
+    today = j.day;
+    const by = (k) => j.okresy.find((o) => o.k === k);
+    const list = ["y", "m", "w"].map(by).filter(Boolean);
+    document.getElementById("tm-body").innerHTML =
+      `<div class="tm-cols">${list.map((o) => `<div class="tmc k${o.k}">${champ(o)}</div>`).join("")}</div>` +
+      `<div class="tm-races">${list.map((o) => `<div class="tmr k${o.k}">${race(o)}</div>`).join("")}</div>` +
+      `<div class="tm-me">${mine(list)}</div>`;
+    window.tmFame = j.slawa || [];
+    if (typeof window.drawFame === "function") window.drawFame();
+  }
+
   let timer = 0;
   async function load(fresh) {
     clearTimeout(timer);
+    if (DEMO) return draw(demo());
     timer = setTimeout(() => load(false), ODSWIEZ_MS);
     const headers = { "Content-Type": "application/json" };
     if (!PROD && haslo()) headers["X-Lotnik-Haslo"] = haslo();
@@ -193,13 +293,42 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
     } catch (e) {
       const msg =
         j && j.haslo
-          ? "Tabele: strona testowa wymaga hasła testerów (wpisz je w grze albo w Lotniku)."
-          : "Tabele chwilowo niedostępne.";
-      document.getElementById("tm-w").innerHTML = `<p class="tm-empty">${esc(msg)}</p>`;
-      document.getElementById("tm-m").innerHTML = "";
+          ? "Wyniki: strona testowa wymaga hasła testerów (wpisz je w grze albo w Lotniku)."
+          : "Wyniki Telemarka chwilowo niedostępne.";
+      document.getElementById("tm-body").innerHTML = `<p class="empty tm-err">${esc(msg)}</p>`;
       return;
     }
-    for (const o of j.okresy) document.getElementById("tm-" + o.k).innerHTML = period(o, j.day);
+    draw(j);
+  }
+
+  // Przykładowe dane jak w makiecie C (tylko z ?tmdemo na stronie testowej).
+  function demo() {
+    const day = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Warsaw" });
+    const y = day.slice(0, 4);
+    const row = (nick, suma, place, i) => ({ nick, uid: "demo" + i, suma, place, dni: 3, puchary: [],
+      best: { gid: ("000000000000000" + i).slice(-16), p: 150 + i, m: 120.5, hill: "own-20", day: plus(day, -1) } });
+    const top = (names, sums) => names.map((n, i) => row(n, sums[i], i + 1, i + names.length * 7));
+    const span = (k) => {
+      if (k === "y") return [y + "-12-31"];
+      if (k === "m") return [plus(day.slice(0, 8) + "28", 4).slice(0, 8) + "01"].map((f) => plus(f, -1));
+      return [plus(mondayOf(day), 6)];
+    };
+    const mid = (d) => Date.parse(plus(d, 1) + "T00:00:00+01:00") / 1000;
+    const wk = (d) => { const t = new Date(Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10) + 4 - dow(d))); return "w" + t.getUTCFullYear() + "-" + String(Math.floor((t - Date.UTC(t.getUTCFullYear(), 0, 1)) / 864e5 / 7) + 1).padStart(2, "0"); };
+    const pm = plus(day.slice(0, 8) + "01", -1).slice(0, 7);
+    const o = (k, key, rows, prevKey, prev) => ({ k, key, koniec: span(k)[0], koniecTs: mid(span(k)[0]), rows,
+      prev: { key: prevKey, zamkniety: true, podium: prev } });
+    return {
+      day,
+      slawa: [{ nick: "Pozdrawiam", uid: "demo", puchary: ["m" + pm] }],
+      okresy: [
+        o("y", "y" + y, top(["Kryste_Panie", "BrakNicku", "ripsi", "fafniro", "kondes"], [9412, 8970.5, 6115.5, 5020, 3904.5]), "y" + (y - 1), []),
+        o("m", "m" + day.slice(0, 7), top(["Kryste_Panie", "BrakNicku", "fafniro"], [4377, 3990, 2620]), "m" + pm,
+          top(["Pozdrawiam", "Kryste_Panie", "BrakNicku", "ripsi", "cbx1992"], [7830.5, 7611, 6902.5, 4210, 2877.5])),
+        o("w", wk(day), top(["BrakNicku", "Kryste_Panie", "ripsi"], [1205, 1130, 627]), wk(plus(day, -7)),
+          top(["Kryste_Panie", "BrakNicku", "fafniro", "Pozdrawiam", "ripsi"], [2034.5, 1987, 1540.5, 1322, 1101.5])),
+      ],
+    };
   }
   load(false);
 })();
