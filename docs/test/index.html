@@ -222,7 +222,7 @@ aside{position:sticky;top:16px}
       <path d="M17 46h30l3 11H14z" fill="url(#gy)"/>
       <path d="M32 16l6 7-6 9-6-9z" fill="#fff" fill-opacity=".85"/>
     </symbol>
-    <!-- Narty Telemarka (Mateusz 14.11, szkic telemark/proto/puchary-telemark wersja B; korona roku jak obręcz na nartach, próba B w korona.html) -->
+    <!-- Narty Telemarka (Mateusz 14.11, szkic telemark/proto/puchary-telemark wersja B; korona roku na tarczy, próba A w korona.html, wybór Mateusza 14.11) -->
     <g id="skis">
       <g transform="rotate(-24 32 30)"><rect x="28.5" y="4" width="7" height="46" rx="3.5"/><path d="M28.5 8c0-5 3-7 7-7v7z"/></g>
       <g transform="rotate(24 32 30)"><rect x="28.5" y="4" width="7" height="46" rx="3.5"/><path d="M35.5 8c0-5-3-7-7-7v7z"/></g>
@@ -239,8 +239,8 @@ aside{position:sticky;top:16px}
     </symbol>
     <symbol id="nartyY" viewBox="0 0 64 64">
       <use href="#skis" fill="url(#gy)" stroke="#2a8fb8" stroke-width="1.5" transform="translate(0 3)"/>
-      <path d="M19 9l4.5 5.5 8.5-6 8.5 6 4.5-5.5 1.5 11H17.5z" fill="#f3c93a" stroke="#a87a10" stroke-width=".8" stroke-linejoin="round"/>
-      <circle cx="32" cy="34" r="6.5" fill="#2a8fb8"/><path d="M32 29.5l3.5 4.5-3.5 5-3.5-5z" fill="#fff"/>
+      <circle cx="32" cy="34" r="7" fill="#2a8fb8"/><path d="M32 29.5l3.5 4.5-3.5 5-3.5-5z" fill="#fff"/>
+      <path d="M24 20l3.5 4.5 4.5-4 4.5 4 3.5-4.5 1 8H23z" fill="#f3c93a" stroke="#a87a10" stroke-width=".8" stroke-linejoin="round"/>
       <path d="M15 50h34l3 8H12z" fill="url(#gy)"/>
     </symbol>
   </defs>
@@ -248,7 +248,7 @@ aside{position:sticky;top:16px}
 <div class="vtop" id="vtop"></div>
 <div class="wrap">
 <main>
-<h1>Licznik postów — d2jsp Polska <span class="ver">21.1-test</span></h1>
+<h1>Licznik postów — d2jsp Polska <span class="ver">21.2-test</span></h1>
 <p class="sub" id="sub">Ładowanie danych…</p>
 
 <div class="ranges" id="ranges">
@@ -552,9 +552,11 @@ document.addEventListener('scroll', () => { $('pie').hidden = true; }, { passive
   const parts = [];
   setInterval(() => {
     if (document.hidden || parts.length > 24) return;
-    for (const c of [...document.querySelectorAll('.cup.fire')].slice(0, 4)) {
+    let n = 0; // do 4 płonących widocznych na ekranie (narty Telemarka nad rankingiem nie zabierają iskier pucharom niżej)
+    for (const c of document.querySelectorAll('.cup.fire')) {
       const r = c.getBoundingClientRect();
       if (!r.width || r.bottom < 0 || r.top > innerHeight) continue;
+      if (++n > 4) break;
       const d = document.createElement('div'); d.className = 'lavadrop ' + (c.classList.contains('fw') ? 'fw' : 'fm'); document.body.appendChild(d);
       parts.push({ d, x0: r.left + r.width * (.25 + Math.random() * .5), y0: r.top + r.height * (.45 + Math.random() * .4), fall: 25 + Math.random() * 45, dur: 1600 + Math.random() * 1400, sway: (Math.random() - .5) * 14, t0: performance.now() });
     }
