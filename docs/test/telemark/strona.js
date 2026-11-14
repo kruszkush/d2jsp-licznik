@@ -65,9 +65,13 @@
 #telemark .tmc li .rav,#telemark .tmr .rav{width:18px;height:18px;border-width:1px;font-size:10px;margin-right:4px}
 #telemark .nk{background:none;border:0;padding:0;color:inherit;font:inherit;font-weight:inherit;cursor:pointer;text-align:left}
 #telemark .nk:hover{color:var(--acc);text-decoration:underline}
-#telemark .pl{background:none;border:0;padding:0 2px;color:var(--acc);font-size:11px;line-height:1;cursor:pointer}
-#telemark .pl[disabled]{opacity:.4;cursor:default}
-#telemark .pl.t{font-size:11px}
+/* ▶ w wierszach (Mateusz 14.11): zawsze w tym samym miejscu za punktami, szary jak punkty, pomarańczowy po najechaniu;
+   przy mistrzu „▶ najlepszy skok” w kolorze strony jak na makiecie C. */
+#telemark .pl{background:none;border:0;padding:0;color:var(--mute);font-size:10px;line-height:1;cursor:pointer;width:1.8em;flex:none;text-align:right}
+#telemark .pl:not([disabled]):hover{color:var(--acc)}
+#telemark .pl[disabled]{opacity:.35;cursor:default}
+#telemark .pl.t{font-size:11px;color:var(--acc);width:auto;padding:0 2px}
+#telemark .pl-e{width:1.8em;flex:none}
 #telemark .tmr{border:1px solid var(--line);border-radius:10px;padding:8px 12px;min-width:0}
 #telemark .tmr h4{margin:0 0 4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);font-weight:700}
 #telemark .tmr ul{margin:0;padding:0}
@@ -179,7 +183,7 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
       : esc(r.nick);
   const play = (r, text) => {
     const b = r.best;
-    if (!b) return "";
+    if (!b) return text ? "" : '<span class="pl-e"></span>';
     const later = b.day >= today;
     const tip = later
       ? "Dzisiejsze skoki można obejrzeć od jutra"
@@ -187,7 +191,7 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
     return `<button type="button" class="pl${text ? " t" : ""}" data-gid="${esc(b.gid)}"${later ? " disabled" : ""} title="${tip}" aria-label="Obejrzyj najlepszy skok ${esc(r.nick)}">▶${text ? " " + text : ""}</button>`;
   };
   const li = (r, i, key) =>
-    `<li><span class="ln">${i + 1}. ${av(r)}${nickBtn(r, key)}</span>${play(r)}<span class="lv">${pts(r.suma)}</span></li>`;
+    `<li><span class="ln">${i + 1}. ${nickBtn(r, key)}</span><span class="lv">${pts(r.suma)}</span>${play(r)}</li>`;
 
   // --- karta mistrza: zwycięzca poprzedniego okresu, a bez niego „jeszcze nieznany” i kto na czele -----------
   const CUP = { y: "cupY", m: "cupM", w: "cup" };
@@ -223,8 +227,8 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
       .slice(0, 3)
       .map(
         (r, i) =>
-          `<li><span class="pos ${r.place <= 3 ? "p" + r.place : ""}">${r.place}</span><div class="grow"><div class="nm">${av(r)}${nickBtn(r, o.key)}${play(r)}</div>` +
-          `<div class="track"><i style="width:${(r.suma / lead) * 100}%"></i></div></div><span class="v">${whole(r.suma)}</span></li>`,
+          `<li><span class="pos ${r.place <= 3 ? "p" + r.place : ""}">${r.place}</span><div class="grow"><div class="nm">${nickBtn(r, o.key)}</div>` +
+          `<div class="track"><i style="width:${(r.suma / lead) * 100}%"></i></div></div><span class="v">${whole(r.suma)}</span>${play(r)}</li>`,
       )
       .join("");
     return (
