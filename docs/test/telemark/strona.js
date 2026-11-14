@@ -33,12 +33,13 @@
 #telemark .tm-scroll{max-height:420px;overflow:auto}
 .tm-okno{position:fixed;inset:0;z-index:97;background:#020617;display:flex;align-items:center;justify-content:center}
 .tm-okno[hidden]{display:none!important}
-.tm-okno .tm-box{position:relative;width:min(97vw,2200px);height:min(94vh,1300px);background:#000;border-radius:10px;overflow:hidden}
+.tm-okno .tm-box{position:relative;width:min(97vw,2200px);height:min(calc(100vh - 56px),1300px);margin-top:44px;background:#000;border-radius:10px;overflow:hidden}
 .tm-okno iframe{width:100%;height:100%;border:0;display:block}
-.tm-okno .tm-x{position:absolute;top:8px;right:8px;z-index:2;background:rgba(15,23,42,.85);color:#e2e8f0;border:1px solid rgba(248,250,252,.35);font-size:18px;line-height:1;padding:8px 12px}
+/* Krzyżyk na pasku nad grą, nie na niej: w rogu gry leży wskaźnik wiatru. */
+.tm-okno .tm-x{position:fixed;top:6px;right:max(8px,calc((100vw - min(97vw,2200px)) / 2));z-index:2;background:rgba(15,23,42,.85);color:#e2e8f0;border:1px solid rgba(248,250,252,.35);font-size:16px;line-height:1;padding:6px 11px}
 body.tm-on>:not(.tm-okno){visibility:hidden!important}
 body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!important}
-@media (max-width:760px){.tm-okno .tm-box{width:100vw;height:100%;border-radius:0}}
+@media (max-width:760px),(max-height:500px){.tm-okno{align-items:flex-end}.tm-okno .tm-box{width:100vw;height:calc(100% - 38px);margin:0;border-radius:0}.tm-okno .tm-x{right:6px}}
 `;
   document.head.appendChild(css);
 
