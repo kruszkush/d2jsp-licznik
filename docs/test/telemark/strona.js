@@ -24,22 +24,12 @@
     }
   };
   const haslo = () => store("lotnik.haslo");
-  // Konto zalogowane w Lotniku na tej stronie (lotnik/konto.js; prod z przedrostkiem „p.”).
-  const me = () => {
-    try {
-      const d = JSON.parse(store((PROD ? "p." : "") + "lotnik.konto") || "null");
-      return d && d.konto && typeof d.konto.nick === "string" ? d.konto : null;
-    } catch (e) {
-      return null;
-    }
-  };
 
   const css = document.createElement("style");
   css.textContent = `
 #telemark{border-color:#c9a27e}
 @media (prefers-color-scheme:dark){#telemark{border-color:#4a3a2c}}
 #telemark .tm-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
-#telemark .tm-head h2{margin:0;font-size:16px}
 #telemark .tm-play{background:var(--acc);color:#fff;border-color:var(--acc);font-weight:600}
 #telemark .tm-rules{color:var(--mute);font-size:12px;flex:1 1 240px}
 #telemark .tm-cols,#telemark .tm-races{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
@@ -58,7 +48,8 @@
 #telemark .tmc .pts{font-size:11px;color:var(--mute)}
 #telemark .tmc ol{margin:8px 0 0;padding:6px 0 0;border-top:1px dashed var(--line);list-style:none;font-size:12px;text-align:left}
 #telemark .tmc ol .h{color:var(--mute);font-size:11px;margin-bottom:2px;display:block}
-#telemark .tmc li{display:flex;align-items:center;gap:4px}
+#telemark .tmc li{display:flex;align-items:center;gap:4px;line-height:1.5;margin-top:4px}
+/* Odstęp wierszy jak „Wyniki końcowe” w kartach mistrzów postów (Mateusz 14.11: „wszystko nawalone”). */
 #telemark .tmc li .ln{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #telemark .tmc li .lv{color:var(--mute);font-variant-numeric:tabular-nums;min-width:4.6em;text-align:right;margin-left:4px}
 #telemark .rav{border:2px solid var(--c);width:22px;height:22px;margin-right:5px}
@@ -82,8 +73,6 @@
 #telemark .tmr .v{font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums}
 #telemark .tmr .end{font-size:11px;color:var(--mute);margin-top:4px}
 #telemark .tmr .empty{font-size:12px;padding:4px 0;border:0}
-#telemark .tm-me{margin-top:10px;font-size:13px;color:var(--mute);border-top:1px solid var(--line);padding-top:8px}
-#telemark .tm-me b{color:var(--ink)}
 #telemark .tm-demo{font-size:12px;color:var(--acc);margin:0 0 8px}
 .tm-okno{position:fixed;inset:0;z-index:97;background:#020617;display:flex;align-items:center;justify-content:center}
 .tm-okno[hidden]{display:none!important}
@@ -236,25 +225,10 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
       `<div class="end">${endText(o)}</div>`
     );
   }
-  // Miejsce zalogowanego w trwających okresach (z 50 pierwszych, które daje serwer).
-  function mine(okresy) {
-    const k = me();
-    if (!k) return "Zaloguj się w grze kontem Lotnika, żeby widzieć tu swoje miejsce.";
-    const W = { w: "w tygodniu", m: "w miesiącu", y: "w roku" };
-    const parts = ["w", "m", "y"].map((kk) => {
-      const o = okresy.find((x) => x.k === kk);
-      const r = o && o.rows.find((x) => (k.uid ? x.uid === k.uid : x.nick === k.nick));
-      if (!r) return o && o.rows.length >= 50 ? `poza 50. ${W[kk]}` : `bez skoków ${W[kk]}`;
-      const third = o.rows.find((x) => x.place === 3);
-      const gap = r.place > 3 && third ? `, ${whole(third.suma - r.suma)} pkt do 3. miejsca` : "";
-      return `<b>${r.place}. ${W[kk]}</b>${gap}`;
-    });
-    return `Ty (${esc(k.nick)}): ${parts.join(" · ")}`;
-  }
-
   SLOT.className = "card";
   SLOT.innerHTML =
-    '<div class="tm-head"><h2>Telemark: Skocznie dnia</h2><button type="button" class="tm-play">Telemark</button>' +
+    // Bez nagłówka „Telemark: Skocznie dnia” (Mateusz 14.11: „nie wiadomo, o co chodzi”); przycisk mówi, co robi.
+    '<div class="tm-head"><button type="button" class="tm-play">Telemark – zagraj</button>' +
     '<span class="tm-rules">3 nowe skocznie dziennie, ten sam wiatr dla wszystkich. Tydzień: 5 najlepszych dni, miesiąc: 20, rok: 200. ▶ odtwarza najlepszy skok (dzisiejsze od jutra), nick pokazuje wszystkie skoki.</span></div>' +
     (DEMO ? '<p class="tm-demo">Podgląd z przykładowymi danymi (adres z ?tmdemo).</p>' : "") +
     '<div id="tm-body"><p class="empty">Ładowanie wyników Telemarka…</p></div>';
@@ -272,8 +246,7 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
     const list = ["y", "m", "w"].map(by).filter(Boolean);
     document.getElementById("tm-body").innerHTML =
       `<div class="tm-cols">${list.map((o) => `<div class="tmc k${o.k}">${champ(o)}</div>`).join("")}</div>` +
-      `<div class="tm-races">${list.map((o) => `<div class="tmr k${o.k}">${race(o)}</div>`).join("")}</div>` +
-      `<div class="tm-me">${mine(list)}</div>`;
+      `<div class="tm-races">${list.map((o) => `<div class="tmr k${o.k}">${race(o)}</div>`).join("")}</div>`;
     window.tmFame = j.slawa || [];
     if (typeof window.drawFame === "function") window.drawFame();
   }
