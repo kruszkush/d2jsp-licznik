@@ -346,21 +346,22 @@ const skiSvg = (t = 'w', cls = 'cup') => `<svg class="${cls}"><use href="#${SKI_
 const FIRE_SM = fireCup('fm', 'nartyM', '#7b3fd1', '#b98cff', '#f0e2ff'), FIRE_SW = fireCup('fw', 'nartyW', '#c9961a', '#f3c93a', '#fff3b8');
 // klucz tytułu z serwera Telemarka: 'w2026-46', 'm2026-11', 'y2026'
 const tmLabel = (k) => k[0] === 'y' ? k.slice(1) : k[0] === 'm' ? `${MONTHS[+k.slice(6, 8) - 1]} ${k.slice(1, 5)}` : `tydzień ${+k.slice(6)}. ${k.slice(1, 5)}`;
-// Narty przy nicku w tabelach Telemarka (telemark/strona.js): układ jak nickBadges — płonące fioletowe za miesiąc, rok, płonące złote (jedne za każdy miesiąc), reszta złote
+// Narty przy nicku w rankingu postów (nickBadges, za pucharami): układ jak nickBadges — płonące fioletowe za miesiąc, rok, płonące złote (jedne za każdy miesiąc), reszta złote
 function tmBadges(keys) {
   if (!keys || !keys.length) return '';
   const n = (t) => keys.filter((k) => k[0] === t).length, y = n('y'), m = n('m'), w = n('w');
   const title = 'Telemark: ' + keys.map((k) => 'Mistrz ' + TYPE[k[0]].name + ': ' + tmLabel(k)).join(', ');
   return `<span class="mini" title="${esc(title)}">${FIRE_SM.repeat(m) + skiSvg('y').repeat(y) + FIRE_SW.repeat(Math.min(m, w)) + skiSvg('w').repeat(Math.max(0, w - m))}</span>`;
 }
-window.tmBadges = tmBadges;
 
 // Odznaki przy nicku w rankingu: puchary (płonące fioletowe za miesiąc jako pierwsze, rok, złote za tydzień — każdy tytuł miesiąca przekształca jeden w płonący) i gwiazdka roku za nickiem
 function nickBadges(u) {
   const c = cups.get(u) || [], n = (t) => c.filter((k) => k.t === t).length, y = n('y'), m = n('m'), w = n('w');
   const title = c.map((k) => 'Mistrz ' + TYPE[k.t].name + ': ' + k.label).join(', ');
   const icons = FIRE_M.repeat(m) + cupSvg('y').repeat(y) + FIRE_W.repeat(Math.min(m, w)) + cupSvg('w').repeat(Math.max(0, w - m));
-  return `<span class="${reign.has(u) ? 'reign' : ''}"${reign.has(u) ? ' title="Panujący mistrz miesiąca"' : ''}>${link(u)}</span>${y ? '<span class="ystar" title="Mistrz roku">★</span>' : ''}${icons ? `<span class="mini" title="${esc(title)}">${icons}</span>` : ''}`;
+  // narty Telemarka za pucharami za posty (Mateusz 14.11); podgląd ?tmdemo ma uid „demo-<nick>”, więc tam po nicku
+  const tm = (window.tmFame || []).find((f) => String(f.uid) === String(u) || (String(f.uid).startsWith('demo-') && f.nick === nick(u)));
+  return `<span class="${reign.has(u) ? 'reign' : ''}"${reign.has(u) ? ' title="Panujący mistrz miesiąca"' : ''}>${link(u)}</span>${y ? '<span class="ystar" title="Mistrz roku">★</span>' : ''}${icons ? `<span class="mini" title="${esc(title)}">${icons}</span>` : ''}${tm ? tmBadges(tm.puchary) : ''}`;
 }
 function computeAll() {
   const covered = D.from || D.posts[0][3] * 1000, doneUpTo = D.complete || new Date(D.updated).getTime(), now = Date.now();
@@ -505,7 +506,9 @@ function drawFame() {
   $('fame').innerHTML = fame.map(([u, l, t]) => `<li><div class="grow"><div class="nm">${D.users[u] ? link(u) : esc(tm.get(u)?.nick || u)}</div></div>${badges(l, cupSvg, '')}${badges(t, skiSvg, 'Telemark: ')}</li>`).join('')
     || '<li class="empty">Nikt jeszcze nie ma pucharu.</li>';
 }
-window.drawFame = drawFame;
+// telemark/strona.js woła to po każdym odczycie tytułów: galeria i ranking (narty przy nicku)
+const drawFameOnly = drawFame; // funkcja z góry pliku to też window.drawFame, więc najpierw odkładam ją pod inną nazwą
+window.drawFame = () => { drawFameOnly(); if (D && to) render(); };
 
 // --- Kołowy wykres dnia: top 3 + reszta, z awatarami ---
 let dayUsers = new Map();
