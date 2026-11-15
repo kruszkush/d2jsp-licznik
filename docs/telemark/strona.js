@@ -110,11 +110,17 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
     frame.src = GAME + (query || "");
     okno.hidden = false;
     document.body.classList.add("tm-on");
+    // Na telefonie gra od razu na cały ekran (bez paska adresu i zakładek): przeglądarka pozwala na to tylko
+    // zaraz po stuknięciu, a open() woła klik. iPhone tego nie umie i zostaje okno. Mateusz 15.11.
+    if (matchMedia("(pointer: coarse)").matches && okno.requestFullscreen && !document.fullscreenElement) {
+      okno.requestFullscreen().catch(() => {});
+    }
     frame.focus();
   }
   function close() {
     if (!okno || okno.hidden) return;
     okno.hidden = true;
+    if (document.fullscreenElement === okno) document.exitFullscreen().catch(() => {});
     frame.src = "about:blank";
     document.body.classList.remove("tm-on");
     if (last && last.focus) last.focus();
