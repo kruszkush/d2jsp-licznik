@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Licznik postów d2jsp 13.9</title>
+<title>Licznik postów d2jsp 14.0</title>
 <style>
 :root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e4e2dc;--acc:#b4441f;--bar:#d9825f;
  --gold:#c9961a;--gold2:#f3d46b;--goldbg:#fff8e3;--goldline:#efd89a;--silver:#9aa0a6;--bronze:#b3713f}
@@ -221,12 +221,33 @@ aside{position:sticky;top:16px}
       <path d="M17 46h30l3 11H14z" fill="url(#gy)"/>
       <path d="M32 16l6 7-6 9-6-9z" fill="#fff" fill-opacity=".85"/>
     </symbol>
+    <!-- Narty Telemarka (Mateusz 14.11, szkic telemark/proto/puchary-telemark wersja B; korona roku na tarczy, próba A w korona.html, wybór Mateusza 14.11) -->
+    <g id="skis">
+      <g transform="rotate(-24 32 30)"><rect x="28.5" y="4" width="7" height="46" rx="3.5"/><path d="M28.5 8c0-5 3-7 7-7v7z"/></g>
+      <g transform="rotate(24 32 30)"><rect x="28.5" y="4" width="7" height="46" rx="3.5"/><path d="M35.5 8c0-5-3-7-7-7v7z"/></g>
+    </g>
+    <symbol id="nartyW" viewBox="0 0 64 64">
+      <use href="#skis" fill="url(#gg)" stroke="var(--gold)" stroke-width="1.5"/>
+      <rect x="18" y="49" width="28" height="8" rx="2" fill="url(#gg)"/>
+    </symbol>
+    <symbol id="nartyM" viewBox="0 0 64 64">
+      <use href="#skis" fill="url(#gm)" stroke="#7b3fd1" stroke-width="1.5"/>
+      <circle cx="32" cy="29" r="7.5" fill="#7b3fd1"/>
+      <path d="M32 23.5l1.7 3.4 3.8.6-2.8 2.7.7 3.8-3.4-1.8-3.4 1.8.7-3.8-2.8-2.7 3.8-.6z" fill="#fff"/>
+      <path d="M16 49h32l3 8H13z" fill="url(#gm)"/>
+    </symbol>
+    <symbol id="nartyY" viewBox="0 0 64 64">
+      <use href="#skis" fill="url(#gy)" stroke="#2a8fb8" stroke-width="1.5" transform="translate(0 3)"/>
+      <circle cx="32" cy="34" r="7" fill="#2a8fb8"/><path d="M32 29.5l3.5 4.5-3.5 5-3.5-5z" fill="#fff"/>
+      <path d="M24 20l3.5 4.5 4.5-4 4.5 4 3.5-4.5 1 8H23z" fill="#f3c93a" stroke="#a87a10" stroke-width=".8" stroke-linejoin="round"/>
+      <path d="M15 50h34l3 8H12z" fill="url(#gy)"/>
+    </symbol>
   </defs>
 </svg>
 <div class="vtop" id="vtop"></div>
 <div class="wrap">
 <main>
-<h1>Licznik postów — d2jsp Polska <span class="ver">13.9</span></h1>
+<h1>Licznik postów — d2jsp Polska <span class="ver">14.0</span></h1>
 <p class="sub" id="sub">Ładowanie danych…</p>
 
 <div class="ranges" id="ranges">
@@ -243,7 +264,9 @@ aside{position:sticky;top:16px}
   <div class="tile"><b id="tAvg">–</b><span>postów dziennie</span></div>
 </div>
 
-<div class="card"><h2 id="chartH">Posty dziennie</h2><p class="note" id="chartN" style="margin:-6px 0 10px">Ile postów napisano na forum każdego dnia w wybranym zakresie.</p><div id="chart" class="bars"></div></div>
+<div id="telemark"></div>
+
+<div class="card" id="chartCard"><h2 id="chartH">Posty dziennie</h2><p class="note" id="chartN" style="margin:-6px 0 10px">Ile postów napisano na forum każdego dnia w wybranym zakresie.</p><div id="chart" class="bars"></div></div>
 
 <div class="card" id="rankCard">
   <div id="lsnow"></div>
@@ -316,13 +339,28 @@ const TYPE = { w: { name: 'tygodnia', sym: 'cup' }, m: { name: 'miesiąca', sym:
 const cupSvg = (t = 'w', cls = 'cup') => `<svg class="${cls}"><use href="#${TYPE[t].sym}"/></svg>`;
 const fireCup = (cls, sym, a, b, c) => `<svg class="cup fire ${cls}" viewBox="0 -14 64 78"><g class="fl"><path d="M32 -12c5 8 13 12 13 23a13 13 0 0 1-26 0c0-7 4-10 5-16 2 5 4 6 5 8 1-5 1-9 3-15z" fill="${a}"/><path d="M32 0c3 5 8 8 8 14a8 8 0 0 1-16 0c0-4 2-7 4-10 1 2 2 3 3 4z" fill="${b}"/><path d="M32 8c2 3 4 4 4 7a4 4 0 0 1-8 0c0-2 1-4 2-5z" fill="${c}"/></g><use href="#${sym}"/></svg>`;
 const FIRE_M = fireCup('fm', 'cupM', '#7b3fd1', '#b98cff', '#f0e2ff'), FIRE_W = fireCup('fw', 'cup', '#c9961a', '#f3c93a', '#fff3b8');
+// Narty Telemarka: te same kolory, ogień i iskry co puchary za posty, inny kształt (Mateusz 14.11)
+const SKI_SYM = { w: 'nartyW', m: 'nartyM', y: 'nartyY' };
+const skiSvg = (t = 'w', cls = 'cup') => `<svg class="${cls}"><use href="#${SKI_SYM[t]}"/></svg>`;
+const FIRE_SM = fireCup('fm', 'nartyM', '#7b3fd1', '#b98cff', '#f0e2ff'), FIRE_SW = fireCup('fw', 'nartyW', '#c9961a', '#f3c93a', '#fff3b8');
+// klucz tytułu z serwera Telemarka: 'w2026-46', 'm2026-11', 'y2026'
+const tmLabel = (k) => k[0] === 'y' ? k.slice(1) : k[0] === 'm' ? `${MONTHS[+k.slice(6, 8) - 1]} ${k.slice(1, 5)}` : `tydzień ${+k.slice(6)}. ${k.slice(1, 5)}`;
+// Narty przy nicku w rankingu postów (nickBadges, za pucharami): układ jak nickBadges — płonące fioletowe za miesiąc, rok, płonące złote (jedne za każdy miesiąc), reszta złote
+function tmBadges(keys) {
+  if (!keys || !keys.length) return '';
+  const n = (t) => keys.filter((k) => k[0] === t).length, y = n('y'), m = n('m'), w = n('w');
+  const title = 'Telemark: ' + keys.map((k) => 'Mistrz ' + TYPE[k[0]].name + ': ' + tmLabel(k)).join(', ');
+  return `<span class="mini" title="${esc(title)}">${FIRE_SM.repeat(m) + skiSvg('y').repeat(y) + FIRE_SW.repeat(Math.min(m, w)) + skiSvg('w').repeat(Math.max(0, w - m))}</span>`;
+}
 
 // Odznaki przy nicku w rankingu: puchary (płonące fioletowe za miesiąc jako pierwsze, rok, złote za tydzień — każdy tytuł miesiąca przekształca jeden w płonący) i gwiazdka roku za nickiem
 function nickBadges(u) {
   const c = cups.get(u) || [], n = (t) => c.filter((k) => k.t === t).length, y = n('y'), m = n('m'), w = n('w');
   const title = c.map((k) => 'Mistrz ' + TYPE[k.t].name + ': ' + k.label).join(', ');
   const icons = FIRE_M.repeat(m) + cupSvg('y').repeat(y) + FIRE_W.repeat(Math.min(m, w)) + cupSvg('w').repeat(Math.max(0, w - m));
-  return `<span class="${reign.has(u) ? 'reign' : ''}"${reign.has(u) ? ' title="Panujący mistrz miesiąca"' : ''}>${link(u)}</span>${y ? '<span class="ystar" title="Mistrz roku">★</span>' : ''}${icons ? `<span class="mini" title="${esc(title)}">${icons}</span>` : ''}`;
+  // narty Telemarka za pucharami za posty (Mateusz 14.11); podgląd ?tmdemo ma uid „demo-<nick>”, więc tam po nicku
+  const tm = (window.tmFame || []).find((f) => String(f.uid) === String(u) || (String(f.uid).startsWith('demo-') && f.nick === nick(u)));
+  return `<span class="${reign.has(u) ? 'reign' : ''}"${reign.has(u) ? ' title="Panujący mistrz miesiąca"' : ''}>${link(u)}</span>${y ? '<span class="ystar" title="Mistrz roku">★</span>' : ''}${icons ? `<span class="mini" title="${esc(title)}">${icons}</span>` : ''}${tm ? tmBadges(tm.puchary) : ''}`;
 }
 function computeAll() {
   const covered = D.from || D.posts[0][3] * 1000, doneUpTo = D.complete || new Date(D.updated).getTime(), now = Date.now();
@@ -452,11 +490,24 @@ function renderCups(R) {
 
   HR = R; drawHist();
 
+  drawFame();
+}
+// Galeria sław: puchary za posty i tytuły Telemarka (narty; window.tmFame z telemark/strona.js: [{nick, uid, puchary: ['w2026-46', 'm2026-11', 'y2026']}]).
+function drawFame() {
+  if (!D) return;
+  const tm = new Map();
+  for (const f of window.tmFame || []) if (f.uid) tm.set(String(f.uid), f);
+  const tmOf = (u) => (tm.get(u)?.puchary || []).map((k) => ({ t: k[0], label: tmLabel(k) }));
   const score = (l) => l.reduce((s, c) => s + { y: 10000, m: 100, w: 1 }[c.t], 0);
-  const fame = [...cups].sort((a, b) => score(b[1]) - score(a[1]));
-  $('fame').innerHTML = fame.map(([u, l]) => `<li><div class="grow"><div class="nm">${link(u)}</div></div>${['y', 'm', 'w'].map((t) => { const k = l.filter((c) => c.t === t); return k.length ? `<span class="mini" title="Mistrz ${TYPE[t].name}: ${k.map((c) => c.label).join(', ')}">${cupSvg(t)} ×${k.length}</span>` : ''; }).join('')}</li>`).join('')
+  const who = new Set([...cups.keys(), ...tm.keys()]);
+  const fame = [...who].map((u) => [u, cups.get(u) || [], tmOf(u)]).sort((a, b) => score([...b[1], ...b[2]]) - score([...a[1], ...a[2]]));
+  const badges = (l, icon, what) => ['y', 'm', 'w'].map((t) => { const k = l.filter((c) => c.t === t); return k.length ? `<span class="mini" title="${what}Mistrz ${TYPE[t].name}: ${k.map((c) => c.label).join(', ')}">${icon(t)} ×${k.length}</span>` : ''; }).join('');
+  $('fame').innerHTML = fame.map(([u, l, t]) => `<li><div class="grow"><div class="nm">${D.users[u] ? link(u) : esc(tm.get(u)?.nick || u)}</div></div>${badges(l, cupSvg, '')}${badges(t, skiSvg, 'Telemark: ')}</li>`).join('')
     || '<li class="empty">Nikt jeszcze nie ma pucharu.</li>';
 }
+// telemark/strona.js woła to po każdym odczycie tytułów: galeria i ranking (narty przy nicku)
+const drawFameOnly = drawFame; // funkcja z góry pliku to też window.drawFame, więc najpierw odkładam ją pod inną nazwą
+window.drawFame = () => { drawFameOnly(); if (D && to) render(); };
 
 // --- Kołowy wykres dnia: top 3 + reszta, z awatarami ---
 let dayUsers = new Map();
@@ -503,9 +554,11 @@ document.addEventListener('scroll', () => { $('pie').hidden = true; }, { passive
   const parts = [];
   setInterval(() => {
     if (document.hidden || parts.length > 24) return;
-    for (const c of [...document.querySelectorAll('.cup.fire')].slice(0, 4)) {
+    let n = 0; // do 4 płonących widocznych na ekranie (narty Telemarka nad rankingiem nie zabierają iskier pucharom niżej)
+    for (const c of document.querySelectorAll('.cup.fire')) {
       const r = c.getBoundingClientRect();
       if (!r.width || r.bottom < 0 || r.top > innerHeight) continue;
+      if (++n > 4) break;
       const d = document.createElement('div'); d.className = 'lavadrop ' + (c.classList.contains('fw') ? 'fw' : 'fm'); document.body.appendChild(d);
       parts.push({ d, x0: r.left + r.width * (.25 + Math.random() * .5), y0: r.top + r.height * (.45 + Math.random() * .4), fall: 25 + Math.random() * 45, dur: 1600 + Math.random() * 1400, sway: (Math.random() - .5) * 14, t0: performance.now() });
     }
@@ -570,7 +623,15 @@ document.getElementById('legendSlot').outerHTML = `<footer class="legend">
     <div><span class="ic"><span class="reign">Nick</span></span><p><b>Fioletowy nick</b><span>panujący mistrz miesiąca, do czasu kolejnego mistrza</span></p></div>
     <div><span class="ic">@W@</span><p><b>Puchar tygodnia</b><span>najwięcej postów od niedzieli 21:00 do niedzieli 21:00</span></p></div>
   </div>
-</footer>`.replace('@Y@', cupSvg('y')).replace('@M@', FIRE_M).replace('@D@', FIRE_W).replace('@W@', cupSvg('w'));
+  <h2 style="margin-top:18px">Telemark</h2>
+  <div class="lg">
+    <div><span class="ic">@TY@</span><p><b>Narty roku</b><span>najwięcej punktów w Telemarku z 200 najlepszych dni roku</span></p></div>
+    <div><span class="ic">@TM@</span><p><b>Narty miesiąca</b><span>najwięcej punktów z 20 najlepszych dni miesiąca; stoją przy nicku jako pierwsze</span></p></div>
+    <div><span class="ic">@TD@</span><p><b>Płonące złote narty</b><span>każdy tytuł mistrza miesiąca Telemarka przekształca jedne złote narty w płonące</span></p></div>
+    <div><span class="ic">@TW@</span><p><b>Narty tygodnia</b><span>najwięcej punktów z 5 najlepszych dni tygodnia (poniedziałek–niedziela)</span></p></div>
+  </div>
+</footer>`.replace('@Y@', cupSvg('y')).replace('@M@', FIRE_M).replace('@D@', FIRE_W).replace('@W@', cupSvg('w'))
+  .replace('@TY@', skiSvg('y')).replace('@TM@', FIRE_SM).replace('@TD@', FIRE_SW).replace('@TW@', skiSvg('w'));
 
 fetch('data.json?' + Date.now()).then((r) => r.json()).then((d) => {
   D = d;
@@ -658,19 +719,10 @@ function render() {
       return `<tr${dom && !i ? ' class="lead"' : ''}><td>${i+1}</td><td>${(() => { const av = D.avatars?.[x.u]; return `<span class="rav"${av ? ` style="background-image:url('${esc(av)}')"` : ''}>${av ? '' : esc(nick(x.u)[0].toUpperCase())}</span>`; })()}${wchamp.has(x.u) ? `<span class="wch">${nickBadges(x.u)}</span>` : nickBadges(x.u)}${reign.has(x.u) ? `<span class="mtag">${cupSvg('m')} Mistrz miesiąca</span>` : ''}${wchamp.has(x.u) ? `<span class="wtag">${cupSvg('w')} Mistrz tygodnia</span>` : ''}${dom && !i ? `<span class="domtag" title="Przewaga nad 2. miejscem">+${fmt(lead)} przewagi</span>` : ''}</td><td class="n">${fmt(x.n)}</td><td class="n">${x.t.size}</td><td class="w"><div class="share" style="width:${x.n/top*100}%" title="${(x.n/posts.length*100).toFixed(1)}%"></div></td></tr>`; }).join('')
     || '<tr><td colspan="5" style="color:var(--mute)">Brak postów w tym zakresie.</td></tr>';
 
-  // zakres do 2 dni: słupki co godzinę (dzienne dałyby tylko 1–2 słupki)
+  // Zakres do 2 dni: bez wykresu (wykres „Posty co godzinę” usunięty, Mateusz 14.11, makieta C Telemarka); dłuższe: posty dziennie.
   const hourly = to - from <= 2 * day;
-  $('chartH').textContent = hourly ? 'Posty co godzinę' : 'Posty dziennie';
-  $('chartN').textContent = hourly ? 'Ile postów napisano na forum w każdej godzinie wybranego zakresu.' : 'Ile postów napisano na forum każdego dnia w wybranym zakresie.';
-  if (hourly) {
-    const h0 = Math.floor(from / 36e5) * 36e5, hv = new Map();
-    for (const p of posts) { const k = Math.floor(p[3] * 1000 / 36e5) * 36e5; hv.set(k, (hv.get(k) || 0) + 1); }
-    const hs = []; for (let x = h0; x <= to; x += 36e5) hs.push(x);
-    const hmax = Math.max(1, ...hs.map((x) => hv.get(x) || 0)), nowH = Math.floor(Date.now() / 36e5) * 36e5;
-    $('chart').innerHTML = hs.map((x, i) => { const d = new Date(x), v = hv.get(x) || 0, hh = String(d.getHours()).padStart(2, '0');
-      return `<div class="col${x === nowH ? ' today' : ''}" data-k="h${x}" data-t="${d.toLocaleDateString('pl-PL', { weekday: 'long' })} ${hh}:00–${hh}:59: ${v} postów${x === nowH ? ' (godzina trwa)' : ''}"><div class="b" style="height:${Math.round(v / hmax * 120)}px"></div><span class="d">${i % 3 === 0 ? hh : '&nbsp;'}</span></div>`; }).join('');
-    return;
-  }
+  $('chartCard').hidden = hourly;
+  if (hourly) return;
   const keys = []; for (let d = new Date(ymd(from) + 'T12:00').getTime(); d <= to; d += day) keys.push(ymd(d));
   const vals = keys.map((k) => days.get(k) || 0), max = Math.max(1, ...vals), many = keys.length > 21, step = Math.ceil(keys.length / 12);
   const WD = ['nd', 'pn', 'wt', 'śr', 'cz', 'pt', 'sb'], td = ymd(Date.now());
@@ -680,6 +732,7 @@ function render() {
       <span class="d">${show ? `${dt.getDate()}.${String(dt.getMonth() + 1).padStart(2, '0')}${many ? '' : `<i>${WD[dt.getDay()]}</i>`}` : '&nbsp;'}</span></div>`; }).join('');
 }
 </script>
+<script src="telemark/strona.js?v=1a58259"></script>
 <script type="module" src="lotnik/nakladka.js?v=80"></script>
 <script>document.getElementById('vtop').textContent = 'wersja ' + document.querySelector('.ver').textContent;</script>
 </body>
