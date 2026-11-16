@@ -220,15 +220,21 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
     );
   }
   const RACE = { y: (k) => "rok " + k.slice(1), m: (k) => MIES[+k.slice(6, 8) - 1], w: (k) => weekName(k).replace(" · ", ", ") };
-  const RULE = { y: "liczy się 200 najlepszych dni roku", m: "liczy się 20 najlepszych dni miesiąca", w: "liczy się 5 najlepszych dni z 7" };
+  // Liczba dni z serwera (o.dni): listopad 2026 i rok 2026 mają mniej (start gry 15.11, Mateusz 16.11: 10 i 30).
+  const DNI = { y: 200, m: 20, w: 5 };
+  const ndni = (o) => o.dni || DNI[o.k];
+  const RULE = {
+    y: (n) => `liczy się ${n} najlepszych dni roku`,
+    m: (n) => `liczy się ${n} najlepszych dni miesiąca`,
+    w: (n) => `liczy się ${n} najlepszych dni z 7`,
+  };
   // Pod nickiem (Mateusz 16.11, szkic proto/wyscig-info wersja A): ile dni skakał z ilu się liczy („7 z 5” też, jego
   // decyzja) i ile skoków oddał dziś; dzisiejsze skoki z tabeli „Dzisiaj” serwera (j.dzis).
-  const DNI = { y: 200, m: 20, w: 5 };
   let todayJumps = new Map();
-  const sub = (r, k) => {
+  const sub = (r, n) => {
     const sk = todayJumps.get(r.uid) || 0;
     // „tm-sub”, nie „sub”: strona licznika ma własne .sub z odstępem 20 px pod spodem (Mateusz 16.11: pasek „dziwnie na dole”).
-    return `<div class="tm-sub">${r.dni || 0} z ${DNI[k]} dni, ${sk ? `dziś ${sk}/30` : "dziś nie skakał"}</div>`;
+    return `<div class="tm-sub">${r.dni || 0} z ${n} dni, ${sk ? `dziś ${sk}/30` : "dziś nie skakał"}</div>`;
   };
   function race(o) {
     const lead = (o.rows[0] && o.rows[0].suma) || 1;
@@ -236,12 +242,12 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
       .slice(0, 5)
       .map(
         (r, i) =>
-          `<li><span class="pos ${r.place <= 3 ? "p" + r.place : ""}">${r.place}</span><div class="grow"><div class="nm">${nickBtn(r, o.key)}</div>${sub(r, o.k)}` +
+          `<li><span class="pos ${r.place <= 3 ? "p" + r.place : ""}">${r.place}</span><div class="grow"><div class="nm">${nickBtn(r, o.key)}</div>${sub(r, ndni(o))}` +
           `<div class="track"><i style="width:${(r.suma / lead) * 100}%"></i></div></div><span class="v">${whole(r.suma)}</span>${play(r)}</li>`,
       )
       .join("");
     return (
-      `<h4>Wyścig · ${esc(RACE[o.k](o.key))}</h4><div class="rule">${RULE[o.k]}</div><ul>${rows || '<li class="empty">Jeszcze nikt nie skakał.</li>'}</ul>` +
+      `<h4>Wyścig · ${esc(RACE[o.k](o.key))}</h4><div class="rule">${RULE[o.k](ndni(o))}</div><ul>${rows || '<li class="empty">Jeszcze nikt nie skakał.</li>'}</ul>` +
       `<div class="end">${endText(o)}</div>` +
       (o.rows.length ? '<div class="end">klik w nick pokazuje wszystkie skoki gracza</div>' : "")
     );
