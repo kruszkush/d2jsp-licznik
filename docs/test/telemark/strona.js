@@ -73,7 +73,7 @@
 #telemark .tmr .v{font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums}
 #telemark .tmr .end{font-size:11px;color:var(--mute);margin-top:4px}
 #telemark .tmr .end+.end{margin-top:2px}
-#telemark .tmr .sub{font-size:11px;color:var(--mute);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#telemark .tmr .tm-sub{font-size:11px;color:var(--mute);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #telemark .tmr .rule{font-size:11px;color:var(--mute);margin:-2px 0 4px}
 #telemark .tmr .empty{font-size:12px;padding:4px 0;border:0}
 #telemark .tm-demo{font-size:12px;color:var(--acc);margin:0 0 8px}
@@ -227,7 +227,8 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
   let todayJumps = new Map();
   const sub = (r, k) => {
     const sk = todayJumps.get(r.uid) || 0;
-    return `<div class="sub">${r.dni || 0} z ${DNI[k]} dni, ${sk ? `dziś ${sk}/30` : "dziś nie skakał"}</div>`;
+    // „tm-sub”, nie „sub”: strona licznika ma własne .sub z odstępem 20 px pod spodem (Mateusz 16.11: pasek „dziwnie na dole”).
+    return `<div class="tm-sub">${r.dni || 0} z ${DNI[k]} dni, ${sk ? `dziś ${sk}/30` : "dziś nie skakał"}</div>`;
   };
   function race(o) {
     const lead = (o.rows[0] && o.rows[0].suma) || 1;
