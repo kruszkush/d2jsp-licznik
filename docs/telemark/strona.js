@@ -71,6 +71,10 @@
 #telemark .tmr .pos{width:20px;height:20px;font-size:11px}
 #telemark .tmr .track i{background:var(--c)}
 #telemark .tmr .v{font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums}
+/* Średnia na dzień pod sumą (Mateusz 18.11, szkic proto/srednia-dnia wersja A). */
+#telemark .tmr .v.avg{display:flex;flex-direction:column;align-items:flex-end;line-height:1.15}
+#telemark .tmr .v.avg small{font-size:10px;opacity:.85}
+#telemark .tmr .v.avg small.top{color:var(--c);font-weight:700;opacity:1}
 #telemark .tmr .end{font-size:11px;color:var(--mute);margin-top:4px}
 #telemark .tmr .end+.end{margin-top:2px}
 #telemark .tmr .tm-sub{font-size:11px;color:var(--mute);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -236,14 +240,27 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
     // „tm-sub”, nie „sub”: strona licznika ma własne .sub z odstępem 20 px pod spodem (Mateusz 16.11: pasek „dziwnie na dole”).
     return `<div class="tm-sub">${r.dni || 0} z ${n} dni, ${sk ? `dziś ${sk}/30` : "dziś nie skakał"}</div>`;
   };
+  // Średnia na dzień pod sumą (Mateusz 18.11: kto dołączył później, widzi, czy przegrywa skokami, czy liczbą dni).
+  // Tylko z dni, które się liczą (suma to najlepsze n dni), więc dzielę przez mniejsze z dni gracza i n.
+  // Najwyższa średnia w wyścigu pogrubiona w kolorze wyścigu (Mateusz 18.11, szkic wersja „A z wyróżnieniem”);
+  // przy remisie wyróżnieni wszyscy z tą samą zaokrągloną średnią.
+  const perDay = (r, n) => {
+    const d = Math.min(r.dni || 0, n);
+    return d ? Math.round(r.suma / d) : 0;
+  };
+  const avg = (r, n, best) => {
+    const a = perDay(r, n);
+    return `<span class="v avg">${whole(r.suma)}<small${a && a === best ? ' class="top"' : ""}>${whole(a)}/dzień</small></span>`;
+  };
   function race(o) {
     const lead = (o.rows[0] && o.rows[0].suma) || 1;
+    const best = Math.max(0, ...o.rows.slice(0, 5).map((r) => perDay(r, ndni(o))));
     const rows = o.rows
       .slice(0, 5)
       .map(
         (r, i) =>
           `<li><span class="pos ${r.place <= 3 ? "p" + r.place : ""}">${r.place}</span><div class="grow"><div class="nm">${nickBtn(r, o.key)}</div>${sub(r, ndni(o))}` +
-          `<div class="track"><i style="width:${(r.suma / lead) * 100}%"></i></div></div><span class="v">${whole(r.suma)}</span>${play(r)}</li>`,
+          `<div class="track"><i style="width:${(r.suma / lead) * 100}%"></i></div></div>${avg(r, ndni(o), best)}${play(r)}</li>`,
       )
       .join("");
     return (
