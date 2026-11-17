@@ -72,9 +72,12 @@
 #telemark .tmr .track i{background:var(--c)}
 #telemark .tmr .v{font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums}
 /* Średnia na dzień pod sumą (Mateusz 18.11, szkic proto/srednia-dnia wersja A). */
-#telemark .tmr .v.avg{display:flex;flex-direction:column;align-items:flex-end;line-height:1.15}
-#telemark .tmr .v.avg small{font-size:10px;opacity:.85}
-#telemark .tmr .v.avg small.top{color:var(--c);font-weight:700;opacity:1}
+/* Średnia na końcu wiersza z paskiem, nie w kolumnie sumy: szersza od sumy zabierała miejsce szarej linijce
+   pod nickiem („dziś nie ska…” przy średniej od 1000; pomiar proto/srednia-dnia/miesci.mjs, 18.11). */
+#telemark .tmr .tm-bar{display:flex;align-items:center;gap:6px;margin-top:1px}
+#telemark .tmr .tm-bar .track{flex:1;margin-top:0}
+#telemark .tmr .tm-avg{font-size:10px;line-height:1.15;color:var(--mute);opacity:.85;font-variant-numeric:tabular-nums;white-space:nowrap}
+#telemark .tmr .tm-avg.top{color:var(--c);font-weight:700;opacity:1}
 #telemark .tmr .end{font-size:11px;color:var(--mute);margin-top:4px}
 #telemark .tmr .end+.end{margin-top:2px}
 #telemark .tmr .tm-sub{font-size:11px;color:var(--mute);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -250,7 +253,7 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
   };
   const avg = (r, n, best) => {
     const a = perDay(r, n);
-    return `<span class="v avg">${whole(r.suma)}<small${a && a === best ? ' class="top"' : ""}>${whole(a)}/dzień</small></span>`;
+    return `<span class="tm-avg${a && a === best ? " top" : ""}">${whole(a)}/dzień</span>`;
   };
   function race(o) {
     const lead = (o.rows[0] && o.rows[0].suma) || 1;
@@ -260,7 +263,7 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
       .map(
         (r, i) =>
           `<li><span class="pos ${r.place <= 3 ? "p" + r.place : ""}">${r.place}</span><div class="grow"><div class="nm">${nickBtn(r, o.key)}</div>${sub(r, ndni(o))}` +
-          `<div class="track"><i style="width:${(r.suma / lead) * 100}%"></i></div></div>${avg(r, ndni(o), best)}${play(r)}</li>`,
+          `<div class="tm-bar"><div class="track"><i style="width:${(r.suma / lead) * 100}%"></i></div>${avg(r, ndni(o), best)}</div></div><span class="v">${whole(r.suma)}</span>${play(r)}</li>`,
       )
       .join("");
     return (
