@@ -70,7 +70,7 @@
 #telemark .tmr li:last-child{border:0}
 #telemark .tmr .pos{width:20px;height:20px;font-size:11px}
 #telemark .tmr .track i{background:var(--c)}
-#telemark .tmr .v{font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums}
+#telemark .tmr .v{font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums;min-width:3.6em;text-align:right}
 /* Średnia na dzień pod sumą (Mateusz 18.11, szkic proto/srednia-dnia wersja A). */
 /* Średnia na końcu wiersza z paskiem, nie w kolumnie sumy: szersza od sumy zabierała miejsce szarej linijce
    pod nickiem („dziś nie ska…” przy średniej od 1000; pomiar proto/srednia-dnia/miesci.mjs, 18.11). */
