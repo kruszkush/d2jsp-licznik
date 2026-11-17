@@ -76,7 +76,8 @@
    pod nickiem („dziś nie ska…” przy średniej od 1000; pomiar proto/srednia-dnia/miesci.mjs, 18.11). */
 #telemark .tmr .tm-bar{display:flex;align-items:center;gap:6px;margin-top:1px}
 #telemark .tmr .tm-bar .track{flex:1;margin-top:0}
-#telemark .tmr .tm-avg{font-size:10px;line-height:1.15;color:var(--mute);opacity:.85;font-variant-numeric:tabular-nums;white-space:nowrap}
+/* Stała szerokość (zmieści „9 999/dzień” pogrubione), żeby każdy pasek w wyścigu miał tę samą długość. */
+#telemark .tmr .tm-avg{font-size:10px;line-height:1.15;color:var(--mute);opacity:.85;font-variant-numeric:tabular-nums;white-space:nowrap;min-width:6.2em;text-align:right}
 #telemark .tmr .tm-avg.top{color:var(--c);font-weight:700;opacity:1}
 #telemark .tmr .end{font-size:11px;color:var(--mute);margin-top:4px}
 #telemark .tmr .end+.end{margin-top:2px}
