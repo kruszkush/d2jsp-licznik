@@ -65,7 +65,20 @@
 #telemark .pl-e{width:1.8em;flex:none}
 #telemark .tmr{border:1px solid var(--line);border-radius:10px;padding:8px 12px;min-width:0}
 #telemark .tmr h4{margin:0 0 4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);font-weight:700}
-#telemark .tmr ul{margin:0;padding:0}
+/* Bez overscroll-behavior: na końcu listy palec przewija dalej stronę (na telefonie listy zajmują pół ekranu). */
+/* Odstęp 9 px między ▶ a paskiem (Mateusz 18.11: pasek „bardzo blisko tych strzałek”; runda 2 prób). Miejsce na
+   odstęp i pasek: lista wchodzi 8 px w prawy margines karty, a pole ▶ w wyścigach jest o 4 px węższe (puste miejsce
+   przed strzałką), więc szara linijka pod nickiem dalej mieści „30 z 30 dni, dziś nie skakał” (sprawdz.mjs). */
+#telemark .tmr ul{margin:0 -8px 0 0;padding:0 9px 0 0;overflow-y:auto}
+#telemark .tmr .pl,#telemark .tmr .pl-e{width:1.4em}
+/* Pasek przewijania 3 px, szary w obu motywach, zaokrąglony (Mateusz 18.11: domyślny za szeroki, potem „węższy”;
+   proto/wyscig-przewijanie/proby.mjs). W kolorze wyścigu wyglądał jak kolejny pasek punktów. Firefox nie zna
+   ::-webkit-scrollbar: dostaje swój cienki pasek w tym samym kolorze. */
+#telemark .tmr ul::-webkit-scrollbar{width:3px}
+#telemark .tmr ul::-webkit-scrollbar-track{background:transparent}
+#telemark .tmr ul::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--mute) 45%,transparent);border-radius:3px}
+#telemark .tmr ul::-webkit-scrollbar-thumb:hover{background:var(--mute)}
+@supports not selector(::-webkit-scrollbar){#telemark .tmr ul{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--mute) 45%,transparent) transparent}}
 #telemark .tmr li{list-style:none;display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--line);font-size:13px}
 #telemark .tmr li:last-child{border:0}
 #telemark .tmr .pos{width:20px;height:20px;font-size:11px}
@@ -258,9 +271,9 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
   };
   function race(o) {
     const lead = (o.rows[0] && o.rows[0].suma) || 1;
-    const best = Math.max(0, ...o.rows.slice(0, 5).map((r) => perDay(r, ndni(o))));
+    // Wszyscy uczestnicy (Mateusz 18.11: lista ma się przewijać); widać 5 wierszy, reszta pod przewijaniem (fit()).
+    const best = Math.max(0, ...o.rows.map((r) => perDay(r, ndni(o))));
     const rows = o.rows
-      .slice(0, 5)
       .map(
         (r, i) =>
           `<li><span class="pos ${r.place <= 3 ? "p" + r.place : ""}">${r.place}</span><div class="grow"><div class="nm">${nickBtn(r, o.key)}</div>${sub(r, ndni(o))}` +
@@ -294,12 +307,29 @@ body.tm-on *,body.tm-on ::before,body.tm-on ::after{animation-play-state:paused!
     todayJumps = new Map((j.dzis || []).map((r) => [r.uid, r.skoki]));
     const by = (k) => j.okresy.find((o) => o.k === k);
     const list = ["y", "m", "w"].map(by).filter(Boolean);
-    document.getElementById("tm-body").innerHTML =
+    const body = document.getElementById("tm-body");
+    // Odświeżanie co minutę nie może zrzucać przewiniętej listy na górę.
+    const scrolled = {};
+    body.querySelectorAll(".tmr").forEach((b) => (scrolled[b.dataset.k] = b.querySelector("ul").scrollTop));
+    body.innerHTML =
       `<div class="tm-cols">${list.map((o) => `<div class="tmc k${o.k}">${champ(o)}</div>`).join("")}</div>` +
-      `<div class="tm-races">${list.map((o) => `<div class="tmr k${o.k}">${race(o)}</div>`).join("")}</div>`;
+      `<div class="tm-races">${list.map((o) => `<div class="tmr k${o.k}" data-k="${o.k}">${race(o)}</div>`).join("")}</div>`;
+    fit();
+    body.querySelectorAll(".tmr").forEach((b) => (b.querySelector("ul").scrollTop = scrolled[b.dataset.k] || 0));
     window.tmFame = j.slawa || [];
     if (typeof window.drawFame === "function") window.drawFame();
   }
+
+  // Okienko wyścigu na 5 wierszy (wysokość z prawdziwych wierszy, bo szara linijka i pasek zależą od czcionki).
+  // Wszystkie trzy wyścigi tej samej wysokości jak przed przewijaniem; liczone po każdym rysowaniu i zmianie okna.
+  function fit() {
+    SLOT.querySelectorAll(".tmr ul").forEach((ul) => {
+      ul.style.maxHeight = "";
+      const five = ul.children[4];
+      if (five && ul.children.length > 5) ul.style.maxHeight = five.offsetTop + five.offsetHeight - ul.offsetTop + "px";
+    });
+  }
+  addEventListener("resize", fit);
 
   let timer = 0;
   async function load(fresh) {
